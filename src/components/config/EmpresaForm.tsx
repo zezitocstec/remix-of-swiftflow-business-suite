@@ -1,0 +1,317 @@
+import { useState, useCallback } from "react";
+import { Search, Loader2, Building2, MapPin } from "lucide-react";
+import { toast } from "sonner";
+
+interface EmpresaData {
+  cnpj: string;
+  razaoSocial: string;
+  nomeFantasia: string;
+  inscricaoEstadual: string;
+  inscricaoMunicipal: string;
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  cidade: string;
+  uf: string;
+  telefone: string;
+  email: string;
+}
+
+const initialData: EmpresaData = {
+  cnpj: "",
+  razaoSocial: "",
+  nomeFantasia: "",
+  inscricaoEstadual: "",
+  inscricaoMunicipal: "",
+  cep: "",
+  logradouro: "",
+  numero: "",
+  complemento: "",
+  bairro: "",
+  cidade: "",
+  uf: "",
+  telefone: "",
+  email: "",
+};
+
+function maskCNPJ(value: string) {
+  return value
+    .replace(/\D/g, "")
+    .slice(0, 14)
+    .replace(/^(\d{2})(\d)/, "$1.$2")
+    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1/$2")
+    .replace(/(\d{4})(\d)/, "$1-$2");
+}
+
+function maskCEP(value: string) {
+  return value
+    .replace(/\D/g, "")
+    .slice(0, 8)
+    .replace(/^(\d{5})(\d)/, "$1-$2");
+}
+
+export default function EmpresaForm() {
+  const [data, setData] = useState<EmpresaData>(initialData);
+  const [loadingCNPJ, setLoadingCNPJ] = useState(false);
+  const [loadingCEP, setLoadingCEP] = useState(false);
+
+  const update = (field: keyof EmpresaData, value: string) => {
+    setData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const buscarCNPJ = useCallback(async () => {
+    const digits = data.cnpj.replace(/\D/g, "");
+    if (digits.length !== 14) {
+      toast.error("CNPJ deve ter 14 dígitos");
+      return;
+    }
+    setLoadingCNPJ(true);
+    try {
+      const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`);
+      if (!res.ok) throw new Error("CNPJ não encontrado");
+      const json = await res.json();
+      setData((prev) => ({
+        ...prev,
+        razaoSocial: json.razao_social || "",
+        nomeFantasia: json.nome_fantasia || "",
+        cep: json.cep ? maskCEP(json.cep) : prev.cep,
+        logradouro: json.logradouro || "",
+        numero: json.numero || "",
+        complemento: json.complemento || "",
+        bairro: json.bairro || "",
+        cidade: json.municipio || "",
+        uf: json.uf || "",
+        telefone: json.ddd_telefone_1 || "",
+      }));
+      toast.success("Dados do CNPJ carregados");
+    } catch {
+      toast.error("Erro ao buscar CNPJ. Verifique e tente novamente.");
+    } finally {
+      setLoadingCNPJ(false);
+    }
+  }, [data.cnpj]);
+
+  const buscarCEP = useCallback(async () => {
+    const digits = data.cep.replace(/\D/g, "");
+    if (digits.length !== 8) {
+      toast.error("CEP deve ter 8 dígitos");
+      return;
+    }
+    setLoadingCEP(true);
+    try {
+      const res = await fetch(`https://brasilapi.com.br/api/cep/v1/${digits}`);
+      if (!res.ok) throw new Error("CEP não encontrado");
+      const json = await res.json();
+      setData((prev) => ({
+        ...prev,
+        logradouro: json.street || "",
+        bairro: json.neighborhood || "",
+        cidade: json.city || "",
+        uf: json.state || "",
+      }));
+      toast.success("Endereço carregado pelo CEP");
+    } catch {
+      toast.error("Erro ao buscar CEP. Verifique e tente novamente.");
+    } finally {
+      setLoadingCEP(false);
+    }
+  }, [data.cep]);
+
+  const handleSave = () => {
+    toast.success("Dados da empresa salvos com sucesso!");
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* CNPJ */}
+      <fieldset className="rounded-md border border-border p-4 space-y-4">
+        <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground px-2 flex items-center gap-1.5">
+          <Building2 className="h-3.5 w-3.5" /> Identificação
+        </legend>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">CNPJ</label>
+            <div className="flex gap-2">
+              <input
+                className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring"
+                placeholder="00.000.000/0000-00"
+                value={data.cnpj}
+                onChange={(e) => update("cnpj", maskCNPJ(e.target.value))}
+              />
+              <button
+                onClick={buscarCNPJ}
+                disabled={loadingCNPJ}
+                className="h-9 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {loadingCNPJ ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                Buscar
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Inscrição Estadual</label>
+            <input
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Inscrição Estadual"
+              value={data.inscricaoEstadual}
+              onChange={(e) => update("inscricaoEstadual", e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Razão Social</label>
+            <input
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Razão Social"
+              value={data.razaoSocial}
+              onChange={(e) => update("razaoSocial", e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Nome Fantasia</label>
+            <input
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Nome Fantasia"
+              value={data.nomeFantasia}
+              onChange={(e) => update("nomeFantasia", e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Inscrição Municipal</label>
+            <input
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Inscrição Municipal"
+              value={data.inscricaoMunicipal}
+              onChange={(e) => update("inscricaoMunicipal", e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-foreground">Telefone</label>
+              <input
+                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring"
+                placeholder="(00) 0000-0000"
+                value={data.telefone}
+                onChange={(e) => update("telefone", e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-foreground">Email</label>
+              <input
+                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring"
+                placeholder="email@empresa.com"
+                value={data.email}
+                onChange={(e) => update("email", e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
+      {/* Endereço */}
+      <fieldset className="rounded-md border border-border p-4 space-y-4">
+        <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground px-2 flex items-center gap-1.5">
+          <MapPin className="h-3.5 w-3.5" /> Endereço
+        </legend>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">CEP</label>
+            <div className="flex gap-2">
+              <input
+                className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring"
+                placeholder="00000-000"
+                value={data.cep}
+                onChange={(e) => update("cep", maskCEP(e.target.value))}
+              />
+              <button
+                onClick={buscarCEP}
+                disabled={loadingCEP}
+                className="h-9 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {loadingCEP ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                Buscar
+              </button>
+            </div>
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <label className="text-xs font-medium text-foreground">Logradouro</label>
+            <input
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Rua, Avenida..."
+              value={data.logradouro}
+              onChange={(e) => update("logradouro", e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Número</label>
+            <input
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Nº"
+              value={data.numero}
+              onChange={(e) => update("numero", e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Complemento</label>
+            <input
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Sala, Bloco..."
+              value={data.complemento}
+              onChange={(e) => update("complemento", e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Bairro</label>
+            <input
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Bairro"
+              value={data.bairro}
+              onChange={(e) => update("bairro", e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="space-y-1.5 col-span-2">
+              <label className="text-xs font-medium text-foreground">Cidade</label>
+              <input
+                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring"
+                placeholder="Cidade"
+                value={data.cidade}
+                onChange={(e) => update("cidade", e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-foreground">UF</label>
+              <input
+                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring"
+                placeholder="UF"
+                value={data.uf}
+                onChange={(e) => update("uf", e.target.value.toUpperCase().slice(0, 2))}
+              />
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
+      <button
+        onClick={handleSave}
+        className="h-10 px-6 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+      >
+        Salvar Dados da Empresa
+      </button>
+    </div>
+  );
+}
