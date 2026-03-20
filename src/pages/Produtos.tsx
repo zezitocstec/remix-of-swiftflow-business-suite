@@ -1,6 +1,6 @@
 import { TopBar } from "@/components/TopBar";
-import { Product, formatBRL } from "@/lib/mock-data";
-import { mockProducts as initialProducts } from "@/lib/mock-data";
+import { formatBRL, type Product } from "@/lib/mock-data";
+import { useProducts } from "@/contexts/ProductContext";
 import { Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -9,20 +9,18 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 
-const categories = ["Bebidas", "Padaria", "Grãos", "Laticínios", "Limpeza", "Higiene", "Óleos", "Massas", "Hortifruti", "Carnes", "Outros"];
+const categories = ["Bebidas", "Padaria", "Grãos", "Laticínios", "Limpeza", "Higiene", "Óleos", "Massas", "Hortifruti", "Carnes", "Importado", "Outros"];
 
-const emptyProduct: Omit<Product, "id"> = {
-  name: "", sku: "", price: 0, stock: 0, category: "Outros", barcode: "",
-};
+const emptyForm = { name: "", sku: "", price: 0, stock: 0, category: "Outros", barcode: "" };
 
 export default function Produtos() {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const { products, addProduct, updateProduct, deleteProduct } = useProducts();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
-  const [form, setForm] = useState<Omit<Product, "id">>(emptyProduct);
+  const [form, setForm] = useState(emptyForm);
 
   const filtered = products.filter((p) =>
     !search ||
@@ -31,51 +29,34 @@ export default function Produtos() {
     p.barcode.includes(search)
   );
 
-  const openNew = () => {
-    setEditingProduct(null);
-    setForm(emptyProduct);
-    setDialogOpen(true);
-  };
-
-  const openEdit = (p: Product) => {
-    setEditingProduct(p);
-    setForm({ name: p.name, sku: p.sku, price: p.price, stock: p.stock, category: p.category, barcode: p.barcode });
-    setDialogOpen(true);
-  };
-
-  const openDelete = (p: Product) => {
-    setDeletingProduct(p);
-    setDeleteDialogOpen(true);
-  };
+  const openNew = () => { setEditingProduct(null); setForm(emptyForm); setDialogOpen(true); };
+  const openEdit = (p: Product) => { setEditingProduct(p); setForm({ name: p.name, sku: p.sku, price: p.price, stock: p.stock, category: p.category, barcode: p.barcode }); setDialogOpen(true); };
+  const openDelete = (p: Product) => { setDeletingProduct(p); setDeleteDialogOpen(true); };
 
   const handleSave = () => {
     if (!form.name.trim() || !form.sku.trim()) {
       toast({ title: "Erro", description: "Nome e SKU são obrigatórios.", variant: "destructive" });
       return;
     }
-
     if (editingProduct) {
-      setProducts((prev) =>
-        prev.map((p) => (p.id === editingProduct.id ? { ...p, ...form } : p))
-      );
-      toast({ title: "Produto atualizado", description: `${form.name} foi atualizado com sucesso.` });
+      updateProduct(editingProduct.id, form);
+      toast({ title: "Produto atualizado", description: `${form.name} foi atualizado.` });
     } else {
-      const newProduct: Product = { ...form, id: crypto.randomUUID() };
-      setProducts((prev) => [...prev, newProduct]);
-      toast({ title: "Produto cadastrado", description: `${form.name} foi adicionado com sucesso.` });
+      addProduct(form);
+      toast({ title: "Produto cadastrado", description: `${form.name} foi adicionado.` });
     }
     setDialogOpen(false);
   };
 
   const handleDelete = () => {
     if (!deletingProduct) return;
-    setProducts((prev) => prev.filter((p) => p.id !== deletingProduct.id));
+    deleteProduct(deletingProduct.id);
     toast({ title: "Produto excluído", description: `${deletingProduct.name} foi removido.` });
     setDeleteDialogOpen(false);
     setDeletingProduct(null);
   };
 
-  const updateField = (field: keyof Omit<Product, "id">, value: string | number) => {
+  const updateField = (field: string, value: string | number) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -86,16 +67,9 @@ export default function Produtos() {
         <div className="flex items-center gap-3">
           <div className="flex-1 flex items-center gap-2 rounded-md border border-border bg-card px-3 h-9">
             <Search className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
-            <input
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground text-foreground"
-              placeholder="Buscar por nome, SKU ou código de barras..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+            <input className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground text-foreground" placeholder="Buscar por nome, SKU ou código de barras..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-          <Button size="sm" onClick={openNew}>
-            <Plus className="h-4 w-4" /> Novo Produto
-          </Button>
+          <Button size="sm" onClick={openNew}><Plus className="h-4 w-4" /> Novo Produto</Button>
         </div>
 
         <div className="rounded-md border border-border bg-card overflow-hidden">
@@ -113,11 +87,7 @@ export default function Produtos() {
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-8 text-center text-muted-foreground">
-                    Nenhum produto encontrado.
-                  </td>
-                </tr>
+                <tr><td colSpan={7} className="py-8 text-center text-muted-foreground">Nenhum produto encontrado.</td></tr>
               )}
               {filtered.map((p) => (
                 <tr key={p.id} className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors">
@@ -129,12 +99,8 @@ export default function Produtos() {
                   <td className="py-2.5 px-4 text-right tabular-nums text-foreground">{p.stock}</td>
                   <td className="py-2.5 px-4">
                     <div className="flex items-center justify-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(p)}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => openDelete(p)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => openDelete(p)}><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
                   </td>
                 </tr>
@@ -144,54 +110,29 @@ export default function Produtos() {
         </div>
       </div>
 
-      {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingProduct ? "Editar Produto" : "Novo Produto"}</DialogTitle>
-            <DialogDescription>
-              {editingProduct ? "Altere os dados do produto abaixo." : "Preencha os dados para cadastrar um novo produto."}
-            </DialogDescription>
+            <DialogDescription>{editingProduct ? "Altere os dados do produto." : "Preencha os dados para cadastrar."}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="name">Nome *</Label>
-                <Input id="name" value={form.name} onChange={(e) => updateField("name", e.target.value)} placeholder="Ex: Coca-Cola 350ml" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="sku">SKU *</Label>
-                <Input id="sku" value={form.sku} onChange={(e) => updateField("sku", e.target.value.toUpperCase())} placeholder="Ex: BEB001" />
-              </div>
+              <div className="space-y-1.5"><Label htmlFor="name">Nome *</Label><Input id="name" value={form.name} onChange={(e) => updateField("name", e.target.value)} placeholder="Ex: Coca-Cola 350ml" /></div>
+              <div className="space-y-1.5"><Label htmlFor="sku">SKU *</Label><Input id="sku" value={form.sku} onChange={(e) => updateField("sku", e.target.value.toUpperCase())} placeholder="Ex: BEB001" /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="price">Preço (R$)</Label>
-                <Input id="price" type="number" step="0.01" min="0" value={form.price || ""} onChange={(e) => updateField("price", parseFloat(e.target.value) || 0)} placeholder="0,00" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="stock">Estoque</Label>
-                <Input id="stock" type="number" min="0" value={form.stock || ""} onChange={(e) => updateField("stock", parseInt(e.target.value) || 0)} placeholder="0" />
-              </div>
+              <div className="space-y-1.5"><Label htmlFor="price">Preço (R$)</Label><Input id="price" type="number" step="0.01" min="0" value={form.price || ""} onChange={(e) => updateField("price", parseFloat(e.target.value) || 0)} /></div>
+              <div className="space-y-1.5"><Label htmlFor="stock">Estoque</Label><Input id="stock" type="number" min="0" value={form.stock || ""} onChange={(e) => updateField("stock", parseInt(e.target.value) || 0)} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="category">Categoria</Label>
-                <select
-                  id="category"
-                  value={form.category}
-                  onChange={(e) => updateField("category", e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                  {categories.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
+                <select id="category" value={form.category} onChange={(e) => updateField("category", e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                  {categories.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="barcode">Código de Barras</Label>
-                <Input id="barcode" value={form.barcode} onChange={(e) => updateField("barcode", e.target.value)} placeholder="Ex: 7891234560011" />
-              </div>
+              <div className="space-y-1.5"><Label htmlFor="barcode">Código de Barras</Label><Input id="barcode" value={form.barcode} onChange={(e) => updateField("barcode", e.target.value)} placeholder="Ex: 7891234560011" /></div>
             </div>
           </div>
           <DialogFooter>
@@ -201,14 +142,11 @@ export default function Produtos() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Excluir Produto</DialogTitle>
-            <DialogDescription>
-              Tem certeza que deseja excluir <strong>{deletingProduct?.name}</strong>? Esta ação não pode ser desfeita.
-            </DialogDescription>
+            <DialogDescription>Tem certeza que deseja excluir <strong>{deletingProduct?.name}</strong>? Esta ação não pode ser desfeita.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancelar</Button>
