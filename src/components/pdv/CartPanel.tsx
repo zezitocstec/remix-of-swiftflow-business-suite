@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { ParkedSale } from "./types";
+import type { Client } from "@/contexts/ProductContext";
 import PaymentPanel from "./PaymentPanel";
 
 interface CartPanelProps {
@@ -30,6 +31,7 @@ interface CartPanelProps {
   setShowParkDialog: (v: boolean) => void;
   showRecallDialog: boolean;
   setShowRecallDialog: (v: boolean) => void;
+  selectedClient?: Client | null;
 }
 
 export default function CartPanel({
@@ -39,6 +41,7 @@ export default function CartPanel({
   showPayment, setShowPayment,
   showParkDialog, setShowParkDialog,
   showRecallDialog, setShowRecallDialog,
+  selectedClient,
 }: CartPanelProps) {
   const [showAdjust, setShowAdjust] = useState<"discount" | "surcharge" | null>(null);
   const [adjustType, setAdjustType] = useState<"percent" | "value">("percent");
@@ -65,15 +68,9 @@ export default function CartPanel({
     setShowAdjust(null);
   };
 
-  const handleFinalize = (methods: { method: string; amount: number }[]) => {
-    onFinalizeSale(methods);
-    setShowPayment(false);
-  };
-
   return (
     <>
       <div className="w-full sm:w-80 lg:w-96 border-t sm:border-t-0 sm:border-l border-border bg-card flex flex-col max-h-[50vh] sm:max-h-none">
-        {/* Header */}
         <div className="h-12 sm:h-14 border-b border-border flex items-center justify-between px-3 sm:px-4 shrink-0">
           <span className="text-sm font-semibold text-foreground">Carrinho ({totalItems})</span>
           <div className="flex items-center gap-1">
@@ -83,25 +80,16 @@ export default function CartPanel({
               </Button>
             )}
             {cart.length > 0 && (
-              <button onClick={clearCart} className="text-xs text-destructive hover:underline font-medium px-2 py-1 touch-manipulation">
-                Limpar
-              </button>
+              <button onClick={clearCart} className="text-xs text-destructive hover:underline font-medium px-2 py-1 touch-manipulation">Limpar</button>
             )}
           </div>
         </div>
 
-        {/* Items */}
         <div className="flex-1 overflow-auto min-h-0">
           <AnimatePresence mode="popLayout">
             {cart.map((item) => (
-              <motion.div
-                key={item.product.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.15 }}
-                className="border-b border-border px-3 sm:px-4 py-3"
-              >
+              <motion.div key={item.product.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.15 }}
+                className="border-b border-border px-3 sm:px-4 py-3">
                 <div className="flex justify-between items-start">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{item.product.name}</p>
@@ -121,14 +109,11 @@ export default function CartPanel({
                       <Plus className="h-4 w-4" />
                     </button>
                   </div>
-                  <span className="text-sm font-medium tabular-nums text-foreground">
-                    {formatBRL(item.product.price * item.quantity)}
-                  </span>
+                  <span className="text-sm font-medium tabular-nums text-foreground">{formatBRL(item.product.price * item.quantity)}</span>
                 </div>
               </motion.div>
             ))}
           </AnimatePresence>
-
           {cart.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8 min-h-[120px]">
               <p className="text-sm">Nenhum item no carrinho</p>
@@ -138,7 +123,6 @@ export default function CartPanel({
           )}
         </div>
 
-        {/* Footer */}
         <div className="border-t border-border p-3 sm:p-4 space-y-2 shrink-0">
           {cart.length > 0 && !showPayment && (
             <div className="flex gap-2">
@@ -153,33 +137,16 @@ export default function CartPanel({
             </div>
           )}
 
-          {/* Totals */}
           <div className="space-y-1">
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Subtotal</span>
-              <span className="tabular-nums">{formatBRL(subtotal)}</span>
-            </div>
-            {discount.amount > 0 && (
-              <div className="flex justify-between text-xs text-success">
-                <span>Desconto ({discount.type === "percent" ? `${discount.amount}%` : "valor"})</span>
-                <span className="tabular-nums">-{formatBRL(discountAmount)}</span>
-              </div>
-            )}
-            {surcharge.amount > 0 && (
-              <div className="flex justify-between text-xs text-warning">
-                <span>Acréscimo ({surcharge.type === "percent" ? `${surcharge.amount}%` : "valor"})</span>
-                <span className="tabular-nums">+{formatBRL(surchargeAmount)}</span>
-              </div>
-            )}
+            <div className="flex justify-between text-xs text-muted-foreground"><span>Subtotal</span><span className="tabular-nums">{formatBRL(subtotal)}</span></div>
+            {discount.amount > 0 && <div className="flex justify-between text-xs text-success"><span>Desconto</span><span className="tabular-nums">-{formatBRL(discountAmount)}</span></div>}
+            {surcharge.amount > 0 && <div className="flex justify-between text-xs text-warning"><span>Acréscimo</span><span className="tabular-nums">+{formatBRL(surchargeAmount)}</span></div>}
             <div className="flex justify-between items-baseline pt-1 border-t border-border">
               <span className="text-base font-semibold text-foreground">Total</span>
-              <span className="text-xl font-bold tabular-nums tracking-tight text-foreground">
-                {formatBRL(total)}
-              </span>
+              <span className="text-xl font-bold tabular-nums tracking-tight text-foreground">{formatBRL(total)}</span>
             </div>
           </div>
 
-          {/* Actions */}
           {!showPayment ? (
             <div className="flex gap-2">
               {cart.length > 0 && (
@@ -187,20 +154,13 @@ export default function CartPanel({
                   <PauseCircle className="h-4 w-4" />
                 </Button>
               )}
-              <button
-                onClick={() => cart.length > 0 && setShowPayment(true)}
-                disabled={cart.length === 0}
-                className="flex-1 h-12 rounded-lg bg-accent text-accent-foreground font-semibold text-sm transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation select-none"
-              >
+              <button onClick={() => cart.length > 0 && setShowPayment(true)} disabled={cart.length === 0}
+                className="flex-1 h-12 rounded-lg bg-accent text-accent-foreground font-semibold text-sm transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation select-none">
                 Finalizar (Espaço)
               </button>
             </div>
           ) : (
-            <PaymentPanel
-              total={total}
-              onFinalize={handleFinalize}
-              onCancel={() => setShowPayment(false)}
-            />
+            <PaymentPanel total={total} onFinalize={(m) => { onFinalizeSale(m); setShowPayment(false); }} onCancel={() => setShowPayment(false)} selectedClient={selectedClient} />
           )}
         </div>
       </div>
@@ -259,20 +219,13 @@ export default function CartPanel({
           </DialogHeader>
           <div className="space-y-2 max-h-60 overflow-auto">
             {parkedSales.map((sale) => (
-              <button
-                key={sale.id}
-                onClick={() => { onRecallSale(sale.id); setShowRecallDialog(false); }}
-                className="w-full flex items-center justify-between p-3 rounded-lg border border-border hover:border-primary hover:bg-secondary transition-all touch-manipulation text-left"
-              >
+              <button key={sale.id} onClick={() => { onRecallSale(sale.id); setShowRecallDialog(false); }}
+                className="w-full flex items-center justify-between p-3 rounded-lg border border-border hover:border-primary hover:bg-secondary transition-all touch-manipulation text-left">
                 <div>
                   <p className="text-sm font-medium text-foreground">{sale.customerName}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {sale.items.length} itens • {formatBRL(sale.items.reduce((s, i) => s + i.product.price * i.quantity, 0))}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{sale.items.length} itens • {formatBRL(sale.items.reduce((s, i) => s + i.product.price * i.quantity, 0))}</p>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {sale.parkedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                </div>
+                <div className="text-xs text-muted-foreground">{sale.parkedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</div>
               </button>
             ))}
           </div>

@@ -1,8 +1,8 @@
 import { TopBar } from "@/components/TopBar";
 import { formatBRL, type Product } from "@/lib/mock-data";
 import { useProducts } from "@/contexts/ProductContext";
-import { Plus, Search, Pencil, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Plus, Search, Pencil, Trash2, AlertTriangle } from "lucide-react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,26 +11,34 @@ import { toast } from "@/hooks/use-toast";
 
 const categories = ["Bebidas", "Padaria", "Grãos", "Laticínios", "Limpeza", "Higiene", "Óleos", "Massas", "Hortifruti", "Carnes", "Importado", "Outros"];
 
-const emptyForm = { name: "", sku: "", price: 0, stock: 0, category: "Outros", barcode: "" };
+const emptyForm = { name: "", sku: "", price: 0, stock: 0, minStock: 0, category: "Outros", barcode: "" };
 
 export default function Produtos() {
   const { products, addProduct, updateProduct, deleteProduct } = useProducts();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [form, setForm] = useState(emptyForm);
 
-  const filtered = products.filter((p) =>
-    !search ||
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.sku.toLowerCase().includes(search.toLowerCase()) ||
-    p.barcode.includes(search)
-  );
+  // Debounce search
+  useState(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 200);
+    return () => clearTimeout(timer);
+  });
+
+  const filtered = useMemo(() => {
+    const q = (search || "").toLowerCase();
+    if (!q) return products;
+    return products.filter((p) =>
+      p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || p.barcode.includes(q)
+    );
+  }, [search, products]);
 
   const openNew = () => { setEditingProduct(null); setForm(emptyForm); setDialogOpen(true); };
-  const openEdit = (p: Product) => { setEditingProduct(p); setForm({ name: p.name, sku: p.sku, price: p.price, stock: p.stock, category: p.category, barcode: p.barcode }); setDialogOpen(true); };
+  const openEdit = (p: Product) => { setEditingProduct(p); setForm({ name: p.name, sku: p.sku, price: p.price, stock: p.stock, minStock: p.minStock || 0, category: p.category, barcode: p.barcode }); setDialogOpen(true); };
   const openDelete = (p: Product) => { setDeletingProduct(p); setDeleteDialogOpen(true); };
 
   const handleSave = () => {
@@ -89,27 +97,42 @@ export default function Produtos() {
               {filtered.length === 0 && (
                 <tr><td colSpan={7} className="py-8 text-center text-muted-foreground">Nenhum produto encontrado.</td></tr>
               )}
-              {filtered.map((p) => (
-                <tr key={p.id} className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors">
-                  <td className="py-2.5 px-4 font-medium text-foreground">{p.name}</td>
-                  <td className="py-2.5 px-4 text-muted-foreground">{p.sku}</td>
-                  <td className="py-2.5 px-4 text-muted-foreground">{p.category}</td>
-                  <td className="py-2.5 px-4 text-muted-foreground font-mono text-xs">{p.barcode}</td>
-                  <td className="py-2.5 px-4 text-right tabular-nums text-foreground">{formatBRL(p.price)}</td>
-                  <td className="py-2.5 px-4 text-right tabular-nums text-foreground">{p.stock}</td>
-                  <td className="py-2.5 px-4">
-                    <div className="flex items-center justify-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => openDelete(p)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map((p) => {
+                const isLowStock = p.minStock !== undefined && p.stock <= p.minStock && p.stock > 0;
+                const isOutOfStock = p.stock <= 0;
+                return (
+                  <tr key={p.id} className={`border-b border-border last:border-0 transition-colors ${
+                    isLowStock ? "bg-warning/5 hover:bg-warning/10" : isOutOfStock ? "bg-destructive/5 hover:bg-destructive/10" : "hover:bg-secondary/50"
+                  }`}>
+                    <td className="py-2.5 px-4 font-medium text-foreground">{p.name}</td>
+                    <td className="py-2.5 px-4 text-muted-foreground">{p.sku}</td>
+                    <td className="py-2.5 px-4 text-muted-foreground">{p.category}</td>
+                    <td className="py-2.5 px-4 text-muted-foreground font-mono text-xs">{p.barcode}</td>
+                    <td className="py-2.5 px-4 text-right tabular-nums text-foreground">{formatBRL(p.price)}</td>
+                    <td className="py-2.5 px-4 text-right tabular-nums">
+                      <span className={`inline-flex items-center gap-1 ${
+                        isOutOfStock ? "text-destructive font-medium" : isLowStock ? "text-warning font-medium" : "text-foreground"
+                      }`}>
+                        {(isLowStock || isOutOfStock) && <AlertTriangle className="h-3.5 w-3.5" />}
+                        {p.stock}
+                        {p.minStock ? <span className="text-xs text-muted-foreground font-normal">/ mín {p.minStock}</span> : null}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-4">
+                      <div className="flex items-center justify-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => openDelete(p)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
+      {/* Product Form Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -121,9 +144,10 @@ export default function Produtos() {
               <div className="space-y-1.5"><Label htmlFor="name">Nome *</Label><Input id="name" value={form.name} onChange={(e) => updateField("name", e.target.value)} placeholder="Ex: Coca-Cola 350ml" /></div>
               <div className="space-y-1.5"><Label htmlFor="sku">SKU *</Label><Input id="sku" value={form.sku} onChange={(e) => updateField("sku", e.target.value.toUpperCase())} placeholder="Ex: BEB001" /></div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1.5"><Label htmlFor="price">Preço (R$)</Label><Input id="price" type="number" step="0.01" min="0" value={form.price || ""} onChange={(e) => updateField("price", parseFloat(e.target.value) || 0)} /></div>
               <div className="space-y-1.5"><Label htmlFor="stock">Estoque</Label><Input id="stock" type="number" min="0" value={form.stock || ""} onChange={(e) => updateField("stock", parseInt(e.target.value) || 0)} /></div>
+              <div className="space-y-1.5"><Label htmlFor="minStock">Estoque Mín.</Label><Input id="minStock" type="number" min="0" value={form.minStock || ""} onChange={(e) => updateField("minStock", parseInt(e.target.value) || 0)} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
@@ -142,6 +166,7 @@ export default function Produtos() {
         </DialogContent>
       </Dialog>
 
+      {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
@@ -150,7 +175,7 @@ export default function Produtos() {
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancelar</Button>
-            <Button variant="destructive" onClick={handleDelete}>Excluir</Button>
+            <Button variant="destructive" onClick={handleDelete}>Confirmar Exclusão</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
