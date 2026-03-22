@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { formatBRL, type Product, type CartItem } from "@/lib/mock-data";
 import { useProducts } from "@/contexts/ProductContext";
 import { toast } from "@/hooks/use-toast";
@@ -8,6 +8,7 @@ import { RotateCcw } from "lucide-react";
 import ProductGrid from "@/components/pdv/ProductGrid";
 import CartPanel from "@/components/pdv/CartPanel";
 import type { ParkedSale } from "@/components/pdv/types";
+import { usePDVShortcuts } from "@/hooks/usePDVShortcuts";
 
 export default function PDV() {
   const { products, sellProducts, cancelSale } = useProducts();
@@ -15,13 +16,13 @@ export default function PDV() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [lastSaleId, setLastSaleId] = useState<string | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-
-  // Discount & surcharge
   const [discount, setDiscount] = useState<{ type: "percent" | "value"; amount: number }>({ type: "percent", amount: 0 });
   const [surcharge, setSurcharge] = useState<{ type: "percent" | "value"; amount: number }>({ type: "percent", amount: 0 });
-
-  // Virtual queue
   const [parkedSales, setParkedSales] = useState<ParkedSale[]>([]);
+  const [showPayment, setShowPayment] = useState(false);
+  const [showParkDialog, setShowParkDialog] = useState(false);
+  const [showRecallDialog, setShowRecallDialog] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const addToCart = useCallback((product: Product) => {
     if (product.stock <= 0) {
@@ -53,6 +54,7 @@ export default function PDV() {
     setCart([]);
     setDiscount({ type: "percent", amount: 0 });
     setSurcharge({ type: "percent", amount: 0 });
+    setShowPayment(false);
   };
 
   const subtotal = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
@@ -61,13 +63,14 @@ export default function PDV() {
   const total = Math.max(0, subtotal - discountAmount + surchargeAmount);
   const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
 
-  const finalizeSale = (paymentMethod: string) => {
+  const finalizeSale = (methods: { method: string; amount: number }[]) => {
     const items = cart.map((i) => ({ productId: i.product.id, quantity: i.quantity }));
     const saleId = sellProducts(items);
     setLastSaleId(saleId);
+    const methodStr = methods.map((m) => `${m.method} ${formatBRL(m.amount)}`).join(" + ");
     toast({
       title: "Venda finalizada!",
-      description: `${totalItems} itens — ${formatBRL(total)} via ${paymentMethod}.`,
+      description: `${totalItems} itens — ${formatBRL(total)} via ${methodStr}.`,
     });
     clearCart();
   };
@@ -81,7 +84,6 @@ export default function PDV() {
     setCancelDialogOpen(false);
   };
 
-  // Park / Recall
   const parkSale = (customerName: string) => {
     if (cart.length === 0) return;
     setParkedSales((prev) => [
@@ -101,6 +103,26 @@ export default function PDV() {
     setParkedSales((prev) => prev.filter((s) => s.id !== id));
     toast({ title: "Venda retomada", description: `${sale.customerName} — ${sale.items.length} itens.` });
   };
+
+  // Keyboard shortcuts
+  usePDVShortcuts({
+    onSearch: () => {
+      const input = document.querySelector<HTMLInputElement>('input[placeholder*="Buscar"]');
+      input?.focus();
+    },
+    onPark: () => {
+      if (cart.length > 0) setShowParkDialog(true);
+    },
+    onRecall: () => {
+      if (parkedSales.length > 0) setShowRecallDialog(true);
+    },
+    onFinalize: () => {
+      if (cart.length > 0 && !showPayment) setShowPayment(true);
+    },
+    onCancel: () => {
+      if (showPayment) setShowPayment(false);
+    },
+  });
 
   return (
     <div className="flex flex-col sm:flex-row h-[calc(100vh-3.5rem)] sm:h-screen bg-pos-bg">
@@ -125,9 +147,14 @@ export default function PDV() {
         parkedSales={parkedSales}
         onParkSale={parkSale}
         onRecallSale={recallSale}
+        showPayment={showPayment}
+        setShowPayment={setShowPayment}
+        showParkDialog={showParkDialog}
+        setShowParkDialog={setShowParkDialog}
+        showRecallDialog={showRecallDialog}
+        setShowRecallDialog={setShowRecallDialog}
       />
 
-      {/* Cancel Sale Dialog */}
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
