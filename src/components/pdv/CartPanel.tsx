@@ -16,7 +16,7 @@ interface CartPanelProps {
   updateQty: (id: string, delta: number) => void;
   removeItem: (id: string) => void;
   clearCart: () => void;
-  onFinalizeSale: (paymentMethod: string) => void;
+  onFinalizeSale: (methods: { method: string; amount: number }[]) => void;
   discount: { type: "percent" | "value"; amount: number };
   setDiscount: (d: { type: "percent" | "value"; amount: number }) => void;
   surcharge: { type: "percent" | "value"; amount: number };
@@ -24,6 +24,12 @@ interface CartPanelProps {
   parkedSales: ParkedSale[];
   onParkSale: (name: string) => void;
   onRecallSale: (id: string) => void;
+  showPayment: boolean;
+  setShowPayment: (v: boolean) => void;
+  showParkDialog: boolean;
+  setShowParkDialog: (v: boolean) => void;
+  showRecallDialog: boolean;
+  setShowRecallDialog: (v: boolean) => void;
 }
 
 export default function CartPanel({
