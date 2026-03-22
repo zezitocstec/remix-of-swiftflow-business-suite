@@ -36,8 +36,10 @@ export default function CartPanel({
   cart, updateQty, removeItem, clearCart, onFinalizeSale,
   discount, setDiscount, surcharge, setSurcharge,
   parkedSales, onParkSale, onRecallSale,
+  showPayment, setShowPayment,
+  showParkDialog, setShowParkDialog,
+  showRecallDialog, setShowRecallDialog,
 }: CartPanelProps) {
-  const [showPayment, setShowPayment] = useState(false);
   const [showAdjust, setShowAdjust] = useState<"discount" | "surcharge" | null>(null);
   const [adjustType, setAdjustType] = useState<"percent" | "value">("percent");
   const [adjustValue, setAdjustValue] = useState("");
