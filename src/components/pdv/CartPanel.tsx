@@ -43,9 +43,7 @@ export default function CartPanel({
   const [showAdjust, setShowAdjust] = useState<"discount" | "surcharge" | null>(null);
   const [adjustType, setAdjustType] = useState<"percent" | "value">("percent");
   const [adjustValue, setAdjustValue] = useState("");
-  const [showPark, setShowPark] = useState(false);
   const [parkName, setParkName] = useState("");
-  const [showRecall, setShowRecall] = useState(false);
 
   const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
   const subtotal = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
