@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  Plus, Minus, Trash2, CreditCard, Banknote, QrCode, Smartphone,
+  Plus, Minus, Trash2,
   Percent, DollarSign, PauseCircle, PlayCircle, Tag, TrendingUp,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { ParkedSale } from "./types";
+import PaymentPanel from "./PaymentPanel";
 
 interface CartPanelProps {
   cart: CartItem[];
