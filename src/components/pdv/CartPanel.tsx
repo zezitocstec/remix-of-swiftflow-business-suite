@@ -47,7 +47,6 @@ export default function CartPanel({
 
   const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
   const subtotal = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
-
   const discountAmount = discount.type === "percent" ? subtotal * (discount.amount / 100) : discount.amount;
   const surchargeAmount = surcharge.type === "percent" ? subtotal * (surcharge.amount / 100) : surcharge.amount;
   const total = Math.max(0, subtotal - discountAmount + surchargeAmount);
@@ -66,8 +65,8 @@ export default function CartPanel({
     setShowAdjust(null);
   };
 
-  const handleFinalize = (method: string) => {
-    onFinalizeSale(method);
+  const handleFinalize = (methods: { method: string; amount: number }[]) => {
+    onFinalizeSale(methods);
     setShowPayment(false);
   };
 
@@ -79,7 +78,7 @@ export default function CartPanel({
           <span className="text-sm font-semibold text-foreground">Carrinho ({totalItems})</span>
           <div className="flex items-center gap-1">
             {parkedSales.length > 0 && (
-              <Button variant="ghost" size="sm" onClick={() => setShowRecall(true)} className="text-primary touch-manipulation h-9 px-2">
+              <Button variant="ghost" size="sm" onClick={() => setShowRecallDialog(true)} className="text-primary touch-manipulation h-9 px-2">
                 <PlayCircle className="h-4 w-4 mr-1" /> {parkedSales.length}
               </Button>
             )}
@@ -134,28 +133,20 @@ export default function CartPanel({
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8 min-h-[120px]">
               <p className="text-sm">Nenhum item no carrinho</p>
               <p className="text-xs mt-1">Toque em um produto para adicionar</p>
+              <p className="text-xs mt-3 text-muted-foreground/60">F1 Busca · F2 Estacionar · F3 Retomar · Espaço Finalizar</p>
             </div>
           )}
         </div>
 
         {/* Footer */}
         <div className="border-t border-border p-3 sm:p-4 space-y-2 shrink-0">
-          {/* Adjust buttons */}
-          {cart.length > 0 && (
+          {cart.length > 0 && !showPayment && (
             <div className="flex gap-2">
-              <Button
-                variant="outline" size="sm"
-                onClick={() => openAdjust("discount")}
-                className="flex-1 h-10 touch-manipulation text-xs"
-              >
+              <Button variant="outline" size="sm" onClick={() => openAdjust("discount")} className="flex-1 h-10 touch-manipulation text-xs">
                 <Tag className="h-3.5 w-3.5 mr-1 text-success" />
                 Desconto {discount.amount > 0 && `(${discount.type === "percent" ? `${discount.amount}%` : formatBRL(discount.amount)})`}
               </Button>
-              <Button
-                variant="outline" size="sm"
-                onClick={() => openAdjust("surcharge")}
-                className="flex-1 h-10 touch-manipulation text-xs"
-              >
+              <Button variant="outline" size="sm" onClick={() => openAdjust("surcharge")} className="flex-1 h-10 touch-manipulation text-xs">
                 <TrendingUp className="h-3.5 w-3.5 mr-1 text-warning" />
                 Acréscimo {surcharge.amount > 0 && `(${surcharge.type === "percent" ? `${surcharge.amount}%` : formatBRL(surcharge.amount)})`}
               </Button>
@@ -192,7 +183,7 @@ export default function CartPanel({
           {!showPayment ? (
             <div className="flex gap-2">
               {cart.length > 0 && (
-                <Button variant="outline" size="default" onClick={() => setShowPark(true)} className="h-12 touch-manipulation">
+                <Button variant="outline" size="default" onClick={() => setShowParkDialog(true)} className="h-12 touch-manipulation" title="Estacionar (F2)">
                   <PauseCircle className="h-4 w-4" />
                 </Button>
               )}
@@ -201,33 +192,15 @@ export default function CartPanel({
                 disabled={cart.length === 0}
                 className="flex-1 h-12 rounded-lg bg-accent text-accent-foreground font-semibold text-sm transition-all hover:opacity-90 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation select-none"
               >
-                Finalizar Venda
+                Finalizar (Espaço)
               </button>
             </div>
           ) : (
-            <div className="space-y-2 animate-fade-in">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pagamento</p>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { icon: Banknote, label: "Dinheiro" },
-                  { icon: QrCode, label: "PIX" },
-                  { icon: CreditCard, label: "Crédito" },
-                  { icon: Smartphone, label: "Débito" },
-                ].map((m) => (
-                  <button
-                    key={m.label}
-                    onClick={() => handleFinalize(m.label)}
-                    className="flex items-center gap-2 p-3 rounded-lg border border-border hover:border-primary hover:bg-secondary transition-all active:scale-[0.97] touch-manipulation select-none min-h-[2.75rem]"
-                  >
-                    <m.icon className="h-4 w-4 text-primary" strokeWidth={1.5} />
-                    <span className="text-sm font-medium text-foreground">{m.label}</span>
-                  </button>
-                ))}
-              </div>
-              <button onClick={() => setShowPayment(false)} className="w-full text-xs text-muted-foreground hover:text-foreground py-2 touch-manipulation">
-                Cancelar
-              </button>
-            </div>
+            <PaymentPanel
+              total={total}
+              onFinalize={handleFinalize}
+              onCancel={() => setShowPayment(false)}
+            />
           )}
         </div>
       </div>
@@ -241,64 +214,36 @@ export default function CartPanel({
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex gap-2">
-              <Button
-                variant={adjustType === "percent" ? "default" : "outline"}
-                onClick={() => setAdjustType("percent")}
-                className="flex-1 h-12 touch-manipulation"
-              >
+              <Button variant={adjustType === "percent" ? "default" : "outline"} onClick={() => setAdjustType("percent")} className="flex-1 h-12 touch-manipulation">
                 <Percent className="h-4 w-4 mr-1" /> Porcentagem
               </Button>
-              <Button
-                variant={adjustType === "value" ? "default" : "outline"}
-                onClick={() => setAdjustType("value")}
-                className="flex-1 h-12 touch-manipulation"
-              >
+              <Button variant={adjustType === "value" ? "default" : "outline"} onClick={() => setAdjustType("value")} className="flex-1 h-12 touch-manipulation">
                 <DollarSign className="h-4 w-4 mr-1" /> Valor (R$)
               </Button>
             </div>
-            <Input
-              type="number"
-              inputMode="decimal"
-              placeholder={adjustType === "percent" ? "Ex: 10" : "Ex: 5.00"}
-              value={adjustValue}
-              onChange={(e) => setAdjustValue(e.target.value)}
-              className="h-12 text-lg text-center"
-              autoFocus
-            />
+            <Input type="number" inputMode="decimal" placeholder={adjustType === "percent" ? "Ex: 10" : "Ex: 5.00"} value={adjustValue} onChange={(e) => setAdjustValue(e.target.value)} className="h-12 text-lg text-center" autoFocus />
             {adjustType === "percent" && subtotal > 0 && adjustValue && (
-              <p className="text-sm text-muted-foreground text-center">
-                = {formatBRL(subtotal * (parseFloat(adjustValue) || 0) / 100)}
-              </p>
+              <p className="text-sm text-muted-foreground text-center">= {formatBRL(subtotal * (parseFloat(adjustValue) || 0) / 100)}</p>
             )}
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => {
-              if (showAdjust === "discount") setDiscount({ type: "percent", amount: 0 });
-              else setSurcharge({ type: "percent", amount: 0 });
-              setShowAdjust(null);
-            }} className="touch-manipulation">Remover</Button>
+            <Button variant="outline" onClick={() => { if (showAdjust === "discount") setDiscount({ type: "percent", amount: 0 }); else setSurcharge({ type: "percent", amount: 0 }); setShowAdjust(null); }} className="touch-manipulation">Remover</Button>
             <Button onClick={applyAdjust} className="touch-manipulation">Aplicar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Park Sale Dialog */}
-      <Dialog open={showPark} onOpenChange={setShowPark}>
+      <Dialog open={showParkDialog} onOpenChange={setShowParkDialog}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Estacionar Venda</DialogTitle>
-            <DialogDescription>O cliente pode buscar itens e você atende o próximo. Identifique o cliente:</DialogDescription>
+            <DialogTitle>Estacionar Venda (F2)</DialogTitle>
+            <DialogDescription>O cliente pode buscar itens e você atende o próximo.</DialogDescription>
           </DialogHeader>
-          <Input
-            placeholder="Nome do cliente (opcional)"
-            value={parkName}
-            onChange={(e) => setParkName(e.target.value)}
-            className="h-12"
-            autoFocus
-          />
+          <Input placeholder="Nome do cliente (opcional)" value={parkName} onChange={(e) => setParkName(e.target.value)} className="h-12" autoFocus />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPark(false)}>Cancelar</Button>
-            <Button onClick={() => { onParkSale(parkName || "Cliente"); setShowPark(false); setParkName(""); }}>
+            <Button variant="outline" onClick={() => setShowParkDialog(false)}>Cancelar</Button>
+            <Button onClick={() => { onParkSale(parkName || "Cliente"); setShowParkDialog(false); setParkName(""); }}>
               <PauseCircle className="h-4 w-4 mr-1" /> Estacionar
             </Button>
           </DialogFooter>
@@ -306,17 +251,17 @@ export default function CartPanel({
       </Dialog>
 
       {/* Recall Sale Dialog */}
-      <Dialog open={showRecall} onOpenChange={setShowRecall}>
+      <Dialog open={showRecallDialog} onOpenChange={setShowRecallDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Vendas Estacionadas</DialogTitle>
+            <DialogTitle>Vendas Estacionadas (F3)</DialogTitle>
             <DialogDescription>Selecione para retomar o atendimento</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 max-h-60 overflow-auto">
             {parkedSales.map((sale) => (
               <button
                 key={sale.id}
-                onClick={() => { onRecallSale(sale.id); setShowRecall(false); }}
+                onClick={() => { onRecallSale(sale.id); setShowRecallDialog(false); }}
                 className="w-full flex items-center justify-between p-3 rounded-lg border border-border hover:border-primary hover:bg-secondary transition-all touch-manipulation text-left"
               >
                 <div>
