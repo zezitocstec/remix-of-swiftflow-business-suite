@@ -305,6 +305,27 @@ export default function PDV() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Receipt Options Dialog (Fiado) */}
+      <Dialog open={showReceiptOptions} onOpenChange={setShowReceiptOptions}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Imprimir Cupom do Pedido</DialogTitle>
+            <DialogDescription>Escolha quantas vias imprimir</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Button onClick={() => { if (lastSaleRecord) printReceipt(lastSaleRecord, "venda", 1); setShowReceiptOptions(false); }} className="w-full h-12 touch-manipulation">
+              <Printer className="h-4 w-4 mr-2" /> 1 Via (Loja)
+            </Button>
+            <Button variant="outline" onClick={() => { if (lastSaleRecord) printReceipt(lastSaleRecord, "venda", 2); setShowReceiptOptions(false); }} className="w-full h-12 touch-manipulation">
+              <Printer className="h-4 w-4 mr-2" /> 2 Vias (Loja + Cliente)
+            </Button>
+            <Button variant="ghost" onClick={() => setShowReceiptOptions(false)} className="w-full touch-manipulation text-xs">
+              Não imprimir
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
