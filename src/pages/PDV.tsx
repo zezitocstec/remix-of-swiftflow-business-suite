@@ -13,7 +13,7 @@ import { usePDVShortcuts } from "@/hooks/usePDVShortcuts";
 import { printReceipt } from "@/components/pdv/ReceiptPrint";
 
 export default function PDV() {
-  const { products, sellProducts, cancelSale, clients, createDebt, debts, payDebt } = useProducts();
+  const { products, sellProducts, cancelSale, clients, createDebt, debts, payDebt, sales } = useProducts();
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [lastSaleId, setLastSaleId] = useState<string | null>(null);
