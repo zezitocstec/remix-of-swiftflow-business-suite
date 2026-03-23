@@ -169,9 +169,19 @@ export default function PDV() {
   const handlePayDebt = (debtId: string) => {
     const amt = parseFloat(debtPayAmount);
     if (!amt || amt <= 0) return;
+    const debt = openDebts.find(d => d.id === debtId);
     payDebt(debtId, amt, debtPayMethod);
     toast({ title: "Pagamento registrado", description: `${formatBRL(amt)} via ${debtPayMethod}.` });
     setDebtPayAmount("");
+
+    // Print payment receipt
+    if (debt) {
+      const remaining = Math.max(0, (debt.amount - debt.paid) - amt);
+      const sale = sales.find(s => s.clientId === debt.clientId && Math.abs(s.total - debt.amount) < 0.01) || {
+        id: debt.id, items: [], total: debt.amount, methods: [], clientName: debt.clientName, date: debt.saleDate,
+      };
+      printReceipt(sale as any, "pagamento", 1, { amount: amt, method: debtPayMethod, remainingDebt: remaining });
+    }
   };
 
   usePDVShortcuts({
