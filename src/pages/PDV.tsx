@@ -84,6 +84,9 @@ export default function PDV() {
   const total = Math.max(0, subtotal - discountAmount + surchargeAmount);
   const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
 
+  const [showReceiptOptions, setShowReceiptOptions] = useState(false);
+  const [lastSaleRecord, setLastSaleRecord] = useState<any>(null);
+
   const finalizeSale = (methods: { method: string; amount: number }[]) => {
     const isPedido = methods.some((m) => m.method === "Pedido (Fiado)");
 
@@ -98,8 +101,30 @@ export default function PDV() {
     const items = cart.map((i) => ({ productId: i.product.id, quantity: i.quantity }));
     const saleId = sellProducts(items, methods, selectedClient?.id);
     setLastSaleId(saleId);
+
+    // Build sale record for receipt
+    const saleRecord = {
+      id: saleId,
+      items: cart.map(i => ({ productId: i.product.id, productName: i.product.name, quantity: i.quantity, price: i.product.price })),
+      total,
+      methods,
+      clientId: selectedClient?.id,
+      clientName: selectedClient?.nome,
+      date: new Date(),
+    };
+    setLastSaleRecord(saleRecord);
+
     const methodStr = methods.map((m) => m.method).join(" + ");
     toast({ title: "Venda finalizada!", description: `${totalItems} itens — ${formatBRL(total)} via ${methodStr}.` });
+
+    // If it's a Pedido (Fiado), show receipt options
+    if (isPedido) {
+      setShowReceiptOptions(true);
+    } else {
+      // Auto-print 1 copy for regular sales
+      printReceipt(saleRecord, "venda", 1);
+    }
+
     clearCart();
   };
 
