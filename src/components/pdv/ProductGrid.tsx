@@ -77,6 +77,9 @@ export default function ProductGrid({
           </Button>
         )}
 
+        {/* Cash Register Controls */}
+        <CashRegisterControls />
+
         {lastSaleId && (
           <Button variant="outline" size="sm" onClick={onCancelLastSale} className="ml-1 text-destructive border-destructive/30 hover:bg-destructive/10 touch-manipulation">
             <RotateCcw className="h-3.5 w-3.5 mr-1" /> Cancelar
