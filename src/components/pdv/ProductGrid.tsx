@@ -3,6 +3,7 @@ import { Search, X, RotateCcw, Users, AlertTriangle } from "lucide-react";
 import { formatBRL, type Product } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import type { Client } from "@/contexts/ProductContext";
+import CashRegisterControls from "./CashRegisterControls";
 
 interface ProductGridProps {
   products: Product[];
