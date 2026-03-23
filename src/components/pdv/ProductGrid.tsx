@@ -3,6 +3,7 @@ import { Search, X, RotateCcw, Users, AlertTriangle } from "lucide-react";
 import { formatBRL, type Product } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import type { Client } from "@/contexts/ProductContext";
+import CashRegisterControls from "./CashRegisterControls";
 
 interface ProductGridProps {
   products: Product[];
@@ -75,6 +76,9 @@ export default function ProductGrid({
             <AlertTriangle className="h-3.5 w-3.5 mr-1" /> {debtorCount}
           </Button>
         )}
+
+        {/* Cash Register Controls */}
+        <CashRegisterControls />
 
         {lastSaleId && (
           <Button variant="outline" size="sm" onClick={onCancelLastSale} className="ml-1 text-destructive border-destructive/30 hover:bg-destructive/10 touch-manipulation">

@@ -5,14 +5,15 @@ import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { RotateCcw, Users, CreditCard } from "lucide-react";
+import { RotateCcw, Users, CreditCard, Printer } from "lucide-react";
 import ProductGrid from "@/components/pdv/ProductGrid";
 import CartPanel from "@/components/pdv/CartPanel";
 import type { ParkedSale } from "@/components/pdv/types";
 import { usePDVShortcuts } from "@/hooks/usePDVShortcuts";
+import { printReceipt } from "@/components/pdv/ReceiptPrint";
 
 export default function PDV() {
-  const { products, sellProducts, cancelSale, clients, createDebt, debts, payDebt } = useProducts();
+  const { products, sellProducts, cancelSale, clients, createDebt, debts, payDebt, sales } = useProducts();
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [lastSaleId, setLastSaleId] = useState<string | null>(null);
@@ -83,6 +84,9 @@ export default function PDV() {
   const total = Math.max(0, subtotal - discountAmount + surchargeAmount);
   const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
 
+  const [showReceiptOptions, setShowReceiptOptions] = useState(false);
+  const [lastSaleRecord, setLastSaleRecord] = useState<any>(null);
+
   const finalizeSale = (methods: { method: string; amount: number }[]) => {
     const isPedido = methods.some((m) => m.method === "Pedido (Fiado)");
 
@@ -97,8 +101,30 @@ export default function PDV() {
     const items = cart.map((i) => ({ productId: i.product.id, quantity: i.quantity }));
     const saleId = sellProducts(items, methods, selectedClient?.id);
     setLastSaleId(saleId);
+
+    // Build sale record for receipt
+    const saleRecord = {
+      id: saleId,
+      items: cart.map(i => ({ productId: i.product.id, productName: i.product.name, quantity: i.quantity, price: i.product.price })),
+      total,
+      methods,
+      clientId: selectedClient?.id,
+      clientName: selectedClient?.nome,
+      date: new Date(),
+    };
+    setLastSaleRecord(saleRecord);
+
     const methodStr = methods.map((m) => m.method).join(" + ");
     toast({ title: "Venda finalizada!", description: `${totalItems} itens — ${formatBRL(total)} via ${methodStr}.` });
+
+    // If it's a Pedido (Fiado), show receipt options
+    if (isPedido) {
+      setShowReceiptOptions(true);
+    } else {
+      // Auto-print 1 copy for regular sales
+      printReceipt(saleRecord, "venda", 1);
+    }
+
     clearCart();
   };
 
@@ -143,9 +169,19 @@ export default function PDV() {
   const handlePayDebt = (debtId: string) => {
     const amt = parseFloat(debtPayAmount);
     if (!amt || amt <= 0) return;
+    const debt = openDebts.find(d => d.id === debtId);
     payDebt(debtId, amt, debtPayMethod);
     toast({ title: "Pagamento registrado", description: `${formatBRL(amt)} via ${debtPayMethod}.` });
     setDebtPayAmount("");
+
+    // Print payment receipt
+    if (debt) {
+      const remaining = Math.max(0, (debt.amount - debt.paid) - amt);
+      const sale = sales.find(s => s.clientId === debt.clientId && Math.abs(s.total - debt.amount) < 0.01) || {
+        id: debt.id, items: [], total: debt.amount, methods: [], clientName: debt.clientName, date: debt.saleDate,
+      };
+      printReceipt(sale as any, "pagamento", 1, { amount: amt, method: debtPayMethod, remainingDebt: remaining });
+    }
   };
 
   usePDVShortcuts({
@@ -266,6 +302,27 @@ export default function PDV() {
                 )}
               </div>
             ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Receipt Options Dialog (Fiado) */}
+      <Dialog open={showReceiptOptions} onOpenChange={setShowReceiptOptions}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Imprimir Cupom do Pedido</DialogTitle>
+            <DialogDescription>Escolha quantas vias imprimir</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Button onClick={() => { if (lastSaleRecord) printReceipt(lastSaleRecord, "venda", 1); setShowReceiptOptions(false); }} className="w-full h-12 touch-manipulation">
+              <Printer className="h-4 w-4 mr-2" /> 1 Via (Loja)
+            </Button>
+            <Button variant="outline" onClick={() => { if (lastSaleRecord) printReceipt(lastSaleRecord, "venda", 2); setShowReceiptOptions(false); }} className="w-full h-12 touch-manipulation">
+              <Printer className="h-4 w-4 mr-2" /> 2 Vias (Loja + Cliente)
+            </Button>
+            <Button variant="ghost" onClick={() => setShowReceiptOptions(false)} className="w-full touch-manipulation text-xs">
+              Não imprimir
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
