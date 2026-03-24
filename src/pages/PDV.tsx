@@ -5,7 +5,7 @@ import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { RotateCcw, Users, CreditCard, Printer } from "lucide-react";
+import { RotateCcw, Users, CreditCard, Printer, User, Banknote } from "lucide-react";
 import ProductGrid from "@/components/pdv/ProductGrid";
 import CartPanel from "@/components/pdv/CartPanel";
 import type { ParkedSale } from "@/components/pdv/types";
