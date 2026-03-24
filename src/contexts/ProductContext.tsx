@@ -37,6 +37,7 @@ export interface DebtRecord {
 
 export interface CashRegister {
   id: string;
+  operatorName: string;
   openedAt: Date;
   closedAt: Date | null;
   openingBalance: number;
