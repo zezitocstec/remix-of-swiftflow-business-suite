@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { formatBRL, type Product, type CartItem } from "@/lib/mock-data";
 import { useProducts, type Client } from "@/contexts/ProductContext";
 import { toast } from "@/hooks/use-toast";
