@@ -78,7 +78,7 @@ interface ProductContextType {
   createDebt: (clientId: string, amount: number) => string | null;
   payDebt: (debtId: string, amount: number, method: string) => void;
   // Cash register
-  openCashRegister: (openingBalance: number) => void;
+  openCashRegister: (openingBalance: number, operatorName?: string) => void;
   closeCashRegister: () => CashRegister | null;
   addWithdrawal: (amount: number, reason: string) => void;
   addDeposit: (amount: number, reason: string) => void;
