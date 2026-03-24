@@ -97,7 +97,7 @@ export default function ProductGrid({
                 key={product.id}
                 onClick={() => onAddToCart(product)}
                 disabled={product.stock <= 0}
-                className={`rounded-lg border p-3 sm:p-4 text-left transition-all duration-100 hover:border-primary active:scale-[0.97] flex flex-col disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation min-h-[5rem] select-none ${
+                className={`rounded-xl border p-3 sm:p-4 text-left transition-all duration-100 hover:border-primary active:scale-[0.96] active:bg-primary/5 flex flex-col disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation min-h-[4.5rem] select-none ${
                   isLowStock ? "border-warning bg-warning/5" : "border-border bg-pos-card"
                 }`}
               >
