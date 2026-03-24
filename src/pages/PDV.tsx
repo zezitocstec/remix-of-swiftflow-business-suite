@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { formatBRL, type Product, type CartItem } from "@/lib/mock-data";
 import { useProducts, type Client } from "@/contexts/ProductContext";
 import { toast } from "@/hooks/use-toast";
@@ -14,6 +14,21 @@ import { printReceipt } from "@/components/pdv/ReceiptPrint";
 
 export default function PDV() {
   const { products, sellProducts, cancelSale, clients, createDebt, debts, payDebt, sales } = useProducts();
+
+  // Auto dark mode based on system preference
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = (dark: boolean) => {
+      document.documentElement.classList.toggle("dark", dark);
+    };
+    apply(mq.matches);
+    const handler = (e: MediaQueryListEvent) => apply(e.matches);
+    mq.addEventListener("change", handler);
+    return () => {
+      mq.removeEventListener("change", handler);
+      document.documentElement.classList.remove("dark");
+    };
+  }, []);
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [lastSaleId, setLastSaleId] = useState<string | null>(null);
