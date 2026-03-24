@@ -30,6 +30,7 @@ function printClosingReport(report: CashRegister & { salesByMethod: Record<strin
     <div style="width:280px;font-family:monospace;padding:16px">
       <div style="text-align:center;font-weight:bold;font-size:14px;margin-bottom:12px">FECHAMENTO DE CAIXA</div>
       <div style="border-top:1px dashed #000;padding:6px 0;font-size:11px">
+        <div><strong>Operador:</strong> ${report.operatorName}</div>
         <div><strong>Abertura:</strong> ${openDate}</div>
         <div><strong>Fechamento:</strong> ${closeDate}</div>
       </div>
