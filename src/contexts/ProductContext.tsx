@@ -37,6 +37,7 @@ export interface DebtRecord {
 
 export interface CashRegister {
   id: string;
+  operatorName: string;
   openedAt: Date;
   closedAt: Date | null;
   openingBalance: number;
@@ -77,7 +78,7 @@ interface ProductContextType {
   createDebt: (clientId: string, amount: number) => string | null;
   payDebt: (debtId: string, amount: number, method: string) => void;
   // Cash register
-  openCashRegister: (openingBalance: number) => void;
+  openCashRegister: (openingBalance: number, operatorName?: string) => void;
   closeCashRegister: () => CashRegister | null;
   addWithdrawal: (amount: number, reason: string) => void;
   addDeposit: (amount: number, reason: string) => void;
@@ -275,8 +276,8 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Cash register
-  const openCashRegister = useCallback((openingBalance: number) => {
-    setCashRegister({ id: crypto.randomUUID(), openedAt: new Date(), closedAt: null, openingBalance, sales: [], withdrawals: [], deposits: [] });
+  const openCashRegister = useCallback((openingBalance: number, operatorName?: string) => {
+    setCashRegister({ id: crypto.randomUUID(), operatorName: operatorName || "Operador", openedAt: new Date(), closedAt: null, openingBalance, sales: [], withdrawals: [], deposits: [] });
   }, []);
 
   const closeCashRegister = useCallback(() => {

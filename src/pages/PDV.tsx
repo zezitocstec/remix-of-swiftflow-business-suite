@@ -5,7 +5,7 @@ import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { RotateCcw, Users, CreditCard, Printer } from "lucide-react";
+import { RotateCcw, Users, CreditCard, Printer, User, Banknote } from "lucide-react";
 import ProductGrid from "@/components/pdv/ProductGrid";
 import CartPanel from "@/components/pdv/CartPanel";
 import type { ParkedSale } from "@/components/pdv/types";
@@ -13,7 +13,28 @@ import { usePDVShortcuts } from "@/hooks/usePDVShortcuts";
 import { printReceipt } from "@/components/pdv/ReceiptPrint";
 
 export default function PDV() {
-  const { products, sellProducts, cancelSale, clients, createDebt, debts, payDebt, sales } = useProducts();
+  const { products, sellProducts, cancelSale, clients, createDebt, debts, payDebt, sales, cashRegister, openCashRegister } = useProducts();
+
+  // Setup state — operator name + opening balance
+  const [setupStep, setSetupStep] = useState<"operator" | "balance" | null>(null);
+  const [operatorName, setOperatorName] = useState("");
+  const [setupBalance, setSetupBalance] = useState("");
+
+  // Show setup on mount if no cash register is open
+  useEffect(() => {
+    if (!cashRegister) {
+      setSetupStep("operator");
+    }
+  }, []);
+
+  // When cash register closes externally, show setup again
+  useEffect(() => {
+    if (!cashRegister && setupStep === null) {
+      setSetupStep("operator");
+      setOperatorName("");
+      setSetupBalance("");
+    }
+  }, [cashRegister]);
 
   // Auto dark mode based on system preference
   useEffect(() => {
@@ -206,6 +227,85 @@ export default function PDV() {
     onFinalize: () => { if (cart.length > 0 && !showPayment) setShowPayment(true); },
     onCancel: () => { if (showPayment) setShowPayment(false); },
   });
+
+  // Mandatory setup screen
+  if (setupStep) {
+    return (
+      <div className="flex items-center justify-center h-[100dvh] bg-pos-bg" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="w-full max-w-sm mx-4 bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-6 shadow-lg">
+          <div className="text-center space-y-2">
+            <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+              {setupStep === "operator" ? <User className="h-8 w-8 text-primary" /> : <Banknote className="h-8 w-8 text-primary" />}
+            </div>
+            <h1 className="text-xl font-bold text-foreground">
+              {setupStep === "operator" ? "Identificação do Operador" : "Fundo de Caixa"}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {setupStep === "operator" ? "Informe o nome do operador para iniciar o turno" : `Operador: ${operatorName}`}
+            </p>
+          </div>
+
+          {setupStep === "operator" ? (
+            <div className="space-y-4">
+              <Input
+                placeholder="Nome do operador"
+                value={operatorName}
+                onChange={(e) => setOperatorName(e.target.value)}
+                className="h-14 text-lg text-center"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && operatorName.trim()) setSetupStep("balance");
+                }}
+              />
+              <Button
+                onClick={() => setSetupStep("balance")}
+                disabled={!operatorName.trim()}
+                className="w-full h-14 text-base touch-manipulation"
+              >
+                Continuar
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <Input
+                type="number"
+                inputMode="decimal"
+                placeholder="Valor inicial em dinheiro (R$)"
+                value={setupBalance}
+                onChange={(e) => setSetupBalance(e.target.value)}
+                className="h-14 text-lg text-center"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const balance = parseFloat(setupBalance) || 0;
+                    openCashRegister(balance, operatorName.trim());
+                    setSetupStep(null);
+                    toast({ title: "Caixa aberto!", description: `Operador: ${operatorName.trim()} • Fundo: ${formatBRL(balance)}` });
+                  }
+                }}
+              />
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setSetupStep("operator")} className="h-14 touch-manipulation">
+                  Voltar
+                </Button>
+                <Button
+                  onClick={() => {
+                    const balance = parseFloat(setupBalance) || 0;
+                    openCashRegister(balance, operatorName.trim());
+                    setSetupStep(null);
+                    toast({ title: "Caixa aberto!", description: `Operador: ${operatorName.trim()} • Fundo: ${formatBRL(balance)}` });
+                  }}
+                  className="flex-1 h-14 text-base touch-manipulation"
+                >
+                  Abrir Caixa
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col sm:flex-row h-[100dvh] bg-pos-bg" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>

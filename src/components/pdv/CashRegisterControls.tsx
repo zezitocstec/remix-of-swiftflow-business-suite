@@ -30,6 +30,7 @@ function printClosingReport(report: CashRegister & { salesByMethod: Record<strin
     <div style="width:280px;font-family:monospace;padding:16px">
       <div style="text-align:center;font-weight:bold;font-size:14px;margin-bottom:12px">FECHAMENTO DE CAIXA</div>
       <div style="border-top:1px dashed #000;padding:6px 0;font-size:11px">
+        <div><strong>Operador:</strong> ${report.operatorName}</div>
         <div><strong>Abertura:</strong> ${openDate}</div>
         <div><strong>Fechamento:</strong> ${closeDate}</div>
       </div>
@@ -61,7 +62,7 @@ export default function CashRegisterControls() {
 
   const handleOpen = () => {
     const balance = parseFloat(openingBalance) || 0;
-    openCashRegister(balance);
+    openCashRegister(balance, "Operador");
     toast({ title: "Caixa aberto", description: `Saldo inicial: ${formatBRL(balance)}` });
     setOpenDialog(false);
     setOpeningBalance("");
@@ -122,7 +123,7 @@ export default function CashRegisterControls() {
       <div className="flex items-center gap-1 shrink-0">
         <div className="flex items-center gap-1.5 bg-success/10 text-success rounded-md px-2 py-1 text-xs font-medium">
           <Banknote className="h-3 w-3" />
-          <span className="hidden sm:inline">Caixa:</span>
+          <span className="hidden sm:inline">{cashRegister.operatorName} •</span>
           <span className="tabular-nums">{formatBRL(totalSales)}</span>
         </div>
         <Button variant="ghost" size="sm" onClick={() => setActionDialog("sangria")} className="h-8 px-2 text-xs touch-manipulation" title="Sangria">
