@@ -13,7 +13,28 @@ import { usePDVShortcuts } from "@/hooks/usePDVShortcuts";
 import { printReceipt } from "@/components/pdv/ReceiptPrint";
 
 export default function PDV() {
-  const { products, sellProducts, cancelSale, clients, createDebt, debts, payDebt, sales } = useProducts();
+  const { products, sellProducts, cancelSale, clients, createDebt, debts, payDebt, sales, cashRegister, openCashRegister } = useProducts();
+
+  // Setup state — operator name + opening balance
+  const [setupStep, setSetupStep] = useState<"operator" | "balance" | null>(null);
+  const [operatorName, setOperatorName] = useState("");
+  const [setupBalance, setSetupBalance] = useState("");
+
+  // Show setup on mount if no cash register is open
+  useEffect(() => {
+    if (!cashRegister) {
+      setSetupStep("operator");
+    }
+  }, []);
+
+  // When cash register closes externally, show setup again
+  useEffect(() => {
+    if (!cashRegister && setupStep === null) {
+      setSetupStep("operator");
+      setOperatorName("");
+      setSetupBalance("");
+    }
+  }, [cashRegister]);
 
   // Auto dark mode based on system preference
   useEffect(() => {
