@@ -276,8 +276,8 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Cash register
-  const openCashRegister = useCallback((openingBalance: number) => {
-    setCashRegister({ id: crypto.randomUUID(), openedAt: new Date(), closedAt: null, openingBalance, sales: [], withdrawals: [], deposits: [] });
+  const openCashRegister = useCallback((openingBalance: number, operatorName?: string) => {
+    setCashRegister({ id: crypto.randomUUID(), operatorName: operatorName || "Operador", openedAt: new Date(), closedAt: null, openingBalance, sales: [], withdrawals: [], deposits: [] });
   }, []);
 
   const closeCashRegister = useCallback(() => {
