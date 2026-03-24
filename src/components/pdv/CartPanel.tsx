@@ -70,7 +70,7 @@ export default function CartPanel({
 
   return (
     <>
-      <div className="w-full sm:w-80 lg:w-96 border-t sm:border-t-0 sm:border-l border-border bg-card flex flex-col max-h-[50vh] sm:max-h-none">
+      <div className="w-full sm:w-80 lg:w-96 border-t sm:border-t-0 sm:border-l border-border bg-card flex flex-col max-h-[45dvh] sm:max-h-none">
         <div className="h-12 sm:h-14 border-b border-border flex items-center justify-between px-3 sm:px-4 shrink-0">
           <span className="text-sm font-semibold text-foreground">Carrinho ({totalItems})</span>
           <div className="flex items-center gap-1">

@@ -88,8 +88,8 @@ export default function ProductGrid({
       </div>
 
       {/* Grid */}
-      <div className="flex-1 overflow-auto p-2 sm:p-3">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+      <div className="flex-1 overflow-auto p-2 sm:p-3 overscroll-contain">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-2.5">
           {filtered.map((product) => {
             const isLowStock = product.minStock !== undefined && product.stock <= product.minStock && product.stock > 0;
             return (
