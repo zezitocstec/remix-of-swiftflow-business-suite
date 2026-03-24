@@ -122,7 +122,7 @@ export default function CashRegisterControls() {
       <div className="flex items-center gap-1 shrink-0">
         <div className="flex items-center gap-1.5 bg-success/10 text-success rounded-md px-2 py-1 text-xs font-medium">
           <Banknote className="h-3 w-3" />
-          <span className="hidden sm:inline">Caixa:</span>
+          <span className="hidden sm:inline">{cashRegister.operatorName} •</span>
           <span className="tabular-nums">{formatBRL(totalSales)}</span>
         </div>
         <Button variant="ghost" size="sm" onClick={() => setActionDialog("sangria")} className="h-8 px-2 text-xs touch-manipulation" title="Sangria">
