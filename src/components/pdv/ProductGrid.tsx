@@ -88,8 +88,8 @@ export default function ProductGrid({
       </div>
 
       {/* Grid */}
-      <div className="flex-1 overflow-auto p-2 sm:p-3">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+      <div className="flex-1 overflow-auto p-2 sm:p-3 overscroll-contain">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-2.5">
           {filtered.map((product) => {
             const isLowStock = product.minStock !== undefined && product.stock <= product.minStock && product.stock > 0;
             return (
@@ -97,7 +97,7 @@ export default function ProductGrid({
                 key={product.id}
                 onClick={() => onAddToCart(product)}
                 disabled={product.stock <= 0}
-                className={`rounded-lg border p-3 sm:p-4 text-left transition-all duration-100 hover:border-primary active:scale-[0.97] flex flex-col disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation min-h-[5rem] select-none ${
+                className={`rounded-xl border p-3 sm:p-4 text-left transition-all duration-100 hover:border-primary active:scale-[0.96] active:bg-primary/5 flex flex-col disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation min-h-[4.5rem] select-none ${
                   isLowStock ? "border-warning bg-warning/5" : "border-border bg-pos-card"
                 }`}
               >

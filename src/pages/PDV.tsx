@@ -193,7 +193,7 @@ export default function PDV() {
   });
 
   return (
-    <div className="flex flex-col sm:flex-row h-[calc(100vh-3.5rem)] sm:h-screen bg-pos-bg">
+    <div className="flex flex-col sm:flex-row h-[100dvh] bg-pos-bg" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
       <ProductGrid
         products={products}
         search={search}
