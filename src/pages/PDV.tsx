@@ -32,7 +32,8 @@ export default function PDV() {
   useEffect(() => {
     if (!cashRegister && setupStep === null) {
       setSetupStep("operator");
-      setOperatorName("");
+      setSelectedOperator(null);
+      setPinInput("");
       setSetupBalance("");
     }
   }, [cashRegister]);
