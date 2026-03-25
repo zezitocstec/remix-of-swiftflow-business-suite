@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { formatBRL, type Product, type CartItem } from "@/lib/mock-data";
-import { useProducts, type Client } from "@/contexts/ProductContext";
+import { useProducts, type Client, type Operator } from "@/contexts/ProductContext";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
