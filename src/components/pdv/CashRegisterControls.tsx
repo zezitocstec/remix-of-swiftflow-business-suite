@@ -31,6 +31,7 @@ function printClosingReport(report: CashRegister & { salesByMethod: Record<strin
       <div style="text-align:center;font-weight:bold;font-size:14px;margin-bottom:12px">FECHAMENTO DE CAIXA</div>
       <div style="border-top:1px dashed #000;padding:6px 0;font-size:11px">
         <div><strong>Operador:</strong> ${report.operatorName}</div>
+        <div><strong>Terminal:</strong> ${report.terminalName}</div>
         <div><strong>Abertura:</strong> ${openDate}</div>
         <div><strong>Fechamento:</strong> ${closeDate}</div>
       </div>
@@ -52,23 +53,20 @@ function printClosingReport(report: CashRegister & { salesByMethod: Record<strin
 }
 
 export default function CashRegisterControls() {
-  const { cashRegister, openCashRegister, closeCashRegister, addWithdrawal, addDeposit } = useProducts();
-  const [openDialog, setOpenDialog] = useState(false);
+  const { cashRegister, closeCashRegister, addWithdrawal, addDeposit, addActionLog } = useProducts();
   const [closeDialog, setCloseDialog] = useState(false);
   const [actionDialog, setActionDialog] = useState<"sangria" | "reforco" | null>(null);
-  const [openingBalance, setOpeningBalance] = useState("");
   const [actionAmount, setActionAmount] = useState("");
   const [actionReason, setActionReason] = useState("");
 
-  const handleOpen = () => {
-    const balance = parseFloat(openingBalance) || 0;
-    openCashRegister(balance, "Operador");
-    toast({ title: "Caixa aberto", description: `Saldo inicial: ${formatBRL(balance)}` });
-    setOpenDialog(false);
-    setOpeningBalance("");
-  };
-
   const handleClose = () => {
+    if (!cashRegister) return;
+    const cr = cashRegister;
+    addActionLog({
+      type: "fechamento_caixa", operatorId: cr.operatorId, operatorName: cr.operatorName,
+      terminalId: cr.terminalId, terminalName: cr.terminalName,
+      description: `Caixa fechado`,
+    });
     const report = closeCashRegister();
     if (report) {
       const totalSales = report.sales.reduce((s, v) => s + v.amount, 0);
@@ -85,13 +83,24 @@ export default function CashRegisterControls() {
   };
 
   const handleAction = () => {
+    if (!cashRegister) return;
     const amt = parseFloat(actionAmount);
     if (!amt || amt <= 0) return;
     if (actionDialog === "sangria") {
       addWithdrawal(amt, actionReason || "Sangria");
+      addActionLog({
+        type: "sangria", operatorId: cashRegister.operatorId, operatorName: cashRegister.operatorName,
+        terminalId: cashRegister.terminalId, terminalName: cashRegister.terminalName,
+        description: `Sangria: ${actionReason || "Sangria"}`, amount: amt,
+      });
       toast({ title: "Sangria registrada", description: formatBRL(amt) });
     } else {
       addDeposit(amt, actionReason || "Reforço");
+      addActionLog({
+        type: "reforco", operatorId: cashRegister.operatorId, operatorName: cashRegister.operatorName,
+        terminalId: cashRegister.terminalId, terminalName: cashRegister.terminalName,
+        description: `Reforço: ${actionReason || "Reforço"}`, amount: amt,
+      });
       toast({ title: "Reforço registrado", description: formatBRL(amt) });
     }
     setActionDialog(null);
@@ -100,20 +109,7 @@ export default function CashRegisterControls() {
   };
 
   if (!cashRegister) {
-    return (
-      <>
-        <Button variant="outline" size="sm" onClick={() => setOpenDialog(true)} className="h-8 text-xs touch-manipulation shrink-0" title="Abrir Caixa">
-          <Unlock className="h-3.5 w-3.5 mr-1" /> Abrir Caixa
-        </Button>
-        <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-          <DialogContent className="sm:max-w-sm">
-            <DialogHeader><DialogTitle>Abrir Caixa</DialogTitle><DialogDescription>Informe o saldo inicial em dinheiro.</DialogDescription></DialogHeader>
-            <Input type="number" inputMode="decimal" placeholder="Saldo inicial (R$)" value={openingBalance} onChange={(e) => setOpeningBalance(e.target.value)} className="h-12 text-lg text-center" autoFocus />
-            <DialogFooter><Button variant="outline" onClick={() => setOpenDialog(false)}>Cancelar</Button><Button onClick={handleOpen}>Abrir Caixa</Button></DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </>
-    );
+    return null;
   }
 
   const totalSales = cashRegister.sales.reduce((s, v) => s + v.amount, 0);
@@ -123,7 +119,7 @@ export default function CashRegisterControls() {
       <div className="flex items-center gap-1 shrink-0">
         <div className="flex items-center gap-1.5 bg-success/10 text-success rounded-md px-2 py-1 text-xs font-medium">
           <Banknote className="h-3 w-3" />
-          <span className="hidden sm:inline">{cashRegister.operatorName} •</span>
+          <span className="hidden sm:inline">{cashRegister.operatorName} • {cashRegister.terminalName} •</span>
           <span className="tabular-nums">{formatBRL(totalSales)}</span>
         </div>
         <Button variant="ghost" size="sm" onClick={() => setActionDialog("sangria")} className="h-8 px-2 text-xs touch-manipulation" title="Sangria">
@@ -137,7 +133,6 @@ export default function CashRegisterControls() {
         </Button>
       </div>
 
-      {/* Close confirmation */}
       <Dialog open={closeDialog} onOpenChange={setCloseDialog}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>Fechar Caixa</DialogTitle><DialogDescription>O relatório será impresso automaticamente. Confirma o fechamento?</DialogDescription></DialogHeader>
@@ -150,7 +145,6 @@ export default function CashRegisterControls() {
         </DialogContent>
       </Dialog>
 
-      {/* Sangria / Reforço dialog */}
       <Dialog open={!!actionDialog} onOpenChange={() => setActionDialog(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>{actionDialog === "sangria" ? "Sangria" : "Reforço"}</DialogTitle><DialogDescription>{actionDialog === "sangria" ? "Retirada de dinheiro do caixa" : "Entrada de dinheiro no caixa"}</DialogDescription></DialogHeader>

@@ -4,13 +4,12 @@ import { useProducts } from "@/contexts/ProductContext";
 import { formatBRL } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { DollarSign, ArrowDownLeft, ArrowUpRight, Lock, Unlock, Banknote } from "lucide-react";
 
 export default function Caixa() {
-  const { cashRegister, openCashRegister, closeCashRegister, addWithdrawal, addDeposit, sales } = useProducts();
+  const { cashRegister, openCashRegister, closeCashRegister, addWithdrawal, addDeposit, sales, operators, terminals } = useProducts();
   const [openDialog, setOpenDialog] = useState(false);
   const [closeDialog, setCloseDialog] = useState(false);
   const [actionDialog, setActionDialog] = useState<"sangria" | "reforco" | null>(null);
@@ -18,10 +17,12 @@ export default function Caixa() {
   const [actionAmount, setActionAmount] = useState("");
   const [actionReason, setActionReason] = useState("");
   const [closedReport, setClosedReport] = useState<any>(null);
+  const [selectedOpId, setSelectedOpId] = useState(operators[0]?.id || "");
+  const [selectedTermId, setSelectedTermId] = useState(terminals[0]?.id || "");
 
   const handleOpen = () => {
     const balance = parseFloat(openingBalance) || 0;
-    openCashRegister(balance, "op-admin");
+    openCashRegister(balance, selectedOpId, selectedTermId);
     toast({ title: "Caixa aberto", description: `Saldo inicial: ${formatBRL(balance)}` });
     setOpenDialog(false);
     setOpeningBalance("");
@@ -29,56 +30,38 @@ export default function Caixa() {
 
   const handleClose = () => {
     const report = closeCashRegister();
-    if (report) {
-      setClosedReport(report);
-      toast({ title: "Caixa fechado" });
-    }
+    if (report) { setClosedReport(report); toast({ title: "Caixa fechado" }); }
     setCloseDialog(false);
   };
 
   const handleAction = () => {
     const amt = parseFloat(actionAmount);
     if (!amt || amt <= 0) return;
-    if (actionDialog === "sangria") {
-      addWithdrawal(amt, actionReason || "Sangria");
-      toast({ title: "Sangria registrada", description: formatBRL(amt) });
-    } else {
-      addDeposit(amt, actionReason || "Reforço");
-      toast({ title: "Reforço registrado", description: formatBRL(amt) });
-    }
-    setActionDialog(null);
-    setActionAmount("");
-    setActionReason("");
+    if (actionDialog === "sangria") { addWithdrawal(amt, actionReason || "Sangria"); toast({ title: "Sangria registrada", description: formatBRL(amt) }); }
+    else { addDeposit(amt, actionReason || "Reforço"); toast({ title: "Reforço registrado", description: formatBRL(amt) }); }
+    setActionDialog(null); setActionAmount(""); setActionReason("");
   };
 
-  // Calculate totals
   const cashSales = cashRegister?.sales.filter((s) => s.method === "Dinheiro").reduce((s, v) => s + v.amount, 0) || 0;
   const totalSales = cashRegister?.sales.reduce((s, v) => s + v.amount, 0) || 0;
   const totalWithdrawals = cashRegister?.withdrawals.reduce((s, v) => s + v.amount, 0) || 0;
   const totalDeposits = cashRegister?.deposits.reduce((s, v) => s + v.amount, 0) || 0;
   const expectedCash = (cashRegister?.openingBalance || 0) + cashSales - totalWithdrawals + totalDeposits;
 
-  // Group sales by method
-  const salesByMethod = cashRegister?.sales.reduce((acc, s) => {
-    acc[s.method] = (acc[s.method] || 0) + s.amount;
-    return acc;
-  }, {} as Record<string, number>) || {};
+  const salesByMethod = cashRegister?.sales.reduce((acc, s) => { acc[s.method] = (acc[s.method] || 0) + s.amount; return acc; }, {} as Record<string, number>) || {};
 
   return (
     <div className="flex flex-col h-screen">
-      <TopBar title="Caixa" subtitle={cashRegister ? "Caixa aberto" : "Caixa fechado"} />
+      <TopBar title="Caixa" subtitle={cashRegister ? `${cashRegister.terminalName} — aberto` : "Caixa fechado"} />
       <div className="flex-1 overflow-auto p-6 space-y-6">
         {!cashRegister ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <Lock className="h-12 w-12 text-muted-foreground" />
             <p className="text-lg font-medium text-foreground">Caixa Fechado</p>
-            <Button onClick={() => setOpenDialog(true)} className="h-12 px-8">
-              <Unlock className="h-4 w-4 mr-2" /> Abrir Caixa
-            </Button>
+            <Button onClick={() => setOpenDialog(true)} className="h-12 px-8"><Unlock className="h-4 w-4 mr-2" /> Abrir Caixa</Button>
           </div>
         ) : (
           <>
-            {/* Summary cards */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div className="rounded-md border border-border bg-card p-4">
                 <p className="text-xs text-muted-foreground font-medium">Saldo Inicial</p>
@@ -98,7 +81,6 @@ export default function Caixa() {
               </div>
             </div>
 
-            {/* Sales by method */}
             <div className="rounded-md border border-border bg-card p-4">
               <h3 className="text-sm font-semibold text-foreground mb-3">Vendas por Método</h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -115,7 +97,6 @@ export default function Caixa() {
               </div>
             </div>
 
-            {/* Movements */}
             {(cashRegister.withdrawals.length > 0 || cashRegister.deposits.length > 0) && (
               <div className="rounded-md border border-border bg-card overflow-hidden">
                 <table className="w-full text-sm">
@@ -149,26 +130,20 @@ export default function Caixa() {
               </div>
             )}
 
-            {/* Actions */}
             <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setActionDialog("sangria")} className="flex-1">
-                <ArrowUpRight className="h-4 w-4 mr-1 text-destructive" /> Sangria
-              </Button>
-              <Button variant="outline" onClick={() => setActionDialog("reforco")} className="flex-1">
-                <ArrowDownLeft className="h-4 w-4 mr-1 text-success" /> Reforço
-              </Button>
-              <Button variant="destructive" onClick={() => setCloseDialog(true)}>
-                <Lock className="h-4 w-4 mr-1" /> Fechar Caixa
-              </Button>
+              <Button variant="outline" onClick={() => setActionDialog("sangria")} className="flex-1"><ArrowUpRight className="h-4 w-4 mr-1 text-destructive" /> Sangria</Button>
+              <Button variant="outline" onClick={() => setActionDialog("reforco")} className="flex-1"><ArrowDownLeft className="h-4 w-4 mr-1 text-success" /> Reforço</Button>
+              <Button variant="destructive" onClick={() => setCloseDialog(true)}><Lock className="h-4 w-4 mr-1" /> Fechar Caixa</Button>
             </div>
           </>
         )}
 
-        {/* Closed report */}
         {closedReport && (
           <div className="rounded-md border border-border bg-card p-6 space-y-3">
             <h3 className="text-sm font-semibold text-foreground">Relatório de Fechamento</h3>
             <div className="grid grid-cols-2 gap-2 text-sm">
+              <span className="text-muted-foreground">Operador:</span><span className="text-foreground">{closedReport.operatorName}</span>
+              <span className="text-muted-foreground">Terminal:</span><span className="text-foreground">{closedReport.terminalName}</span>
               <span className="text-muted-foreground">Abertura:</span><span className="text-foreground">{closedReport.openedAt.toLocaleString("pt-BR")}</span>
               <span className="text-muted-foreground">Fechamento:</span><span className="text-foreground">{closedReport.closedAt?.toLocaleString("pt-BR")}</span>
               <span className="text-muted-foreground">Saldo Inicial:</span><span className="tabular-nums text-foreground">{formatBRL(closedReport.openingBalance)}</span>
@@ -179,16 +154,22 @@ export default function Caixa() {
         )}
       </div>
 
-      {/* Open dialog */}
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Abrir Caixa</DialogTitle><DialogDescription>Informe o saldo inicial em dinheiro.</DialogDescription></DialogHeader>
-          <Input type="number" inputMode="decimal" placeholder="Saldo inicial (R$)" value={openingBalance} onChange={(e) => setOpeningBalance(e.target.value)} className="h-12 text-lg text-center" autoFocus />
+          <DialogHeader><DialogTitle>Abrir Caixa</DialogTitle><DialogDescription>Selecione operador, terminal e saldo inicial.</DialogDescription></DialogHeader>
+          <div className="space-y-3">
+            <select value={selectedOpId} onChange={(e) => setSelectedOpId(e.target.value)} className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
+              {operators.filter(o => o.ativo).map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
+            </select>
+            <select value={selectedTermId} onChange={(e) => setSelectedTermId(e.target.value)} className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
+              {terminals.filter(t => t.ativo).map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+            </select>
+            <Input type="number" inputMode="decimal" placeholder="Saldo inicial (R$)" value={openingBalance} onChange={(e) => setOpeningBalance(e.target.value)} className="h-12 text-lg text-center" autoFocus />
+          </div>
           <DialogFooter><Button variant="outline" onClick={() => setOpenDialog(false)}>Cancelar</Button><Button onClick={handleOpen}>Abrir Caixa</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Close confirmation */}
       <Dialog open={closeDialog} onOpenChange={setCloseDialog}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>Fechar Caixa</DialogTitle><DialogDescription>Confirma o fechamento do caixa?</DialogDescription></DialogHeader>
@@ -196,7 +177,6 @@ export default function Caixa() {
         </DialogContent>
       </Dialog>
 
-      {/* Sangria / Reforço dialog */}
       <Dialog open={!!actionDialog} onOpenChange={() => setActionDialog(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>{actionDialog === "sangria" ? "Sangria" : "Reforço"}</DialogTitle><DialogDescription>{actionDialog === "sangria" ? "Retirada de dinheiro do caixa" : "Entrada de dinheiro no caixa"}</DialogDescription></DialogHeader>

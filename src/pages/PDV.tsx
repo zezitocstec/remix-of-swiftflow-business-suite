@@ -1,11 +1,11 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { formatBRL, type Product, type CartItem } from "@/lib/mock-data";
-import { useProducts, type Client, type Operator } from "@/contexts/ProductContext";
+import { useProducts, type Client, type Operator, type Terminal } from "@/contexts/ProductContext";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { RotateCcw, Users, CreditCard, Printer, User, Banknote, Lock } from "lucide-react";
+import { RotateCcw, Users, CreditCard, Printer, User, Banknote, Lock, Monitor } from "lucide-react";
 import ProductGrid from "@/components/pdv/ProductGrid";
 import CartPanel from "@/components/pdv/CartPanel";
 import type { ParkedSale } from "@/components/pdv/types";
@@ -13,47 +13,41 @@ import { usePDVShortcuts } from "@/hooks/usePDVShortcuts";
 import { printReceipt } from "@/components/pdv/ReceiptPrint";
 
 export default function PDV() {
-  const { products, sellProducts, cancelSale, clients, createDebt, debts, payDebt, sales, cashRegister, openCashRegister, operators } = useProducts();
+  const { products, sellProducts, cancelSale, clients, createDebt, debts, payDebt, sales, cashRegister, openCashRegister, operators, terminals, addActionLog } = useProducts();
 
-  // Setup state — operator selection + PIN + opening balance
-  const [setupStep, setSetupStep] = useState<"operator" | "pin" | "balance" | null>(null);
+  // Setup state — operator selection + PIN + terminal + opening balance
+  const [setupStep, setSetupStep] = useState<"operator" | "pin" | "terminal" | "balance" | null>(null);
   const [selectedOperator, setSelectedOperator] = useState<Operator | null>(null);
+  const [selectedTerminal, setSelectedTerminal] = useState<Terminal | null>(null);
   const [pinInput, setPinInput] = useState("");
   const [setupBalance, setSetupBalance] = useState("");
 
-  // Show setup on mount if no cash register is open
   useEffect(() => {
-    if (!cashRegister) {
-      setSetupStep("operator");
-    }
+    if (!cashRegister) setSetupStep("operator");
   }, []);
 
-  // When cash register closes externally, show setup again
   useEffect(() => {
     if (!cashRegister && setupStep === null) {
       setSetupStep("operator");
       setSelectedOperator(null);
+      setSelectedTerminal(null);
       setPinInput("");
       setSetupBalance("");
     }
   }, [cashRegister]);
 
-  // Auto dark mode based on system preference
+  // Auto dark mode
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const apply = (dark: boolean) => {
-      document.documentElement.classList.toggle("dark", dark);
-    };
+    const apply = (dark: boolean) => document.documentElement.classList.toggle("dark", dark);
     apply(mq.matches);
     const handler = (e: MediaQueryListEvent) => apply(e.matches);
     mq.addEventListener("change", handler);
-    return () => {
-      mq.removeEventListener("change", handler);
-      document.documentElement.classList.remove("dark");
-    };
+    return () => { mq.removeEventListener("change", handler); document.documentElement.classList.remove("dark"); };
   }, []);
 
   const currentOperator = selectedOperator || (cashRegister ? operators.find(o => o.id === cashRegister.operatorId) : null);
+  const currentTerminal = selectedTerminal || (cashRegister ? terminals.find(t => t.id === cashRegister.terminalId) : null);
   const hasPermission = (perm: keyof Operator["permissions"]) => currentOperator?.permissions[perm] ?? false;
 
   const [search, setSearch] = useState("");
@@ -69,7 +63,6 @@ export default function PDV() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
-  // Debtors dialog
   const [showDebtors, setShowDebtors] = useState(false);
   const [selectedDebtorId, setSelectedDebtorId] = useState<string | null>(null);
   const [debtPayAmount, setDebtPayAmount] = useState("");
@@ -109,13 +102,20 @@ export default function PDV() {
   }, []);
 
   const removeItem = useCallback((id: string) => {
-    const op = selectedOperator || (cashRegister ? operators.find(o => o.id === cashRegister.operatorId) : null);
-    if (!op?.permissions.cancelarItem) {
+    if (!hasPermission("cancelarItem")) {
       toast({ title: "Sem permissão", description: "Você não tem permissão para cancelar itens.", variant: "destructive" });
       return;
     }
+    const item = cart.find(i => i.product.id === id);
+    if (item && currentOperator && currentTerminal) {
+      addActionLog({
+        type: "cancelamento_item", operatorId: currentOperator.id, operatorName: currentOperator.nome,
+        terminalId: currentTerminal.id, terminalName: currentTerminal.nome,
+        description: `Item removido: ${item.product.name} (${item.quantity}x)`, amount: item.product.price * item.quantity,
+      });
+    }
     setCart((prev) => prev.filter((i) => i.product.id !== id));
-  }, [selectedOperator, cashRegister, operators]);
+  }, [currentOperator, currentTerminal, cart, addActionLog]);
 
   const clearCart = () => {
     setCart([]);
@@ -146,29 +146,36 @@ export default function PDV() {
     }
 
     const items = cart.map((i) => ({ productId: i.product.id, quantity: i.quantity }));
-    const saleId = sellProducts(items, methods, selectedClient?.id);
+    const saleId = sellProducts(items, methods, selectedClient?.id, currentTerminal?.id, currentOperator?.id);
     setLastSaleId(saleId);
 
-    // Build sale record for receipt
     const saleRecord = {
       id: saleId,
       items: cart.map(i => ({ productId: i.product.id, productName: i.product.name, quantity: i.quantity, price: i.product.price })),
-      total,
-      methods,
-      clientId: selectedClient?.id,
-      clientName: selectedClient?.nome,
+      total, methods,
+      clientId: selectedClient?.id, clientName: selectedClient?.nome,
+      terminalId: currentTerminal?.id, terminalName: currentTerminal?.nome,
+      operatorId: currentOperator?.id, operatorName: currentOperator?.nome,
       date: new Date(),
     };
     setLastSaleRecord(saleRecord);
 
+    // Log
+    if (currentOperator && currentTerminal) {
+      addActionLog({
+        type: "venda", operatorId: currentOperator.id, operatorName: currentOperator.nome,
+        terminalId: currentTerminal.id, terminalName: currentTerminal.nome,
+        description: `Venda #${saleId.slice(0, 8)} • ${totalItems} itens • ${methods.map(m => m.method).join("+")}`,
+        amount: total, saleId,
+      });
+    }
+
     const methodStr = methods.map((m) => m.method).join(" + ");
     toast({ title: "Venda finalizada!", description: `${totalItems} itens — ${formatBRL(total)} via ${methodStr}.` });
 
-    // If it's a Pedido (Fiado), show receipt options
     if (isPedido) {
       setShowReceiptOptions(true);
     } else {
-      // Auto-print 1 copy for regular sales
       printReceipt(saleRecord, "venda", 1);
     }
 
@@ -183,6 +190,13 @@ export default function PDV() {
     }
     if (lastSaleId) {
       cancelSale(lastSaleId);
+      if (currentOperator && currentTerminal) {
+        addActionLog({
+          type: "cancelamento_cupom", operatorId: currentOperator.id, operatorName: currentOperator.nome,
+          terminalId: currentTerminal.id, terminalName: currentTerminal.nome,
+          description: `Cupom cancelado #${lastSaleId.slice(0, 8)}`, saleId: lastSaleId,
+        });
+      }
       toast({ title: "Venda cancelada", description: "Estoque restaurado." });
       setLastSaleId(null);
     }
@@ -226,7 +240,6 @@ export default function PDV() {
     toast({ title: "Pagamento registrado", description: `${formatBRL(amt)} via ${debtPayMethod}.` });
     setDebtPayAmount("");
 
-    // Print payment receipt
     if (debt) {
       const remaining = Math.max(0, (debt.amount - debt.paid) - amt);
       const sale = sales.find(s => s.clientId === debt.clientId && Math.abs(s.total - debt.amount) < 0.01) || {
@@ -245,6 +258,21 @@ export default function PDV() {
   });
 
   const activeOperators = operators.filter(o => o.ativo && o.permissions.abrirCaixa);
+  const activeTerminals = terminals.filter(t => t.ativo);
+
+  const handleOpenCashRegister = () => {
+    if (selectedOperator && selectedTerminal) {
+      const balance = parseFloat(setupBalance) || 0;
+      openCashRegister(balance, selectedOperator.id, selectedTerminal.id);
+      addActionLog({
+        type: "abertura_caixa", operatorId: selectedOperator.id, operatorName: selectedOperator.nome,
+        terminalId: selectedTerminal.id, terminalName: selectedTerminal.nome,
+        description: `Caixa aberto com fundo de ${formatBRL(balance)}`, amount: balance,
+      });
+      setSetupStep(null);
+      toast({ title: "Caixa aberto!", description: `${selectedOperator.nome} • ${selectedTerminal.nome} • Fundo: ${formatBRL(balance)}` });
+    }
+  };
 
   // Mandatory setup screen
   if (setupStep) {
@@ -253,27 +281,24 @@ export default function PDV() {
         <div className="w-full max-w-sm mx-4 bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-6 shadow-lg">
           <div className="text-center space-y-2">
             <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-              {setupStep === "operator" ? <User className="h-8 w-8 text-primary" /> : setupStep === "pin" ? <Lock className="h-8 w-8 text-primary" /> : <Banknote className="h-8 w-8 text-primary" />}
+              {setupStep === "operator" ? <User className="h-8 w-8 text-primary" /> : setupStep === "pin" ? <Lock className="h-8 w-8 text-primary" /> : setupStep === "terminal" ? <Monitor className="h-8 w-8 text-primary" /> : <Banknote className="h-8 w-8 text-primary" />}
             </div>
             <h1 className="text-xl font-bold text-foreground">
-              {setupStep === "operator" ? "Selecione o Operador" : setupStep === "pin" ? "PIN de Acesso" : "Fundo de Caixa"}
+              {setupStep === "operator" ? "Selecione o Operador" : setupStep === "pin" ? "PIN de Acesso" : setupStep === "terminal" ? "Selecione o Terminal" : "Fundo de Caixa"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {setupStep === "operator" ? "Escolha seu operador para iniciar o turno" : setupStep === "pin" ? `Operador: ${selectedOperator?.nome}` : `Operador: ${selectedOperator?.nome}`}
+              {setupStep === "operator" ? "Escolha seu operador para iniciar" : setupStep === "pin" ? `Operador: ${selectedOperator?.nome}` : setupStep === "terminal" ? `Operador: ${selectedOperator?.nome}` : `${selectedOperator?.nome} • ${selectedTerminal?.nome}`}
             </p>
           </div>
 
           {setupStep === "operator" ? (
             <div className="space-y-2">
               {activeOperators.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Nenhum operador cadastrado com permissão de caixa. Cadastre operadores em Configurações &gt; Usuários.</p>
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum operador cadastrado com permissão de caixa. Cadastre em Configurações &gt; Usuários.</p>
               ) : (
                 activeOperators.map((op) => (
-                  <button
-                    key={op.id}
-                    onClick={() => { setSelectedOperator(op); setPinInput(""); setSetupStep("pin"); }}
-                    className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-secondary transition-all touch-manipulation text-left"
-                  >
+                  <button key={op.id} onClick={() => { setSelectedOperator(op); setPinInput(""); setSetupStep("pin"); }}
+                    className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-secondary transition-all touch-manipulation text-left">
                     <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                       <User className="h-5 w-5 text-primary" />
                     </div>
@@ -290,78 +315,50 @@ export default function PDV() {
             </div>
           ) : setupStep === "pin" ? (
             <div className="space-y-4">
-              <Input
-                type="password"
-                inputMode="numeric"
-                maxLength={6}
-                placeholder="Digite o PIN"
-                value={pinInput}
+              <Input type="password" inputMode="numeric" maxLength={6} placeholder="Digite o PIN" value={pinInput}
                 onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ""))}
-                className="h-14 text-2xl text-center tracking-[0.5em]"
-                autoFocus
+                className="h-14 text-2xl text-center tracking-[0.5em]" autoFocus
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && pinInput) {
-                    if (pinInput === selectedOperator?.pin) {
-                      setSetupStep("balance");
-                    } else {
-                      toast({ title: "PIN incorreto", variant: "destructive" });
-                      setPinInput("");
-                    }
+                    if (pinInput === selectedOperator?.pin) setSetupStep("terminal");
+                    else { toast({ title: "PIN incorreto", variant: "destructive" }); setPinInput(""); }
                   }
                 }}
               />
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => { setSetupStep("operator"); setSelectedOperator(null); }} className="h-14 touch-manipulation">Voltar</Button>
-                <Button
-                  onClick={() => {
-                    if (pinInput === selectedOperator?.pin) {
-                      setSetupStep("balance");
-                    } else {
-                      toast({ title: "PIN incorreto", variant: "destructive" });
-                      setPinInput("");
-                    }
-                  }}
-                  disabled={!pinInput}
-                  className="flex-1 h-14 text-base touch-manipulation"
-                >
-                  Confirmar
-                </Button>
+                <Button onClick={() => {
+                  if (pinInput === selectedOperator?.pin) setSetupStep("terminal");
+                  else { toast({ title: "PIN incorreto", variant: "destructive" }); setPinInput(""); }
+                }} disabled={!pinInput} className="flex-1 h-14 text-base touch-manipulation">Confirmar</Button>
               </div>
+            </div>
+          ) : setupStep === "terminal" ? (
+            <div className="space-y-2">
+              {activeTerminals.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum terminal cadastrado. Cadastre em Configurações &gt; Terminais.</p>
+              ) : (
+                activeTerminals.map((t) => (
+                  <button key={t.id} onClick={() => { setSelectedTerminal(t); setSetupStep("balance"); }}
+                    className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-secondary transition-all touch-manipulation text-left">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Monitor className="h-5 w-5 text-primary" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground">{t.nome}</p>
+                  </button>
+                ))
+              )}
+              <Button variant="outline" onClick={() => setSetupStep("pin")} className="w-full h-12 touch-manipulation mt-2">Voltar</Button>
             </div>
           ) : (
             <div className="space-y-4">
-              <Input
-                type="number"
-                inputMode="decimal"
-                placeholder="Valor inicial em dinheiro (R$)"
-                value={setupBalance}
-                onChange={(e) => setSetupBalance(e.target.value)}
-                className="h-14 text-lg text-center"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && selectedOperator) {
-                    const balance = parseFloat(setupBalance) || 0;
-                    openCashRegister(balance, selectedOperator.id);
-                    setSetupStep(null);
-                    toast({ title: "Caixa aberto!", description: `Operador: ${selectedOperator.nome} • Fundo: ${formatBRL(balance)}` });
-                  }
-                }}
+              <Input type="number" inputMode="decimal" placeholder="Valor inicial em dinheiro (R$)" value={setupBalance}
+                onChange={(e) => setSetupBalance(e.target.value)} className="h-14 text-lg text-center" autoFocus
+                onKeyDown={(e) => { if (e.key === "Enter") handleOpenCashRegister(); }}
               />
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setSetupStep("pin")} className="h-14 touch-manipulation">Voltar</Button>
-                <Button
-                  onClick={() => {
-                    if (selectedOperator) {
-                      const balance = parseFloat(setupBalance) || 0;
-                      openCashRegister(balance, selectedOperator.id);
-                      setSetupStep(null);
-                      toast({ title: "Caixa aberto!", description: `Operador: ${selectedOperator.nome} • Fundo: ${formatBRL(balance)}` });
-                    }
-                  }}
-                  className="flex-1 h-14 text-base touch-manipulation"
-                >
-                  Abrir Caixa
-                </Button>
+                <Button variant="outline" onClick={() => setSetupStep("terminal")} className="h-14 touch-manipulation">Voltar</Button>
+                <Button onClick={handleOpenCashRegister} className="flex-1 h-14 text-base touch-manipulation">Abrir Caixa</Button>
               </div>
             </div>
           )}
@@ -373,16 +370,10 @@ export default function PDV() {
   return (
     <div className="flex flex-col sm:flex-row h-[100dvh] bg-pos-bg" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
       <ProductGrid
-        products={products}
-        search={search}
-        setSearch={setSearch}
-        onAddToCart={addToCart}
-        lastSaleId={lastSaleId}
-        onCancelLastSale={() => setCancelDialogOpen(true)}
-        selectedClient={selectedClient}
-        onSelectClient={() => setShowClientPicker(true)}
-        onClearClient={() => setSelectedClient(null)}
-        onOpenDebtors={() => setShowDebtors(true)}
+        products={products} search={search} setSearch={setSearch} onAddToCart={addToCart}
+        lastSaleId={lastSaleId} onCancelLastSale={() => setCancelDialogOpen(true)}
+        selectedClient={selectedClient} onSelectClient={() => setShowClientPicker(true)}
+        onClearClient={() => setSelectedClient(null)} onOpenDebtors={() => setShowDebtors(true)}
         debtorCount={debtorClients.length}
       />
       <CartPanel
@@ -433,7 +424,7 @@ export default function PDV() {
         </DialogContent>
       </Dialog>
 
-      {/* Debtors Dialog (F4) */}
+      {/* Debtors Dialog */}
       <Dialog open={showDebtors} onOpenChange={setShowDebtors}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
