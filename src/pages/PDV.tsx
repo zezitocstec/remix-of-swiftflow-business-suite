@@ -52,6 +52,10 @@ export default function PDV() {
       document.documentElement.classList.remove("dark");
     };
   }, []);
+
+  const currentOperator = selectedOperator || (cashRegister ? operators.find(o => o.id === cashRegister.operatorId) : null);
+  const hasPermission = (perm: keyof Operator["permissions"]) => currentOperator?.permissions[perm] ?? false;
+
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [lastSaleId, setLastSaleId] = useState<string | null>(null);
