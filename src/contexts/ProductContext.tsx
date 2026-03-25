@@ -35,8 +35,21 @@ export interface DebtRecord {
   payments: { id: string; amount: number; date: Date; method: string }[];
 }
 
+export interface Operator {
+  id: string;
+  nome: string;
+  pin: string; // senha/PIN do operador
+  ativo: boolean;
+  permissions: {
+    abrirCaixa: boolean;
+    cancelarItem: boolean;
+    cancelarCupom: boolean;
+  };
+}
+
 export interface CashRegister {
   id: string;
+  operatorId: string;
   operatorName: string;
   openedAt: Date;
   closedAt: Date | null;
@@ -63,6 +76,7 @@ interface ProductContextType {
   debts: DebtRecord[];
   sales: SaleRecord[];
   cashRegister: CashRegister | null;
+  operators: Operator[];
   addProduct: (product: Omit<Product, "id">) => void;
   updateProduct: (id: string, data: Partial<Product>) => void;
   deleteProduct: (id: string) => void;
@@ -78,10 +92,14 @@ interface ProductContextType {
   createDebt: (clientId: string, amount: number) => string | null;
   payDebt: (debtId: string, amount: number, method: string) => void;
   // Cash register
-  openCashRegister: (openingBalance: number, operatorName?: string) => void;
+  openCashRegister: (openingBalance: number, operatorId: string) => void;
   closeCashRegister: () => CashRegister | null;
   addWithdrawal: (amount: number, reason: string) => void;
   addDeposit: (amount: number, reason: string) => void;
+  // Operators
+  addOperator: (op: Omit<Operator, "id">) => void;
+  updateOperator: (id: string, data: Partial<Operator>) => void;
+  deleteOperator: (id: string) => void;
 }
 
 const ProductContext = createContext<ProductContextType | null>(null);
@@ -95,11 +113,17 @@ const initialClients: Client[] = [
   { id: "4", nome: "Ana Costa", cpfCnpj: "321.654.987-00", telefone: "(31) 96666-3456", email: "ana@email.com", dataNascimento: "1992-03-08", observacoes: "", creditLimit: 200, creditUsed: 0, compras: 5, total: 430.20 },
 ];
 
+const initialOperators: Operator[] = [
+  { id: "op-admin", nome: "Administrador", pin: "1234", ativo: true, permissions: { abrirCaixa: true, cancelarItem: true, cancelarCupom: true } },
+  { id: "op-1", nome: "Operador 1", pin: "0000", ativo: true, permissions: { abrirCaixa: true, cancelarItem: false, cancelarCupom: false } },
+];
+
 export function ProductProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [debts, setDebts] = useState<DebtRecord[]>([]);
+  const [operators, setOperators] = useState<Operator[]>(initialOperators);
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [cashRegister, setCashRegister] = useState<CashRegister | null>(null);
 
@@ -276,9 +300,10 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Cash register
-  const openCashRegister = useCallback((openingBalance: number, operatorName?: string) => {
-    setCashRegister({ id: crypto.randomUUID(), operatorName: operatorName || "Operador", openedAt: new Date(), closedAt: null, openingBalance, sales: [], withdrawals: [], deposits: [] });
-  }, []);
+  const openCashRegister = useCallback((openingBalance: number, operatorId: string) => {
+    const op = operators.find(o => o.id === operatorId);
+    setCashRegister({ id: crypto.randomUUID(), operatorId, operatorName: op?.nome || "Operador", openedAt: new Date(), closedAt: null, openingBalance, sales: [], withdrawals: [], deposits: [] });
+  }, [operators]);
 
   const closeCashRegister = useCallback(() => {
     if (!cashRegister) return null;
@@ -295,13 +320,25 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     setCashRegister((prev) => prev ? { ...prev, deposits: [...prev.deposits, { amount, reason, date: new Date() }] } : prev);
   }, []);
 
+  // Operators CRUD
+  const addOperator = useCallback((op: Omit<Operator, "id">) => {
+    setOperators((prev) => [...prev, { ...op, id: crypto.randomUUID() }]);
+  }, []);
+  const updateOperator = useCallback((id: string, data: Partial<Operator>) => {
+    setOperators((prev) => prev.map((o) => (o.id === id ? { ...o, ...data } : o)));
+  }, []);
+  const deleteOperator = useCallback((id: string) => {
+    setOperators((prev) => prev.filter((o) => o.id !== id));
+  }, []);
+
   return (
     <ProductContext.Provider value={{
-      products, movements, clients, debts, sales, cashRegister,
+      products, movements, clients, debts, sales, cashRegister, operators,
       addProduct, updateProduct, deleteProduct, sellProducts, cancelSale, addStock, importXML,
       addClient, updateClient, deleteClient,
       createDebt, payDebt,
       openCashRegister, closeCashRegister, addWithdrawal, addDeposit,
+      addOperator, updateOperator, deleteOperator,
     }}>
       {children}
     </ProductContext.Provider>

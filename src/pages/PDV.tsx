@@ -1,11 +1,11 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { formatBRL, type Product, type CartItem } from "@/lib/mock-data";
-import { useProducts, type Client } from "@/contexts/ProductContext";
+import { useProducts, type Client, type Operator } from "@/contexts/ProductContext";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { RotateCcw, Users, CreditCard, Printer, User, Banknote } from "lucide-react";
+import { RotateCcw, Users, CreditCard, Printer, User, Banknote, Lock } from "lucide-react";
 import ProductGrid from "@/components/pdv/ProductGrid";
 import CartPanel from "@/components/pdv/CartPanel";
 import type { ParkedSale } from "@/components/pdv/types";
@@ -13,11 +13,12 @@ import { usePDVShortcuts } from "@/hooks/usePDVShortcuts";
 import { printReceipt } from "@/components/pdv/ReceiptPrint";
 
 export default function PDV() {
-  const { products, sellProducts, cancelSale, clients, createDebt, debts, payDebt, sales, cashRegister, openCashRegister } = useProducts();
+  const { products, sellProducts, cancelSale, clients, createDebt, debts, payDebt, sales, cashRegister, openCashRegister, operators } = useProducts();
 
-  // Setup state — operator name + opening balance
-  const [setupStep, setSetupStep] = useState<"operator" | "balance" | null>(null);
-  const [operatorName, setOperatorName] = useState("");
+  // Setup state — operator selection + PIN + opening balance
+  const [setupStep, setSetupStep] = useState<"operator" | "pin" | "balance" | null>(null);
+  const [selectedOperator, setSelectedOperator] = useState<Operator | null>(null);
+  const [pinInput, setPinInput] = useState("");
   const [setupBalance, setSetupBalance] = useState("");
 
   // Show setup on mount if no cash register is open
@@ -31,7 +32,8 @@ export default function PDV() {
   useEffect(() => {
     if (!cashRegister && setupStep === null) {
       setSetupStep("operator");
-      setOperatorName("");
+      setSelectedOperator(null);
+      setPinInput("");
       setSetupBalance("");
     }
   }, [cashRegister]);
@@ -50,6 +52,10 @@ export default function PDV() {
       document.documentElement.classList.remove("dark");
     };
   }, []);
+
+  const currentOperator = selectedOperator || (cashRegister ? operators.find(o => o.id === cashRegister.operatorId) : null);
+  const hasPermission = (perm: keyof Operator["permissions"]) => currentOperator?.permissions[perm] ?? false;
+
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [lastSaleId, setLastSaleId] = useState<string | null>(null);
@@ -103,8 +109,13 @@ export default function PDV() {
   }, []);
 
   const removeItem = useCallback((id: string) => {
+    const op = selectedOperator || (cashRegister ? operators.find(o => o.id === cashRegister.operatorId) : null);
+    if (!op?.permissions.cancelarItem) {
+      toast({ title: "Sem permissão", description: "Você não tem permissão para cancelar itens.", variant: "destructive" });
+      return;
+    }
     setCart((prev) => prev.filter((i) => i.product.id !== id));
-  }, []);
+  }, [selectedOperator, cashRegister, operators]);
 
   const clearCart = () => {
     setCart([]);
@@ -165,6 +176,11 @@ export default function PDV() {
   };
 
   const handleCancelSale = () => {
+    if (!hasPermission("cancelarCupom")) {
+      toast({ title: "Sem permissão", description: "Você não tem permissão para cancelar cupons.", variant: "destructive" });
+      setCancelDialogOpen(false);
+      return;
+    }
     if (lastSaleId) {
       cancelSale(lastSaleId);
       toast({ title: "Venda cancelada", description: "Estoque restaurado." });
@@ -228,6 +244,8 @@ export default function PDV() {
     onCancel: () => { if (showPayment) setShowPayment(false); },
   });
 
+  const activeOperators = operators.filter(o => o.ativo && o.permissions.abrirCaixa);
+
   // Mandatory setup screen
   if (setupStep) {
     return (
@@ -235,35 +253,80 @@ export default function PDV() {
         <div className="w-full max-w-sm mx-4 bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-6 shadow-lg">
           <div className="text-center space-y-2">
             <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-              {setupStep === "operator" ? <User className="h-8 w-8 text-primary" /> : <Banknote className="h-8 w-8 text-primary" />}
+              {setupStep === "operator" ? <User className="h-8 w-8 text-primary" /> : setupStep === "pin" ? <Lock className="h-8 w-8 text-primary" /> : <Banknote className="h-8 w-8 text-primary" />}
             </div>
             <h1 className="text-xl font-bold text-foreground">
-              {setupStep === "operator" ? "Identificação do Operador" : "Fundo de Caixa"}
+              {setupStep === "operator" ? "Selecione o Operador" : setupStep === "pin" ? "PIN de Acesso" : "Fundo de Caixa"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {setupStep === "operator" ? "Informe o nome do operador para iniciar o turno" : `Operador: ${operatorName}`}
+              {setupStep === "operator" ? "Escolha seu operador para iniciar o turno" : setupStep === "pin" ? `Operador: ${selectedOperator?.nome}` : `Operador: ${selectedOperator?.nome}`}
             </p>
           </div>
 
           {setupStep === "operator" ? (
+            <div className="space-y-2">
+              {activeOperators.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum operador cadastrado com permissão de caixa. Cadastre operadores em Configurações &gt; Usuários.</p>
+              ) : (
+                activeOperators.map((op) => (
+                  <button
+                    key={op.id}
+                    onClick={() => { setSelectedOperator(op); setPinInput(""); setSetupStep("pin"); }}
+                    className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-secondary transition-all touch-manipulation text-left"
+                  >
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <User className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{op.nome}</p>
+                      <div className="flex gap-1 mt-0.5">
+                        {op.permissions.cancelarItem && <span className="text-[10px] bg-warning/10 text-warning px-1 py-0.5 rounded">Cancel. Item</span>}
+                        {op.permissions.cancelarCupom && <span className="text-[10px] bg-destructive/10 text-destructive px-1 py-0.5 rounded">Cancel. Cupom</span>}
+                      </div>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          ) : setupStep === "pin" ? (
             <div className="space-y-4">
               <Input
-                placeholder="Nome do operador"
-                value={operatorName}
-                onChange={(e) => setOperatorName(e.target.value)}
-                className="h-14 text-lg text-center"
+                type="password"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="Digite o PIN"
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ""))}
+                className="h-14 text-2xl text-center tracking-[0.5em]"
                 autoFocus
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && operatorName.trim()) setSetupStep("balance");
+                  if (e.key === "Enter" && pinInput) {
+                    if (pinInput === selectedOperator?.pin) {
+                      setSetupStep("balance");
+                    } else {
+                      toast({ title: "PIN incorreto", variant: "destructive" });
+                      setPinInput("");
+                    }
+                  }
                 }}
               />
-              <Button
-                onClick={() => setSetupStep("balance")}
-                disabled={!operatorName.trim()}
-                className="w-full h-14 text-base touch-manipulation"
-              >
-                Continuar
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => { setSetupStep("operator"); setSelectedOperator(null); }} className="h-14 touch-manipulation">Voltar</Button>
+                <Button
+                  onClick={() => {
+                    if (pinInput === selectedOperator?.pin) {
+                      setSetupStep("balance");
+                    } else {
+                      toast({ title: "PIN incorreto", variant: "destructive" });
+                      setPinInput("");
+                    }
+                  }}
+                  disabled={!pinInput}
+                  className="flex-1 h-14 text-base touch-manipulation"
+                >
+                  Confirmar
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">
@@ -276,24 +339,24 @@ export default function PDV() {
                 className="h-14 text-lg text-center"
                 autoFocus
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                  if (e.key === "Enter" && selectedOperator) {
                     const balance = parseFloat(setupBalance) || 0;
-                    openCashRegister(balance, operatorName.trim());
+                    openCashRegister(balance, selectedOperator.id);
                     setSetupStep(null);
-                    toast({ title: "Caixa aberto!", description: `Operador: ${operatorName.trim()} • Fundo: ${formatBRL(balance)}` });
+                    toast({ title: "Caixa aberto!", description: `Operador: ${selectedOperator.nome} • Fundo: ${formatBRL(balance)}` });
                   }
                 }}
               />
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setSetupStep("operator")} className="h-14 touch-manipulation">
-                  Voltar
-                </Button>
+                <Button variant="outline" onClick={() => setSetupStep("pin")} className="h-14 touch-manipulation">Voltar</Button>
                 <Button
                   onClick={() => {
-                    const balance = parseFloat(setupBalance) || 0;
-                    openCashRegister(balance, operatorName.trim());
-                    setSetupStep(null);
-                    toast({ title: "Caixa aberto!", description: `Operador: ${operatorName.trim()} • Fundo: ${formatBRL(balance)}` });
+                    if (selectedOperator) {
+                      const balance = parseFloat(setupBalance) || 0;
+                      openCashRegister(balance, selectedOperator.id);
+                      setSetupStep(null);
+                      toast({ title: "Caixa aberto!", description: `Operador: ${selectedOperator.nome} • Fundo: ${formatBRL(balance)}` });
+                    }
                   }}
                   className="flex-1 h-14 text-base touch-manipulation"
                 >
