@@ -21,7 +21,7 @@ export default function Caixa() {
 
   const handleOpen = () => {
     const balance = parseFloat(openingBalance) || 0;
-    openCashRegister(balance);
+    openCashRegister(balance, "op-admin");
     toast({ title: "Caixa aberto", description: `Saldo inicial: ${formatBRL(balance)}` });
     setOpenDialog(false);
     setOpeningBalance("");

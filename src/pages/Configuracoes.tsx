@@ -44,11 +44,7 @@ export default function Configuracoes() {
           {active === "empresa" && <EmpresaForm />}
           {active === "impressora" && <ImpressoraConfig />}
           {active === "venda" && <VendaConfig />}
-          {active === "usuarios" && (
-            <div className="text-sm text-muted-foreground p-8 text-center">
-              Módulo de gerenciamento de usuários e permissões — em breve.
-            </div>
-          )}
+          {active === "usuarios" && <OperadoresConfig />}
           {active === "fiscal" && (
             <div className="text-sm text-muted-foreground p-8 text-center">
               Configurações fiscais (NFC-e, CFOP, CST, CSOSN, NCM) — em breve.
