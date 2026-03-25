@@ -59,6 +59,6 @@ export const dashboardData = {
   alertas: [
     { tipo: "estoque", msg: "Queijo Mussarela: estoque baixo (15 un)" },
     { tipo: "estoque", msg: "Sabão em Pó: estoque baixo (35 un)" },
-    { tipo: "caixa", msg: "Caixa 02 aberto há 8 horas" },
+    { tipo: "caixa", msg: "Caixa 01 aberto há 8 horas" },
   ],
 };
