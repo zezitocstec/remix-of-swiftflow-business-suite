@@ -76,6 +76,7 @@ interface ProductContextType {
   debts: DebtRecord[];
   sales: SaleRecord[];
   cashRegister: CashRegister | null;
+  operators: Operator[];
   addProduct: (product: Omit<Product, "id">) => void;
   updateProduct: (id: string, data: Partial<Product>) => void;
   deleteProduct: (id: string) => void;
@@ -91,10 +92,14 @@ interface ProductContextType {
   createDebt: (clientId: string, amount: number) => string | null;
   payDebt: (debtId: string, amount: number, method: string) => void;
   // Cash register
-  openCashRegister: (openingBalance: number, operatorName?: string) => void;
+  openCashRegister: (openingBalance: number, operatorId: string) => void;
   closeCashRegister: () => CashRegister | null;
   addWithdrawal: (amount: number, reason: string) => void;
   addDeposit: (amount: number, reason: string) => void;
+  // Operators
+  addOperator: (op: Omit<Operator, "id">) => void;
+  updateOperator: (id: string, data: Partial<Operator>) => void;
+  deleteOperator: (id: string) => void;
 }
 
 const ProductContext = createContext<ProductContextType | null>(null);
