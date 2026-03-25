@@ -300,9 +300,10 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Cash register
-  const openCashRegister = useCallback((openingBalance: number, operatorName?: string) => {
-    setCashRegister({ id: crypto.randomUUID(), operatorName: operatorName || "Operador", openedAt: new Date(), closedAt: null, openingBalance, sales: [], withdrawals: [], deposits: [] });
-  }, []);
+  const openCashRegister = useCallback((openingBalance: number, operatorId: string) => {
+    const op = operators.find(o => o.id === operatorId);
+    setCashRegister({ id: crypto.randomUUID(), operatorId, operatorName: op?.nome || "Operador", openedAt: new Date(), closedAt: null, openingBalance, sales: [], withdrawals: [], deposits: [] });
+  }, [operators]);
 
   const closeCashRegister = useCallback(() => {
     if (!cashRegister) return null;
