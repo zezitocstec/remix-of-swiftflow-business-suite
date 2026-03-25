@@ -230,6 +230,14 @@ export default function PDV() {
     onCancel: () => { if (showPayment) setShowPayment(false); },
   });
 
+  const activeOperators = operators.filter(o => o.ativo && o.permissions.abrirCaixa);
+  const currentOperator = selectedOperator || (cashRegister ? operators.find(o => o.id === cashRegister.operatorId) : null);
+
+  // Check permission helper
+  const hasPermission = (perm: keyof Operator["permissions"]) => {
+    return currentOperator?.permissions[perm] ?? false;
+  };
+
   // Mandatory setup screen
   if (setupStep) {
     return (
@@ -237,35 +245,80 @@ export default function PDV() {
         <div className="w-full max-w-sm mx-4 bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-6 shadow-lg">
           <div className="text-center space-y-2">
             <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-              {setupStep === "operator" ? <User className="h-8 w-8 text-primary" /> : <Banknote className="h-8 w-8 text-primary" />}
+              {setupStep === "operator" ? <User className="h-8 w-8 text-primary" /> : setupStep === "pin" ? <Lock className="h-8 w-8 text-primary" /> : <Banknote className="h-8 w-8 text-primary" />}
             </div>
             <h1 className="text-xl font-bold text-foreground">
-              {setupStep === "operator" ? "Identificação do Operador" : "Fundo de Caixa"}
+              {setupStep === "operator" ? "Selecione o Operador" : setupStep === "pin" ? "PIN de Acesso" : "Fundo de Caixa"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {setupStep === "operator" ? "Informe o nome do operador para iniciar o turno" : `Operador: ${operatorName}`}
+              {setupStep === "operator" ? "Escolha seu operador para iniciar o turno" : setupStep === "pin" ? `Operador: ${selectedOperator?.nome}` : `Operador: ${selectedOperator?.nome}`}
             </p>
           </div>
 
           {setupStep === "operator" ? (
+            <div className="space-y-2">
+              {activeOperators.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum operador cadastrado com permissão de caixa. Cadastre operadores em Configurações &gt; Usuários.</p>
+              ) : (
+                activeOperators.map((op) => (
+                  <button
+                    key={op.id}
+                    onClick={() => { setSelectedOperator(op); setPinInput(""); setSetupStep("pin"); }}
+                    className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-secondary transition-all touch-manipulation text-left"
+                  >
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <User className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{op.nome}</p>
+                      <div className="flex gap-1 mt-0.5">
+                        {op.permissions.cancelarItem && <span className="text-[10px] bg-warning/10 text-warning px-1 py-0.5 rounded">Cancel. Item</span>}
+                        {op.permissions.cancelarCupom && <span className="text-[10px] bg-destructive/10 text-destructive px-1 py-0.5 rounded">Cancel. Cupom</span>}
+                      </div>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          ) : setupStep === "pin" ? (
             <div className="space-y-4">
               <Input
-                placeholder="Nome do operador"
-                value={operatorName}
-                onChange={(e) => setOperatorName(e.target.value)}
-                className="h-14 text-lg text-center"
+                type="password"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="Digite o PIN"
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ""))}
+                className="h-14 text-2xl text-center tracking-[0.5em]"
                 autoFocus
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && operatorName.trim()) setSetupStep("balance");
+                  if (e.key === "Enter" && pinInput) {
+                    if (pinInput === selectedOperator?.pin) {
+                      setSetupStep("balance");
+                    } else {
+                      toast({ title: "PIN incorreto", variant: "destructive" });
+                      setPinInput("");
+                    }
+                  }
                 }}
               />
-              <Button
-                onClick={() => setSetupStep("balance")}
-                disabled={!operatorName.trim()}
-                className="w-full h-14 text-base touch-manipulation"
-              >
-                Continuar
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => { setSetupStep("operator"); setSelectedOperator(null); }} className="h-14 touch-manipulation">Voltar</Button>
+                <Button
+                  onClick={() => {
+                    if (pinInput === selectedOperator?.pin) {
+                      setSetupStep("balance");
+                    } else {
+                      toast({ title: "PIN incorreto", variant: "destructive" });
+                      setPinInput("");
+                    }
+                  }}
+                  disabled={!pinInput}
+                  className="flex-1 h-14 text-base touch-manipulation"
+                >
+                  Confirmar
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">
@@ -278,24 +331,24 @@ export default function PDV() {
                 className="h-14 text-lg text-center"
                 autoFocus
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                  if (e.key === "Enter" && selectedOperator) {
                     const balance = parseFloat(setupBalance) || 0;
-                    openCashRegister(balance, operatorName.trim());
+                    openCashRegister(balance, selectedOperator.id);
                     setSetupStep(null);
-                    toast({ title: "Caixa aberto!", description: `Operador: ${operatorName.trim()} • Fundo: ${formatBRL(balance)}` });
+                    toast({ title: "Caixa aberto!", description: `Operador: ${selectedOperator.nome} • Fundo: ${formatBRL(balance)}` });
                   }
                 }}
               />
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setSetupStep("operator")} className="h-14 touch-manipulation">
-                  Voltar
-                </Button>
+                <Button variant="outline" onClick={() => setSetupStep("pin")} className="h-14 touch-manipulation">Voltar</Button>
                 <Button
                   onClick={() => {
-                    const balance = parseFloat(setupBalance) || 0;
-                    openCashRegister(balance, operatorName.trim());
-                    setSetupStep(null);
-                    toast({ title: "Caixa aberto!", description: `Operador: ${operatorName.trim()} • Fundo: ${formatBRL(balance)}` });
+                    if (selectedOperator) {
+                      const balance = parseFloat(setupBalance) || 0;
+                      openCashRegister(balance, selectedOperator.id);
+                      setSetupStep(null);
+                      toast({ title: "Caixa aberto!", description: `Operador: ${selectedOperator.nome} • Fundo: ${formatBRL(balance)}` });
+                    }
                   }}
                   className="flex-1 h-14 text-base touch-manipulation"
                 >
