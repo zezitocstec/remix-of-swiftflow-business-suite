@@ -320,13 +320,25 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     setCashRegister((prev) => prev ? { ...prev, deposits: [...prev.deposits, { amount, reason, date: new Date() }] } : prev);
   }, []);
 
+  // Operators CRUD
+  const addOperator = useCallback((op: Omit<Operator, "id">) => {
+    setOperators((prev) => [...prev, { ...op, id: crypto.randomUUID() }]);
+  }, []);
+  const updateOperator = useCallback((id: string, data: Partial<Operator>) => {
+    setOperators((prev) => prev.map((o) => (o.id === id ? { ...o, ...data } : o)));
+  }, []);
+  const deleteOperator = useCallback((id: string) => {
+    setOperators((prev) => prev.filter((o) => o.id !== id));
+  }, []);
+
   return (
     <ProductContext.Provider value={{
-      products, movements, clients, debts, sales, cashRegister,
+      products, movements, clients, debts, sales, cashRegister, operators,
       addProduct, updateProduct, deleteProduct, sellProducts, cancelSale, addStock, importXML,
       addClient, updateClient, deleteClient,
       createDebt, payDebt,
       openCashRegister, closeCashRegister, addWithdrawal, addDeposit,
+      addOperator, updateOperator, deleteOperator,
     }}>
       {children}
     </ProductContext.Provider>
