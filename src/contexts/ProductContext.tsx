@@ -35,8 +35,21 @@ export interface DebtRecord {
   payments: { id: string; amount: number; date: Date; method: string }[];
 }
 
+export interface Operator {
+  id: string;
+  nome: string;
+  pin: string; // senha/PIN do operador
+  ativo: boolean;
+  permissions: {
+    abrirCaixa: boolean;
+    cancelarItem: boolean;
+    cancelarCupom: boolean;
+  };
+}
+
 export interface CashRegister {
   id: string;
+  operatorId: string;
   operatorName: string;
   openedAt: Date;
   closedAt: Date | null;
