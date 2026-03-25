@@ -171,6 +171,11 @@ export default function PDV() {
   };
 
   const handleCancelSale = () => {
+    if (!hasPermission("cancelarCupom")) {
+      toast({ title: "Sem permissão", description: "Você não tem permissão para cancelar cupons.", variant: "destructive" });
+      setCancelDialogOpen(false);
+      return;
+    }
     if (lastSaleId) {
       cancelSale(lastSaleId);
       toast({ title: "Venda cancelada", description: "Estoque restaurado." });
