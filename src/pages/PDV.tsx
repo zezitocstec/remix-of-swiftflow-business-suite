@@ -105,8 +105,12 @@ export default function PDV() {
   }, []);
 
   const removeItem = useCallback((id: string) => {
+    if (!hasPermission("cancelarItem")) {
+      toast({ title: "Sem permissão", description: "Você não tem permissão para cancelar itens.", variant: "destructive" });
+      return;
+    }
     setCart((prev) => prev.filter((i) => i.product.id !== id));
-  }, []);
+  }, [currentOperator]);
 
   const clearCart = () => {
     setCart([]);
