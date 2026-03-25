@@ -1,13 +1,6 @@
 import { formatBRL } from "@/lib/mock-data";
 import type { SaleRecord } from "@/contexts/ProductContext";
 
-interface ReceiptPrintProps {
-  sale: SaleRecord;
-  type: "venda" | "pagamento";
-  copyLabel: string; // "Via Loja" or "Via Cliente"
-  debtPayment?: { amount: number; method: string; remainingDebt: number };
-}
-
 export function printReceipt(sale: SaleRecord, type: "venda" | "pagamento", copies: number = 1, debtPayment?: { amount: number; method: string; remainingDebt: number }) {
   const printWindow = window.open("", "_blank", "width=320,height=600");
   if (!printWindow) return;
@@ -57,6 +50,8 @@ export function printReceipt(sale: SaleRecord, type: "venda" | "pagamento", copi
           <div style="font-size:11px"><strong>Cupom:</strong> #${receiptNumber}</div>
           <div style="font-size:11px"><strong>Data:</strong> ${dateStr} ${timeStr}</div>
           ${sale.clientName ? `<div style="font-size:11px"><strong>Cliente:</strong> ${sale.clientName}</div>` : ''}
+          ${sale.terminalName ? `<div style="font-size:11px"><strong>Terminal:</strong> ${sale.terminalName}</div>` : ''}
+          ${sale.operatorName ? `<div style="font-size:11px"><strong>Operador:</strong> ${sale.operatorName}</div>` : ''}
         </div>
         <table style="width:100%;border-collapse:collapse">
           <thead>

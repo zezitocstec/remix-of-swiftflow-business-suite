@@ -1,16 +1,20 @@
 import { useState } from "react";
 import { TopBar } from "@/components/TopBar";
-import { Building2, Printer, Receipt, Shield, Users } from "lucide-react";
+import { Building2, Printer, Receipt, Shield, Users, Monitor, ClipboardList } from "lucide-react";
 import EmpresaForm from "@/components/config/EmpresaForm";
 import ImpressoraConfig from "@/components/config/ImpressoraConfig";
 import VendaConfig from "@/components/config/VendaConfig";
 import OperadoresConfig from "@/components/config/OperadoresConfig";
+import TerminaisConfig from "@/components/config/TerminaisConfig";
+import LogsConfig from "@/components/config/LogsConfig";
 
 const tabs = [
   { id: "empresa", icon: Building2, label: "Empresa" },
   { id: "impressora", icon: Printer, label: "Impressora" },
   { id: "venda", icon: Receipt, label: "Venda / Fiscal" },
   { id: "usuarios", icon: Users, label: "Usuários" },
+  { id: "terminais", icon: Monitor, label: "Terminais" },
+  { id: "logs", icon: ClipboardList, label: "Logs" },
   { id: "fiscal", icon: Shield, label: "Fiscal (NFC-e)" },
 ] as const;
 
@@ -45,6 +49,8 @@ export default function Configuracoes() {
           {active === "impressora" && <ImpressoraConfig />}
           {active === "venda" && <VendaConfig />}
           {active === "usuarios" && <OperadoresConfig />}
+          {active === "terminais" && <TerminaisConfig />}
+          {active === "logs" && <LogsConfig />}
           {active === "fiscal" && (
             <div className="text-sm text-muted-foreground p-8 text-center">
               Configurações fiscais (NFC-e, CFOP, CST, CSOSN, NCM) — em breve.
