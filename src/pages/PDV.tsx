@@ -241,12 +241,6 @@ export default function PDV() {
   });
 
   const activeOperators = operators.filter(o => o.ativo && o.permissions.abrirCaixa);
-  const currentOperator = selectedOperator || (cashRegister ? operators.find(o => o.id === cashRegister.operatorId) : null);
-
-  // Check permission helper
-  const hasPermission = (perm: keyof Operator["permissions"]) => {
-    return currentOperator?.permissions[perm] ?? false;
-  };
 
   // Mandatory setup screen
   if (setupStep) {
