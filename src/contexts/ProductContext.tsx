@@ -19,8 +19,8 @@ export interface Client {
   email: string;
   dataNascimento: string;
   observacoes: string;
-  creditLimit: number; // limite de crédito para fiado
-  creditUsed: number;  // quanto já usou de fiado
+  creditLimit: number;
+  creditUsed: number;
   compras: number;
   total: number;
 }
@@ -38,7 +38,7 @@ export interface DebtRecord {
 export interface Operator {
   id: string;
   nome: string;
-  pin: string; // senha/PIN do operador
+  pin: string;
   ativo: boolean;
   permissions: {
     abrirCaixa: boolean;
@@ -47,10 +47,31 @@ export interface Operator {
   };
 }
 
+export interface Terminal {
+  id: string;
+  nome: string;
+  ativo: boolean;
+}
+
+export interface ActionLog {
+  id: string;
+  type: "abertura_caixa" | "fechamento_caixa" | "venda" | "cancelamento_item" | "cancelamento_cupom" | "sangria" | "reforco";
+  operatorId: string;
+  operatorName: string;
+  terminalId: string;
+  terminalName: string;
+  description: string;
+  amount?: number;
+  saleId?: string;
+  date: Date;
+}
+
 export interface CashRegister {
   id: string;
   operatorId: string;
   operatorName: string;
+  terminalId: string;
+  terminalName: string;
   openedAt: Date;
   closedAt: Date | null;
   openingBalance: number;
@@ -66,6 +87,10 @@ export interface SaleRecord {
   methods: { method: string; amount: number }[];
   clientId?: string;
   clientName?: string;
+  terminalId?: string;
+  terminalName?: string;
+  operatorId?: string;
+  operatorName?: string;
   date: Date;
 }
 
@@ -77,29 +102,33 @@ interface ProductContextType {
   sales: SaleRecord[];
   cashRegister: CashRegister | null;
   operators: Operator[];
+  terminals: Terminal[];
+  actionLogs: ActionLog[];
+  adminPin: string;
   addProduct: (product: Omit<Product, "id">) => void;
   updateProduct: (id: string, data: Partial<Product>) => void;
   deleteProduct: (id: string) => void;
-  sellProducts: (items: { productId: string; quantity: number }[], methods?: { method: string; amount: number }[], clientId?: string) => string;
+  sellProducts: (items: { productId: string; quantity: number }[], methods?: { method: string; amount: number }[], clientId?: string, terminalId?: string, operatorId?: string) => string;
   cancelSale: (saleId: string) => void;
   addStock: (productId: string, quantity: number, reason: string) => void;
   importXML: (xmlContent: string) => number;
-  // Clients
   addClient: (client: Omit<Client, "id" | "compras" | "total" | "creditUsed">) => void;
   updateClient: (id: string, data: Partial<Client>) => void;
   deleteClient: (id: string) => void;
-  // Fiado
   createDebt: (clientId: string, amount: number) => string | null;
   payDebt: (debtId: string, amount: number, method: string) => void;
-  // Cash register
-  openCashRegister: (openingBalance: number, operatorId: string) => void;
+  openCashRegister: (openingBalance: number, operatorId: string, terminalId: string) => void;
   closeCashRegister: () => CashRegister | null;
   addWithdrawal: (amount: number, reason: string) => void;
   addDeposit: (amount: number, reason: string) => void;
-  // Operators
   addOperator: (op: Omit<Operator, "id">) => void;
   updateOperator: (id: string, data: Partial<Operator>) => void;
   deleteOperator: (id: string) => void;
+  addTerminal: (t: Omit<Terminal, "id">) => void;
+  updateTerminal: (id: string, data: Partial<Terminal>) => void;
+  deleteTerminal: (id: string) => void;
+  addActionLog: (log: Omit<ActionLog, "id" | "date">) => void;
+  setAdminPin: (pin: string) => void;
 }
 
 const ProductContext = createContext<ProductContextType | null>(null);
@@ -118,14 +147,26 @@ const initialOperators: Operator[] = [
   { id: "op-1", nome: "Operador 1", pin: "0000", ativo: true, permissions: { abrirCaixa: true, cancelarItem: false, cancelarCupom: false } },
 ];
 
+const initialTerminals: Terminal[] = [
+  { id: "term-01", nome: "Caixa 01", ativo: true },
+  { id: "term-02", nome: "Caixa 02", ativo: true },
+];
+
 export function ProductProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [debts, setDebts] = useState<DebtRecord[]>([]);
   const [operators, setOperators] = useState<Operator[]>(initialOperators);
+  const [terminals, setTerminals] = useState<Terminal[]>(initialTerminals);
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [cashRegister, setCashRegister] = useState<CashRegister | null>(null);
+  const [actionLogs, setActionLogs] = useState<ActionLog[]>([]);
+  const [adminPin, setAdminPin] = useState("1234");
+
+  const addActionLog = useCallback((log: Omit<ActionLog, "id" | "date">) => {
+    setActionLogs((prev) => [{ ...log, id: crypto.randomUUID(), date: new Date() }, ...prev]);
+  }, []);
 
   const addMovement = useCallback((m: Omit<StockMovement, "id" | "date">) => {
     setMovements((prev) => [{ ...m, id: crypto.randomUUID(), date: new Date() }, ...prev]);
@@ -144,7 +185,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const sellProducts = useCallback(
-    (items: { productId: string; quantity: number }[], methods?: { method: string; amount: number }[], clientId?: string) => {
+    (items: { productId: string; quantity: number }[], methods?: { method: string; amount: number }[], clientId?: string, terminalId?: string, operatorId?: string) => {
       const saleId = crypto.randomUUID();
       saleRecords.set(saleId, items);
 
@@ -169,24 +210,28 @@ export function ProductProvider({ children }: { children: ReactNode }) {
 
       const total = saleItems.reduce((s, i) => s + i.price * i.quantity, 0);
       const client = clientId ? clients.find((c) => c.id === clientId) : undefined;
+      const terminal = terminalId ? terminals.find((t) => t.id === terminalId) : undefined;
+      const operator = operatorId ? operators.find((o) => o.id === operatorId) : undefined;
 
       setSales((prev) => [{
-        id: saleId, items: saleItems, total, methods: methods || [], clientId, clientName: client?.nome, date: new Date(),
+        id: saleId, items: saleItems, total, methods: methods || [],
+        clientId, clientName: client?.nome,
+        terminalId, terminalName: terminal?.nome,
+        operatorId, operatorName: operator?.nome,
+        date: new Date(),
       }, ...prev]);
 
-      // Update client stats
       if (clientId) {
         setClients((prev) => prev.map((c) => c.id === clientId ? { ...c, compras: c.compras + 1, total: c.total + total } : c));
       }
 
-      // Update cash register
       if (cashRegister && methods) {
         setCashRegister((prev) => prev ? { ...prev, sales: [...prev.sales, ...methods] } : prev);
       }
 
       return saleId;
     },
-    [products, clients, cashRegister, addMovement]
+    [products, clients, cashRegister, terminals, operators, addMovement]
   );
 
   const cancelSale = useCallback(
@@ -262,7 +307,6 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     [products, addStock, addMovement]
   );
 
-  // Client CRUD
   const addClient = useCallback((client: Omit<Client, "id" | "compras" | "total" | "creditUsed">) => {
     setClients((prev) => [...prev, { ...client, id: crypto.randomUUID(), compras: 0, total: 0, creditUsed: 0 }]);
   }, []);
@@ -275,7 +319,6 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     setClients((prev) => prev.filter((c) => c.id !== id));
   }, []);
 
-  // Fiado (debt)
   const createDebt = useCallback((clientId: string, amount: number): string | null => {
     const client = clients.find((c) => c.id === clientId);
     if (!client) return null;
@@ -293,17 +336,21 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       if (d.id !== debtId) return d;
       const newPaid = Math.min(d.amount, d.paid + amount);
       const actualPayment = newPaid - d.paid;
-      // Restore credit
       setClients((pc) => pc.map((c) => c.id === d.clientId ? { ...c, creditUsed: Math.max(0, c.creditUsed - actualPayment) } : c));
       return { ...d, paid: newPaid, payments: [...d.payments, { id: crypto.randomUUID(), amount: actualPayment, date: new Date(), method }] };
     }));
   }, []);
 
   // Cash register
-  const openCashRegister = useCallback((openingBalance: number, operatorId: string) => {
+  const openCashRegister = useCallback((openingBalance: number, operatorId: string, terminalId: string) => {
     const op = operators.find(o => o.id === operatorId);
-    setCashRegister({ id: crypto.randomUUID(), operatorId, operatorName: op?.nome || "Operador", openedAt: new Date(), closedAt: null, openingBalance, sales: [], withdrawals: [], deposits: [] });
-  }, [operators]);
+    const term = terminals.find(t => t.id === terminalId);
+    setCashRegister({
+      id: crypto.randomUUID(), operatorId, operatorName: op?.nome || "Operador",
+      terminalId, terminalName: term?.nome || "Caixa",
+      openedAt: new Date(), closedAt: null, openingBalance, sales: [], withdrawals: [], deposits: [],
+    });
+  }, [operators, terminals]);
 
   const closeCashRegister = useCallback(() => {
     if (!cashRegister) return null;
@@ -331,14 +378,27 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     setOperators((prev) => prev.filter((o) => o.id !== id));
   }, []);
 
+  // Terminals CRUD
+  const addTerminal = useCallback((t: Omit<Terminal, "id">) => {
+    setTerminals((prev) => [...prev, { ...t, id: crypto.randomUUID() }]);
+  }, []);
+  const updateTerminal = useCallback((id: string, data: Partial<Terminal>) => {
+    setTerminals((prev) => prev.map((t) => (t.id === id ? { ...t, ...data } : t)));
+  }, []);
+  const deleteTerminal = useCallback((id: string) => {
+    setTerminals((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
   return (
     <ProductContext.Provider value={{
-      products, movements, clients, debts, sales, cashRegister, operators,
+      products, movements, clients, debts, sales, cashRegister, operators, terminals, actionLogs, adminPin,
       addProduct, updateProduct, deleteProduct, sellProducts, cancelSale, addStock, importXML,
       addClient, updateClient, deleteClient,
       createDebt, payDebt,
       openCashRegister, closeCashRegister, addWithdrawal, addDeposit,
       addOperator, updateOperator, deleteOperator,
+      addTerminal, updateTerminal, deleteTerminal,
+      addActionLog, setAdminPin,
     }}>
       {children}
     </ProductContext.Provider>

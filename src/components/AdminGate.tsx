@@ -1,0 +1,55 @@
+import { useState } from "react";
+import { useProducts } from "@/contexts/ProductContext";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Lock } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+
+interface AdminGateProps {
+  children: React.ReactNode;
+}
+
+export default function AdminGate({ children }: AdminGateProps) {
+  const { adminPin } = useProducts();
+  const [authenticated, setAuthenticated] = useState(false);
+  const [pin, setPin] = useState("");
+
+  const handleSubmit = () => {
+    if (pin === adminPin) {
+      setAuthenticated(true);
+    } else {
+      toast({ title: "PIN incorreto", description: "Acesso negado à área administrativa.", variant: "destructive" });
+      setPin("");
+    }
+  };
+
+  if (authenticated) return <>{children}</>;
+
+  return (
+    <div className="flex items-center justify-center h-screen bg-background">
+      <div className="w-full max-w-sm mx-4 bg-card border border-border rounded-2xl p-8 space-y-6 shadow-lg">
+        <div className="text-center space-y-2">
+          <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+            <Lock className="h-8 w-8 text-primary" />
+          </div>
+          <h1 className="text-xl font-bold text-foreground">Área Administrativa</h1>
+          <p className="text-sm text-muted-foreground">Digite o PIN do administrador para acessar</p>
+        </div>
+        <Input
+          type="password"
+          inputMode="numeric"
+          maxLength={6}
+          placeholder="PIN"
+          value={pin}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+          className="h-14 text-2xl text-center tracking-[0.5em]"
+          autoFocus
+          onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+        />
+        <Button onClick={handleSubmit} disabled={!pin} className="w-full h-14 text-base">
+          Acessar
+        </Button>
+      </div>
+    </div>
+  );
+}
