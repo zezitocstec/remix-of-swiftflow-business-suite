@@ -4,6 +4,7 @@ import { Building2, Printer, Receipt, Shield, Users } from "lucide-react";
 import EmpresaForm from "@/components/config/EmpresaForm";
 import ImpressoraConfig from "@/components/config/ImpressoraConfig";
 import VendaConfig from "@/components/config/VendaConfig";
+import OperadoresConfig from "@/components/config/OperadoresConfig";
 
 const tabs = [
   { id: "empresa", icon: Building2, label: "Empresa" },
