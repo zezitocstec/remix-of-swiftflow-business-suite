@@ -113,11 +113,17 @@ const initialClients: Client[] = [
   { id: "4", nome: "Ana Costa", cpfCnpj: "321.654.987-00", telefone: "(31) 96666-3456", email: "ana@email.com", dataNascimento: "1992-03-08", observacoes: "", creditLimit: 200, creditUsed: 0, compras: 5, total: 430.20 },
 ];
 
+const initialOperators: Operator[] = [
+  { id: "op-admin", nome: "Administrador", pin: "1234", ativo: true, permissions: { abrirCaixa: true, cancelarItem: true, cancelarCupom: true } },
+  { id: "op-1", nome: "Operador 1", pin: "0000", ativo: true, permissions: { abrirCaixa: true, cancelarItem: false, cancelarCupom: false } },
+];
+
 export function ProductProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [debts, setDebts] = useState<DebtRecord[]>([]);
+  const [operators, setOperators] = useState<Operator[]>(initialOperators);
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [cashRegister, setCashRegister] = useState<CashRegister | null>(null);
 
