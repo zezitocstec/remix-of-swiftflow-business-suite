@@ -105,12 +105,13 @@ export default function PDV() {
   }, []);
 
   const removeItem = useCallback((id: string) => {
-    if (!hasPermission("cancelarItem")) {
+    const op = selectedOperator || (cashRegister ? operators.find(o => o.id === cashRegister.operatorId) : null);
+    if (!op?.permissions.cancelarItem) {
       toast({ title: "Sem permissão", description: "Você não tem permissão para cancelar itens.", variant: "destructive" });
       return;
     }
     setCart((prev) => prev.filter((i) => i.product.id !== id));
-  }, [currentOperator]);
+  }, [selectedOperator, cashRegister, operators]);
 
   const clearCart = () => {
     setCart([]);
