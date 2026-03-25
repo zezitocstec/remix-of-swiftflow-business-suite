@@ -13,11 +13,12 @@ import { usePDVShortcuts } from "@/hooks/usePDVShortcuts";
 import { printReceipt } from "@/components/pdv/ReceiptPrint";
 
 export default function PDV() {
-  const { products, sellProducts, cancelSale, clients, createDebt, debts, payDebt, sales, cashRegister, openCashRegister } = useProducts();
+  const { products, sellProducts, cancelSale, clients, createDebt, debts, payDebt, sales, cashRegister, openCashRegister, operators } = useProducts();
 
-  // Setup state — operator name + opening balance
-  const [setupStep, setSetupStep] = useState<"operator" | "balance" | null>(null);
-  const [operatorName, setOperatorName] = useState("");
+  // Setup state — operator selection + PIN + opening balance
+  const [setupStep, setSetupStep] = useState<"operator" | "pin" | "balance" | null>(null);
+  const [selectedOperator, setSelectedOperator] = useState<Operator | null>(null);
+  const [pinInput, setPinInput] = useState("");
   const [setupBalance, setSetupBalance] = useState("");
 
   // Show setup on mount if no cash register is open
