@@ -217,25 +217,26 @@ export default function PDV() {
     clearCart();
   };
 
-  const handleCancelSale = () => {
-    if (!hasPermission("cancelarCupom")) {
-      toast({ title: "Sem permissão", description: "Você não tem permissão para cancelar cupons.", variant: "destructive" });
-      setCancelDialogOpen(false);
-      return;
-    }
+  const executeCancelSale = (authorizer: Operator) => {
     if (lastSaleId) {
       cancelSale(lastSaleId);
-      if (currentOperator && currentTerminal) {
+      if (currentTerminal) {
         addActionLog({
-          type: "cancelamento_cupom", operatorId: currentOperator.id, operatorName: currentOperator.nome,
+          type: "cancelamento_cupom", operatorId: currentOperator?.id || authorizer.id, operatorName: currentOperator?.nome || authorizer.nome,
           terminalId: currentTerminal.id, terminalName: currentTerminal.nome,
-          description: `Cupom cancelado #${lastSaleId.slice(0, 8)}`, saleId: lastSaleId,
+          description: `Cupom cancelado #${lastSaleId.slice(0, 8)}${authorizer.id !== currentOperator?.id ? ` • Autorizado por: ${authorizer.nome}` : ""}`,
+          saleId: lastSaleId,
         });
       }
       toast({ title: "Venda cancelada", description: "Estoque restaurado." });
       setLastSaleId(null);
     }
     setCancelDialogOpen(false);
+  };
+
+  const handleCancelSale = () => {
+    setCancelDialogOpen(false);
+    requestAuth("cancelarCupom");
   };
 
   const parkSale = (customerName: string) => {
