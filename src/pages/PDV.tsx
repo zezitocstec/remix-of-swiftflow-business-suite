@@ -134,21 +134,23 @@ export default function PDV() {
     });
   }, []);
 
-  const removeItem = useCallback((id: string) => {
-    if (!hasPermission("cancelarItem")) {
-      toast({ title: "Sem permissão", description: "Você não tem permissão para cancelar itens.", variant: "destructive" });
-      return;
-    }
+  const executeRemoveItem = (id: string, authorizer: Operator) => {
     const item = cart.find(i => i.product.id === id);
-    if (item && currentOperator && currentTerminal) {
+    if (item && currentTerminal) {
       addActionLog({
-        type: "cancelamento_item", operatorId: currentOperator.id, operatorName: currentOperator.nome,
+        type: "cancelamento_item", operatorId: currentOperator?.id || authorizer.id, operatorName: currentOperator?.nome || authorizer.nome,
         terminalId: currentTerminal.id, terminalName: currentTerminal.nome,
-        description: `Item removido: ${item.product.name} (${item.quantity}x)`, amount: item.product.price * item.quantity,
+        description: `Item removido: ${item.product.name} (${item.quantity}x)${authorizer.id !== currentOperator?.id ? ` • Autorizado por: ${authorizer.nome}` : ""}`,
+        amount: item.product.price * item.quantity,
       });
     }
     setCart((prev) => prev.filter((i) => i.product.id !== id));
-  }, [currentOperator, currentTerminal, cart, addActionLog]);
+    toast({ title: "Item removido", description: `${item?.product.name} removido do carrinho.` });
+  };
+
+  const removeItem = useCallback((id: string) => {
+    requestAuth("cancelarItem", id);
+  }, [currentOperator, currentTerminal, cart, operators]);
 
   const clearCart = () => {
     setCart([]);
