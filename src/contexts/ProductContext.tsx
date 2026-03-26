@@ -63,6 +63,7 @@ export interface ActionLog {
   description: string;
   amount?: number;
   saleId?: string;
+  authorizedBy?: string;
   date: Date;
 }
 
