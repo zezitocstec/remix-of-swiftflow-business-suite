@@ -48,7 +48,6 @@ export default function PDV() {
 
   const currentOperator = selectedOperator || (cashRegister ? operators.find(o => o.id === cashRegister.operatorId) : null);
   const currentTerminal = selectedTerminal || (cashRegister ? terminals.find(t => t.id === cashRegister.terminalId) : null);
-  const hasPermission = (perm: keyof Operator["permissions"]) => currentOperator?.permissions[perm] ?? false;
 
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -67,6 +66,40 @@ export default function PDV() {
   const [selectedDebtorId, setSelectedDebtorId] = useState<string | null>(null);
   const [debtPayAmount, setDebtPayAmount] = useState("");
   const [debtPayMethod, setDebtPayMethod] = useState("Dinheiro");
+
+  // PIN authorization state for cancellations
+  const [authDialog, setAuthDialog] = useState<{ type: "cancelarItem" | "cancelarCupom"; itemId?: string } | null>(null);
+  const [authPin, setAuthPin] = useState("");
+  const [authError, setAuthError] = useState("");
+
+  const requestAuth = (type: "cancelarItem" | "cancelarCupom", itemId?: string) => {
+    // Check if current operator already has the permission
+    if (currentOperator?.permissions[type]) {
+      if (type === "cancelarItem" && itemId) executeRemoveItem(itemId, currentOperator);
+      else if (type === "cancelarCupom") executeCancelSale(currentOperator);
+      return;
+    }
+    setAuthDialog({ type, itemId });
+    setAuthPin("");
+    setAuthError("");
+  };
+
+  const validateAuth = () => {
+    if (!authDialog) return;
+    const authorizer = operators.find(o => o.ativo && o.pin === authPin && o.permissions[authDialog.type]);
+    if (!authorizer) {
+      setAuthError("PIN inválido ou operador sem permissão");
+      setAuthPin("");
+      return;
+    }
+    if (authDialog.type === "cancelarItem" && authDialog.itemId) {
+      executeRemoveItem(authDialog.itemId, authorizer);
+    } else if (authDialog.type === "cancelarCupom") {
+      executeCancelSale(authorizer);
+    }
+    setAuthDialog(null);
+    setAuthPin("");
+  };
 
   const addToCart = useCallback((product: Product) => {
     if (product.stock <= 0) {
