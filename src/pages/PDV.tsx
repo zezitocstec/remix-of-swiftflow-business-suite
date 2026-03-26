@@ -48,7 +48,6 @@ export default function PDV() {
 
   const currentOperator = selectedOperator || (cashRegister ? operators.find(o => o.id === cashRegister.operatorId) : null);
   const currentTerminal = selectedTerminal || (cashRegister ? terminals.find(t => t.id === cashRegister.terminalId) : null);
-  const hasPermission = (perm: keyof Operator["permissions"]) => currentOperator?.permissions[perm] ?? false;
 
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -67,6 +66,40 @@ export default function PDV() {
   const [selectedDebtorId, setSelectedDebtorId] = useState<string | null>(null);
   const [debtPayAmount, setDebtPayAmount] = useState("");
   const [debtPayMethod, setDebtPayMethod] = useState("Dinheiro");
+
+  // PIN authorization state for cancellations
+  const [authDialog, setAuthDialog] = useState<{ type: "cancelarItem" | "cancelarCupom"; itemId?: string } | null>(null);
+  const [authPin, setAuthPin] = useState("");
+  const [authError, setAuthError] = useState("");
+
+  const requestAuth = (type: "cancelarItem" | "cancelarCupom", itemId?: string) => {
+    // Check if current operator already has the permission
+    if (currentOperator?.permissions[type]) {
+      if (type === "cancelarItem" && itemId) executeRemoveItem(itemId, currentOperator);
+      else if (type === "cancelarCupom") executeCancelSale(currentOperator);
+      return;
+    }
+    setAuthDialog({ type, itemId });
+    setAuthPin("");
+    setAuthError("");
+  };
+
+  const validateAuth = () => {
+    if (!authDialog) return;
+    const authorizer = operators.find(o => o.ativo && o.pin === authPin && o.permissions[authDialog.type]);
+    if (!authorizer) {
+      setAuthError("PIN inválido ou operador sem permissão");
+      setAuthPin("");
+      return;
+    }
+    if (authDialog.type === "cancelarItem" && authDialog.itemId) {
+      executeRemoveItem(authDialog.itemId, authorizer);
+    } else if (authDialog.type === "cancelarCupom") {
+      executeCancelSale(authorizer);
+    }
+    setAuthDialog(null);
+    setAuthPin("");
+  };
 
   const addToCart = useCallback((product: Product) => {
     if (product.stock <= 0) {
@@ -101,21 +134,23 @@ export default function PDV() {
     });
   }, []);
 
-  const removeItem = useCallback((id: string) => {
-    if (!hasPermission("cancelarItem")) {
-      toast({ title: "Sem permissão", description: "Você não tem permissão para cancelar itens.", variant: "destructive" });
-      return;
-    }
+  const executeRemoveItem = (id: string, authorizer: Operator) => {
     const item = cart.find(i => i.product.id === id);
-    if (item && currentOperator && currentTerminal) {
+    if (item && currentTerminal) {
       addActionLog({
-        type: "cancelamento_item", operatorId: currentOperator.id, operatorName: currentOperator.nome,
+        type: "cancelamento_item", operatorId: currentOperator?.id || authorizer.id, operatorName: currentOperator?.nome || authorizer.nome,
         terminalId: currentTerminal.id, terminalName: currentTerminal.nome,
-        description: `Item removido: ${item.product.name} (${item.quantity}x)`, amount: item.product.price * item.quantity,
+        description: `Item removido: ${item.product.name} (${item.quantity}x)${authorizer.id !== currentOperator?.id ? ` • Autorizado por: ${authorizer.nome}` : ""}`,
+        amount: item.product.price * item.quantity,
       });
     }
     setCart((prev) => prev.filter((i) => i.product.id !== id));
-  }, [currentOperator, currentTerminal, cart, addActionLog]);
+    toast({ title: "Item removido", description: `${item?.product.name} removido do carrinho.` });
+  };
+
+  const removeItem = useCallback((id: string) => {
+    requestAuth("cancelarItem", id);
+  }, [currentOperator, currentTerminal, cart, operators]);
 
   const clearCart = () => {
     setCart([]);
@@ -182,25 +217,26 @@ export default function PDV() {
     clearCart();
   };
 
-  const handleCancelSale = () => {
-    if (!hasPermission("cancelarCupom")) {
-      toast({ title: "Sem permissão", description: "Você não tem permissão para cancelar cupons.", variant: "destructive" });
-      setCancelDialogOpen(false);
-      return;
-    }
+  const executeCancelSale = (authorizer: Operator) => {
     if (lastSaleId) {
       cancelSale(lastSaleId);
-      if (currentOperator && currentTerminal) {
+      if (currentTerminal) {
         addActionLog({
-          type: "cancelamento_cupom", operatorId: currentOperator.id, operatorName: currentOperator.nome,
+          type: "cancelamento_cupom", operatorId: currentOperator?.id || authorizer.id, operatorName: currentOperator?.nome || authorizer.nome,
           terminalId: currentTerminal.id, terminalName: currentTerminal.nome,
-          description: `Cupom cancelado #${lastSaleId.slice(0, 8)}`, saleId: lastSaleId,
+          description: `Cupom cancelado #${lastSaleId.slice(0, 8)}${authorizer.id !== currentOperator?.id ? ` • Autorizado por: ${authorizer.nome}` : ""}`,
+          saleId: lastSaleId,
         });
       }
       toast({ title: "Venda cancelada", description: "Estoque restaurado." });
       setLastSaleId(null);
     }
     setCancelDialogOpen(false);
+  };
+
+  const handleCancelSale = () => {
+    setCancelDialogOpen(false);
+    requestAuth("cancelarCupom");
   };
 
   const parkSale = (customerName: string) => {
@@ -493,6 +529,37 @@ export default function PDV() {
               Não imprimir
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* PIN Authorization Dialog */}
+      <Dialog open={!!authDialog} onOpenChange={() => setAuthDialog(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-destructive" />
+              Autorização Necessária
+            </DialogTitle>
+            <DialogDescription>
+              {authDialog?.type === "cancelarItem" ? "Cancelamento de item" : "Cancelamento de cupom"} requer PIN de um operador autorizado.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              type="password" inputMode="numeric" maxLength={6}
+              placeholder="PIN do autorizador"
+              value={authPin}
+              onChange={(e) => { setAuthPin(e.target.value.replace(/\D/g, "")); setAuthError(""); }}
+              className="h-14 text-2xl text-center tracking-[0.5em]"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === "Enter" && authPin) validateAuth(); }}
+            />
+            {authError && <p className="text-xs text-destructive text-center">{authError}</p>}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setAuthDialog(null)} className="touch-manipulation">Cancelar</Button>
+            <Button variant="destructive" onClick={validateAuth} disabled={!authPin} className="touch-manipulation">Autorizar</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
