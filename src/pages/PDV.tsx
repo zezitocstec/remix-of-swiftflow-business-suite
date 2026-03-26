@@ -531,6 +531,37 @@ export default function PDV() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* PIN Authorization Dialog */}
+      <Dialog open={!!authDialog} onOpenChange={() => setAuthDialog(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-destructive" />
+              Autorização Necessária
+            </DialogTitle>
+            <DialogDescription>
+              {authDialog?.type === "cancelarItem" ? "Cancelamento de item" : "Cancelamento de cupom"} requer PIN de um operador autorizado.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              type="password" inputMode="numeric" maxLength={6}
+              placeholder="PIN do autorizador"
+              value={authPin}
+              onChange={(e) => { setAuthPin(e.target.value.replace(/\D/g, "")); setAuthError(""); }}
+              className="h-14 text-2xl text-center tracking-[0.5em]"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === "Enter" && authPin) validateAuth(); }}
+            />
+            {authError && <p className="text-xs text-destructive text-center">{authError}</p>}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setAuthDialog(null)} className="touch-manipulation">Cancelar</Button>
+            <Button variant="destructive" onClick={validateAuth} disabled={!authPin} className="touch-manipulation">Autorizar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
