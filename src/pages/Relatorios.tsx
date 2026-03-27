@@ -622,7 +622,7 @@ export default function Relatorios() {
         {view === "curva-abc" && <CurvaABC />}
         {view === "vendas-terminal" && <VendasTerminal />}
 
-        {view === "faturamento" && <p className="text-sm text-muted-foreground text-center py-8">Relatório de faturamento — em breve.</p>}
+        {view === "faturamento" && <Faturamento />}
         {view === "estoque" && <p className="text-sm text-muted-foreground text-center py-8">Relatório de estoque — em breve.</p>}
         {view === "financeiro" && <p className="text-sm text-muted-foreground text-center py-8">Relatório financeiro — em breve.</p>}
       </div>

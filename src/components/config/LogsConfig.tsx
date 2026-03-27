@@ -1,13 +1,14 @@
 import { useState, useMemo } from "react";
 import { useProducts } from "@/contexts/ProductContext";
 import { formatBRL } from "@/lib/mock-data";
-import { Clock, User, Monitor, ShoppingCart, XCircle, ArrowUpRight, ArrowDownLeft, Lock, Unlock, Filter, CalendarIcon } from "lucide-react";
+import { Clock, User, Monitor, ShoppingCart, XCircle, ArrowUpRight, ArrowDownLeft, Lock, Unlock, Filter, CalendarIcon, Download } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { exportLogsCSV } from "@/lib/export-utils";
 
 const typeLabels: Record<string, { label: string; color: string; Icon: any }> = {
   abertura_caixa: { label: "Abertura de Caixa", color: "bg-success/10 text-success", Icon: Unlock },
