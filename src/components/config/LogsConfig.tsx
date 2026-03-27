@@ -83,6 +83,16 @@ export default function LogsConfig() {
           <Button variant="outline" size="sm" onClick={() => exportLogsCSV(filtered)} className="text-xs h-7">
             <Download className="h-3 w-3 mr-1" /> CSV
           </Button>
+          <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => {
+            const headers = ["Data/Hora", "Tipo", "Operador", "Terminal", "Descrição", "Valor"];
+            const rows = filtered.map(l => [
+              `${l.date.toLocaleDateString("pt-BR")} ${l.date.toLocaleTimeString("pt-BR")}`,
+              typeLabels[l.type]?.label || l.type, l.operatorName, l.terminalName, l.description, l.amount ? formatBRL(l.amount) : "—",
+            ]);
+            exportReportPDF("Histórico de Ações", headers, rows);
+          }}>
+            <FileText className="h-3 w-3 mr-1" /> PDF
+          </Button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="space-y-1">
