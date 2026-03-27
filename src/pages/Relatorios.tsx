@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { TopBar } from "@/components/TopBar";
 import { useProducts } from "@/contexts/ProductContext";
 import { formatBRL } from "@/lib/mock-data";
-import { BarChart3, DollarSign, Package, TrendingUp, ArrowLeft, Monitor, CalendarIcon, Download, LineChart as LineChartIcon } from "lucide-react";
+import { BarChart3, DollarSign, Package, TrendingUp, ArrowLeft, Monitor, CalendarIcon, Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -11,6 +11,9 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { exportSalesCSV, exportRevenueCSV } from "@/lib/export-utils";
+import { exportReportPDF } from "@/lib/export-pdf";
+import EstoqueReport from "@/components/reports/EstoqueReport";
+import FinanceiroReport from "@/components/reports/FinanceiroReport";
 
 type ReportView = "menu" | "faturamento" | "vendas-terminal" | "estoque" | "financeiro" | "curva-abc";
 
