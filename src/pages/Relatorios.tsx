@@ -101,9 +101,22 @@ function Faturamento() {
       <div className="rounded-md border border-border bg-card p-4">
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-medium text-foreground">Filtros</span>
-          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => exportRevenueCSV(exportData)}>
-            <Download className="h-3 w-3 mr-1" /> Exportar CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => exportRevenueCSV(exportData)}>
+              <Download className="h-3 w-3 mr-1" /> CSV
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => {
+              const headers = ["Mês", "Vendas", "Faturamento", "Ticket Médio"];
+              const rows = monthlyData.map(d => [d.label, String(d.sales), formatBRL(d.revenue), formatBRL(d.ticket)]);
+              exportReportPDF("Relatório de Faturamento", headers, rows, [
+                { label: "Faturamento Total", value: formatBRL(totalRevenue) },
+                { label: "Total de Vendas", value: String(totalSales) },
+                { label: "Ticket Médio", value: formatBRL(ticketMedio) },
+              ]);
+            }}>
+              <FileText className="h-3 w-3 mr-1" /> PDF
+            </Button>
+          </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
