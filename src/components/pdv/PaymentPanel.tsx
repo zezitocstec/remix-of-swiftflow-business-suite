@@ -152,15 +152,15 @@ export default function PaymentPanel({ total, onFinalize, onCancel, selectedClie
             </div>
           )}
 
-          {/* Cash change calculator */}
+      {/* Cash change calculator (optional) */}
           {hasCash && totalPaid >= total && (
             <div className="border border-border rounded-lg p-3 space-y-2">
               <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                <Calculator className="h-3.5 w-3.5" /> Troco
+                <Calculator className="h-3.5 w-3.5" /> Troco (opcional)
               </div>
               <Input type="number" inputMode="decimal" placeholder="Valor recebido em dinheiro"
-                value={cashReceived} onChange={(e) => setCashReceived(e.target.value)} className="h-10 text-sm" autoFocus />
-              {cashReceivedNum > 0 && (
+                value={cashReceived} onChange={(e) => setCashReceived(e.target.value)} className="h-10 text-sm" />
+              {cashReceivedNum > 0 && cashReceivedNum >= cashAmount && (
                 <div className="flex justify-between items-baseline">
                   <span className="text-xs text-muted-foreground">Troco</span>
                   <span className={`text-lg font-bold tabular-nums ${change > 0 ? "text-success" : "text-foreground"}`}>{formatBRL(change)}</span>
