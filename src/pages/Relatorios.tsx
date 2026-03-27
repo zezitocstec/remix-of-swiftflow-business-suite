@@ -233,7 +233,7 @@ function Faturamento() {
   );
 }
 
-// ─── Vendas por Terminal ───
+function VendasTerminal() {
   const { sales, terminals } = useProducts();
   const [filterTerminal, setFilterTerminal] = useState("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
