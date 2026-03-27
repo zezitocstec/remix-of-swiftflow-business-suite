@@ -9,6 +9,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { exportLogsCSV } from "@/lib/export-utils";
+import { exportReportPDF } from "@/lib/export-pdf";
 
 const typeLabels: Record<string, { label: string; color: string; Icon: any }> = {
   abertura_caixa: { label: "Abertura de Caixa", color: "bg-success/10 text-success", Icon: Unlock },
