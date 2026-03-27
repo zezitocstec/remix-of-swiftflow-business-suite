@@ -316,9 +316,27 @@ function VendasTerminal() {
       <div className="rounded-md border border-border bg-card p-4">
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-medium text-foreground">Filtros</span>
-          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => exportSalesCSV(filtered)}>
-            <Download className="h-3 w-3 mr-1" /> Exportar CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => exportSalesCSV(filtered)}>
+              <Download className="h-3 w-3 mr-1" /> CSV
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => {
+              const headers = ["Data/Hora", "Terminal", "Operador", "Itens", "Pagamento", "Total"];
+              const rows = filtered.map(s => [
+                `${s.date.toLocaleDateString("pt-BR")} ${s.date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`,
+                s.terminalName || "—", s.operatorName || "—",
+                String(s.items.reduce((acc, i) => acc + i.quantity, 0)),
+                s.methods.map(m => m.method).join("+"), formatBRL(s.total),
+              ]);
+              exportReportPDF("Vendas por Terminal", headers, rows, [
+                { label: "Faturamento", value: formatBRL(stats.totalRevenue) },
+                { label: "Vendas", value: String(stats.totalSales) },
+                { label: "Ticket Médio", value: formatBRL(stats.ticketMedio) },
+              ]);
+            }}>
+              <FileText className="h-3 w-3 mr-1" /> PDF
+            </Button>
+          </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="space-y-1">
