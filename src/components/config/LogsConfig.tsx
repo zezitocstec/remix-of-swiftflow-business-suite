@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useProducts } from "@/contexts/ProductContext";
 import { formatBRL } from "@/lib/mock-data";
-import { Clock, User, Monitor, ShoppingCart, XCircle, ArrowUpRight, ArrowDownLeft, Lock, Unlock, Filter, CalendarIcon, Download } from "lucide-react";
+import { Clock, User, Monitor, ShoppingCart, XCircle, ArrowUpRight, ArrowDownLeft, Lock, Unlock, Filter, CalendarIcon, Download, FileText } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -9,6 +9,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { exportLogsCSV } from "@/lib/export-utils";
+import { exportReportPDF } from "@/lib/export-pdf";
 
 const typeLabels: Record<string, { label: string; color: string; Icon: any }> = {
   abertura_caixa: { label: "Abertura de Caixa", color: "bg-success/10 text-success", Icon: Unlock },
@@ -81,6 +82,16 @@ export default function LogsConfig() {
           )}
           <Button variant="outline" size="sm" onClick={() => exportLogsCSV(filtered)} className="text-xs h-7">
             <Download className="h-3 w-3 mr-1" /> CSV
+          </Button>
+          <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => {
+            const headers = ["Data/Hora", "Tipo", "Operador", "Terminal", "Descrição", "Valor"];
+            const rows = filtered.map(l => [
+              `${l.date.toLocaleDateString("pt-BR")} ${l.date.toLocaleTimeString("pt-BR")}`,
+              typeLabels[l.type]?.label || l.type, l.operatorName, l.terminalName, l.description, l.amount ? formatBRL(l.amount) : "—",
+            ]);
+            exportReportPDF("Histórico de Ações", headers, rows);
+          }}>
+            <FileText className="h-3 w-3 mr-1" /> PDF
           </Button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

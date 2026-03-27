@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { TopBar } from "@/components/TopBar";
 import { useProducts } from "@/contexts/ProductContext";
 import { formatBRL } from "@/lib/mock-data";
-import { BarChart3, DollarSign, Package, TrendingUp, ArrowLeft, Monitor, CalendarIcon, Download, LineChart as LineChartIcon } from "lucide-react";
+import { BarChart3, DollarSign, Package, TrendingUp, ArrowLeft, Monitor, CalendarIcon, Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -11,6 +11,9 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { exportSalesCSV, exportRevenueCSV } from "@/lib/export-utils";
+import { exportReportPDF } from "@/lib/export-pdf";
+import EstoqueReport from "@/components/reports/EstoqueReport";
+import FinanceiroReport from "@/components/reports/FinanceiroReport";
 
 type ReportView = "menu" | "faturamento" | "vendas-terminal" | "estoque" | "financeiro" | "curva-abc";
 
@@ -98,9 +101,22 @@ function Faturamento() {
       <div className="rounded-md border border-border bg-card p-4">
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-medium text-foreground">Filtros</span>
-          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => exportRevenueCSV(exportData)}>
-            <Download className="h-3 w-3 mr-1" /> Exportar CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => exportRevenueCSV(exportData)}>
+              <Download className="h-3 w-3 mr-1" /> CSV
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => {
+              const headers = ["Mês", "Vendas", "Faturamento", "Ticket Médio"];
+              const rows = monthlyData.map(d => [d.label, String(d.sales), formatBRL(d.revenue), formatBRL(d.ticket)]);
+              exportReportPDF("Relatório de Faturamento", headers, rows, [
+                { label: "Faturamento Total", value: formatBRL(totalRevenue) },
+                { label: "Total de Vendas", value: String(totalSales) },
+                { label: "Ticket Médio", value: formatBRL(ticketMedio) },
+              ]);
+            }}>
+              <FileText className="h-3 w-3 mr-1" /> PDF
+            </Button>
+          </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
@@ -300,9 +316,27 @@ function VendasTerminal() {
       <div className="rounded-md border border-border bg-card p-4">
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-medium text-foreground">Filtros</span>
-          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => exportSalesCSV(filtered)}>
-            <Download className="h-3 w-3 mr-1" /> Exportar CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => exportSalesCSV(filtered)}>
+              <Download className="h-3 w-3 mr-1" /> CSV
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => {
+              const headers = ["Data/Hora", "Terminal", "Operador", "Itens", "Pagamento", "Total"];
+              const rows = filtered.map(s => [
+                `${s.date.toLocaleDateString("pt-BR")} ${s.date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`,
+                s.terminalName || "—", s.operatorName || "—",
+                String(s.items.reduce((acc, i) => acc + i.quantity, 0)),
+                s.methods.map(m => m.method).join("+"), formatBRL(s.total),
+              ]);
+              exportReportPDF("Vendas por Terminal", headers, rows, [
+                { label: "Faturamento", value: formatBRL(stats.totalRevenue) },
+                { label: "Vendas", value: String(stats.totalSales) },
+                { label: "Ticket Médio", value: formatBRL(stats.ticketMedio) },
+              ]);
+            }}>
+              <FileText className="h-3 w-3 mr-1" /> PDF
+            </Button>
+          </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="space-y-1">
@@ -623,8 +657,8 @@ export default function Relatorios() {
         {view === "vendas-terminal" && <VendasTerminal />}
 
         {view === "faturamento" && <Faturamento />}
-        {view === "estoque" && <p className="text-sm text-muted-foreground text-center py-8">Relatório de estoque — em breve.</p>}
-        {view === "financeiro" && <p className="text-sm text-muted-foreground text-center py-8">Relatório financeiro — em breve.</p>}
+        {view === "estoque" && <EstoqueReport />}
+        {view === "financeiro" && <FinanceiroReport />}
       </div>
     </div>
   );
