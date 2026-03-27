@@ -296,8 +296,14 @@ function VendasTerminal() {
 
   return (
     <div className="space-y-6">
-      {/* Filters */}
+      {/* Filters + Export */}
       <div className="rounded-md border border-border bg-card p-4">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-sm font-medium text-foreground">Filtros</span>
+          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => exportSalesCSV(filtered)}>
+            <Download className="h-3 w-3 mr-1" /> Exportar CSV
+          </Button>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="space-y-1">
             <label className="text-xs text-muted-foreground">Terminal</label>
