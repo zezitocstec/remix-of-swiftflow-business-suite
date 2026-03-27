@@ -62,7 +62,7 @@ export default function PaymentPanel({ total, onFinalize, onCancel, selectedClie
     addPayment(selectedMethod, amt);
   };
 
-  const canFinalize = totalPaid >= total && (!hasCash || cashReceivedNum >= cashAmount);
+  const canFinalize = totalPaid >= total;
 
   const handleFinalize = () => {
     if (!canFinalize) return;
