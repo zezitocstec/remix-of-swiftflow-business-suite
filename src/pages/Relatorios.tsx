@@ -657,8 +657,8 @@ export default function Relatorios() {
         {view === "vendas-terminal" && <VendasTerminal />}
 
         {view === "faturamento" && <Faturamento />}
-        {view === "estoque" && <p className="text-sm text-muted-foreground text-center py-8">Relatório de estoque — em breve.</p>}
-        {view === "financeiro" && <p className="text-sm text-muted-foreground text-center py-8">Relatório financeiro — em breve.</p>}
+        {view === "estoque" && <EstoqueReport />}
+        {view === "financeiro" && <FinanceiroReport />}
       </div>
     </div>
   );
