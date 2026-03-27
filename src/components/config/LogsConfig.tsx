@@ -79,6 +79,9 @@ export default function LogsConfig() {
               Limpar filtros
             </Button>
           )}
+          <Button variant="outline" size="sm" onClick={() => exportLogsCSV(filtered)} className="text-xs h-7">
+            <Download className="h-3 w-3 mr-1" /> CSV
+          </Button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="space-y-1">
