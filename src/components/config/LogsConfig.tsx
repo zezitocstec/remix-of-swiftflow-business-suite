@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useProducts } from "@/contexts/ProductContext";
 import { formatBRL } from "@/lib/mock-data";
-import { Clock, User, Monitor, ShoppingCart, XCircle, ArrowUpRight, ArrowDownLeft, Lock, Unlock, Filter, CalendarIcon, Download } from "lucide-react";
+import { Clock, User, Monitor, ShoppingCart, XCircle, ArrowUpRight, ArrowDownLeft, Lock, Unlock, Filter, CalendarIcon, Download, FileText } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
