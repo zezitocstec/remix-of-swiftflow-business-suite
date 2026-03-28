@@ -419,9 +419,26 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     setTerminals((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  // Suppliers & Bills
+  const addSupplier = useCallback((s: Omit<Supplier, "id">) => {
+    setSuppliers((prev) => [...prev, { ...s, id: crypto.randomUUID() }]);
+  }, []);
+  const deleteSupplier = useCallback((id: string) => {
+    setSuppliers((prev) => prev.filter((s) => s.id !== id));
+  }, []);
+  const addBill = useCallback((b: Omit<Bill, "id">) => {
+    setBills((prev) => [...prev, { ...b, id: crypto.randomUUID() }]);
+  }, []);
+  const payBill = useCallback((id: string) => {
+    setBills((prev) => prev.map((b) => b.id === id ? { ...b, status: "pago" as const, paidAt: new Date() } : b));
+  }, []);
+  const deleteBill = useCallback((id: string) => {
+    setBills((prev) => prev.filter((b) => b.id !== id));
+  }, []);
+
   return (
     <ProductContext.Provider value={{
-      products, movements, clients, debts, sales, cashRegister, operators, terminals, actionLogs, adminPin,
+      products, movements, clients, debts, sales, cashRegister, operators, terminals, actionLogs, suppliers, bills, adminPin,
       addProduct, updateProduct, deleteProduct, sellProducts, cancelSale, addStock, importXML,
       addClient, updateClient, deleteClient,
       createDebt, payDebt,
@@ -429,6 +446,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       addOperator, updateOperator, deleteOperator,
       addTerminal, updateTerminal, deleteTerminal,
       addActionLog, setAdminPin,
+      addSupplier, deleteSupplier, addBill, payBill, deleteBill,
     }}>
       {children}
     </ProductContext.Provider>

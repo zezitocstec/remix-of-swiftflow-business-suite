@@ -15,6 +15,7 @@ const navItems = [
   { icon: Users, label: "Clientes", path: "/clientes" },
   { icon: CreditCard, label: "Caixa", path: "/caixa" },
   { icon: DollarSign, label: "Financeiro", path: "/financeiro" },
+  { icon: FileText, label: "Contas a Pagar", path: "/contas-pagar" },
   { icon: BarChart3, label: "Relatórios", path: "/relatorios" },
   { icon: Settings, label: "Configurações", path: "/configuracoes" },
 ];
