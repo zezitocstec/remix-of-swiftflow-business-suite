@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef } from "react";
+import { toast } from "@/hooks/use-toast";
 import { TopBar } from "@/components/TopBar";
 import { useProducts } from "@/contexts/ProductContext";
 import { formatBRL } from "@/lib/mock-data";
@@ -111,8 +112,50 @@ export default function Dashboard() {
     const now = new Date();
     return (bills || [])
       .filter((b) => b.status === "pendente" && new Date(b.dueDate) < now)
-      .map((b) => ({ msg: `Conta vencida: ${b.description} — ${formatBRL(b.amount)}` }));
+      .map((b) => ({ msg: `Conta vencida: ${b.description} — ${formatBRL(b.amount)}`, type: "overdue" as const }));
   }, [bills]);
+
+  // Due soon alerts (within 3 days)
+  const dueSoonAlerts = useMemo(() => {
+    const now = new Date();
+    const threeDays = new Date(now);
+    threeDays.setDate(threeDays.getDate() + 3);
+    return (bills || [])
+      .filter((b) => {
+        if (b.status !== "pendente") return false;
+        const due = new Date(b.dueDate);
+        return due >= now && due <= threeDays;
+      })
+      .map((b) => {
+        const diff = Math.ceil((new Date(b.dueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+        return { msg: `Vence em ${diff}d: ${b.description} — ${formatBRL(b.amount)}`, type: "due-soon" as const };
+      });
+  }, [bills]);
+
+  // Auto toast notifications for due-soon and overdue bills
+  const notifiedRef = useRef(false);
+  useEffect(() => {
+    if (notifiedRef.current) return;
+    const total = billAlerts.length + dueSoonAlerts.length;
+    if (total > 0) {
+      notifiedRef.current = true;
+      if (billAlerts.length > 0) {
+        toast({
+          title: `⚠️ ${billAlerts.length} conta(s) vencida(s)`,
+          description: `Total: ${formatBRL(billAlerts.reduce((s, _) => s, 0))} — Verifique Contas a Pagar`,
+          variant: "destructive",
+        });
+      }
+      if (dueSoonAlerts.length > 0) {
+        setTimeout(() => {
+          toast({
+            title: `🔔 ${dueSoonAlerts.length} conta(s) vencem em até 3 dias`,
+            description: "Verifique a seção Contas a Pagar",
+          });
+        }, billAlerts.length > 0 ? 1500 : 0);
+      }
+    }
+  }, [billAlerts, dueSoonAlerts]);
 
   // Recent logs
   const recentLogs = useMemo(() => actionLogs.slice(0, 5), [actionLogs]);
@@ -156,12 +199,18 @@ export default function Dashboard() {
           <div className="rounded-md border border-border bg-card p-4">
             <h2 className="text-sm font-semibold text-foreground mb-4">Alertas</h2>
             <div className="space-y-2 max-h-[220px] overflow-auto">
-              {stockAlerts.length === 0 && billAlerts.length === 0 && (
+              {stockAlerts.length === 0 && billAlerts.length === 0 && dueSoonAlerts.length === 0 && (
                 <p className="text-xs text-muted-foreground">Nenhum alerta no momento.</p>
               )}
               {billAlerts.map((a, i) => (
                 <div key={`bill-${i}`} className="flex items-start gap-2 p-2 rounded-md bg-destructive/10 text-sm">
                   <FileText className="h-4 w-4 text-destructive shrink-0 mt-0.5" strokeWidth={1.5} />
+                  <span className="text-foreground">{a.msg}</span>
+                </div>
+              ))}
+              {dueSoonAlerts.map((a, i) => (
+                <div key={`soon-${i}`} className="flex items-start gap-2 p-2 rounded-md bg-warning/10 text-sm">
+                  <Clock className="h-4 w-4 text-warning shrink-0 mt-0.5" strokeWidth={1.5} />
                   <span className="text-foreground">{a.msg}</span>
                 </div>
               ))}
