@@ -125,6 +125,8 @@ interface ProductContextType {
   operators: Operator[];
   terminals: Terminal[];
   actionLogs: ActionLog[];
+  suppliers: Supplier[];
+  bills: Bill[];
   adminPin: string;
   addProduct: (product: Omit<Product, "id">) => void;
   updateProduct: (id: string, data: Partial<Product>) => void;
