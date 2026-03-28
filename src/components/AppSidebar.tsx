@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ShoppingCart, Package, Warehouse, Users,
   DollarSign, BarChart3, Settings, ChevronLeft, ChevronRight, Store,
-  CreditCard,
+  CreditCard, FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
