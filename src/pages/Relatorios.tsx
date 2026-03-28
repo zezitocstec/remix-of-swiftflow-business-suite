@@ -14,8 +14,9 @@ import { exportSalesCSV, exportRevenueCSV } from "@/lib/export-utils";
 import { exportReportPDF } from "@/lib/export-pdf";
 import EstoqueReport from "@/components/reports/EstoqueReport";
 import FinanceiroReport from "@/components/reports/FinanceiroReport";
+import DespesasReport from "@/components/reports/DespesasReport";
 
-type ReportView = "menu" | "faturamento" | "vendas-terminal" | "estoque" | "financeiro" | "curva-abc";
+type ReportView = "menu" | "faturamento" | "vendas-terminal" | "estoque" | "financeiro" | "curva-abc" | "despesas";
 
 const reports = [
   { id: "faturamento" as ReportView, icon: DollarSign, title: "Faturamento", desc: "Receitas por período, comparativo mensal" },
