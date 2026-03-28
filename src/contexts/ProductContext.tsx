@@ -53,6 +53,26 @@ export interface Terminal {
   ativo: boolean;
 }
 
+export interface Supplier {
+  id: string;
+  nome: string;
+  cnpj: string;
+  telefone: string;
+  email: string;
+}
+
+export interface Bill {
+  id: string;
+  description: string;
+  amount: number;
+  dueDate: Date;
+  supplierId?: string;
+  supplierName?: string;
+  category: string;
+  status: "pendente" | "pago";
+  paidAt?: Date;
+}
+
 export interface ActionLog {
   id: string;
   type: "abertura_caixa" | "fechamento_caixa" | "venda" | "cancelamento_item" | "cancelamento_cupom" | "sangria" | "reforco";
