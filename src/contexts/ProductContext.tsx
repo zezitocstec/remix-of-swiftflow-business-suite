@@ -190,6 +190,8 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [cashRegister, setCashRegister] = useState<CashRegister | null>(null);
   const [actionLogs, setActionLogs] = useState<ActionLog[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [bills, setBills] = useState<Bill[]>([]);
   const [adminPin, setAdminPin] = useState("1234");
 
   const addActionLog = useCallback((log: Omit<ActionLog, "id" | "date">) => {
