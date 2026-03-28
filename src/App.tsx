@@ -20,6 +20,10 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+function LayoutPage({ children }: { children: React.ReactNode }) {
+  return <AppLayout>{children}</AppLayout>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -29,26 +33,17 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/pdv" element={<PDV />} />
-            <Route
-              path="*"
-              element={
-                <AppLayout>
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/produtos" element={<Produtos />} />
-                    <Route path="/estoque" element={<Estoque />} />
-                    <Route path="/clientes" element={<Clientes />} />
-                    <Route path="/financeiro" element={<Financeiro />} />
-                    <Route path="/caixa" element={<Caixa />} />
-                    <Route path="/relatorios" element={<Relatorios />} />
-                    <Route path="/relatorios/estoque" element={<RelatorioEstoque />} />
-                    <Route path="/contas-pagar" element={<ContasPagar />} />
-                    <Route path="/configuracoes" element={<Configuracoes />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </AppLayout>
-              }
-            />
+            <Route path="/" element={<LayoutPage><Index /></LayoutPage>} />
+            <Route path="/produtos" element={<LayoutPage><Produtos /></LayoutPage>} />
+            <Route path="/estoque" element={<LayoutPage><Estoque /></LayoutPage>} />
+            <Route path="/clientes" element={<LayoutPage><Clientes /></LayoutPage>} />
+            <Route path="/financeiro" element={<LayoutPage><Financeiro /></LayoutPage>} />
+            <Route path="/caixa" element={<LayoutPage><Caixa /></LayoutPage>} />
+            <Route path="/relatorios" element={<LayoutPage><Relatorios /></LayoutPage>} />
+            <Route path="/relatorios/estoque" element={<LayoutPage><RelatorioEstoque /></LayoutPage>} />
+            <Route path="/contas-pagar" element={<LayoutPage><ContasPagar /></LayoutPage>} />
+            <Route path="/configuracoes" element={<LayoutPage><Configuracoes /></LayoutPage>} />
+            <Route path="*" element={<LayoutPage><NotFound /></LayoutPage>} />
           </Routes>
         </BrowserRouter>
       </ProductProvider>
