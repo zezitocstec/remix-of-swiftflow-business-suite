@@ -53,6 +53,26 @@ export interface Terminal {
   ativo: boolean;
 }
 
+export interface Supplier {
+  id: string;
+  nome: string;
+  cnpj: string;
+  telefone: string;
+  email: string;
+}
+
+export interface Bill {
+  id: string;
+  description: string;
+  amount: number;
+  dueDate: Date;
+  supplierId?: string;
+  supplierName?: string;
+  category: string;
+  status: "pendente" | "pago";
+  paidAt?: Date;
+}
+
 export interface ActionLog {
   id: string;
   type: "abertura_caixa" | "fechamento_caixa" | "venda" | "cancelamento_item" | "cancelamento_cupom" | "sangria" | "reforco";
@@ -105,6 +125,8 @@ interface ProductContextType {
   operators: Operator[];
   terminals: Terminal[];
   actionLogs: ActionLog[];
+  suppliers: Supplier[];
+  bills: Bill[];
   adminPin: string;
   addProduct: (product: Omit<Product, "id">) => void;
   updateProduct: (id: string, data: Partial<Product>) => void;
@@ -130,6 +152,11 @@ interface ProductContextType {
   deleteTerminal: (id: string) => void;
   addActionLog: (log: Omit<ActionLog, "id" | "date">) => void;
   setAdminPin: (pin: string) => void;
+  addSupplier: (s: Omit<Supplier, "id">) => void;
+  deleteSupplier: (id: string) => void;
+  addBill: (b: Omit<Bill, "id">) => void;
+  payBill: (id: string) => void;
+  deleteBill: (id: string) => void;
 }
 
 const ProductContext = createContext<ProductContextType | null>(null);
@@ -163,6 +190,8 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [cashRegister, setCashRegister] = useState<CashRegister | null>(null);
   const [actionLogs, setActionLogs] = useState<ActionLog[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [bills, setBills] = useState<Bill[]>([]);
   const [adminPin, setAdminPin] = useState("1234");
 
   const addActionLog = useCallback((log: Omit<ActionLog, "id" | "date">) => {
@@ -390,9 +419,26 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     setTerminals((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  // Suppliers & Bills
+  const addSupplier = useCallback((s: Omit<Supplier, "id">) => {
+    setSuppliers((prev) => [...prev, { ...s, id: crypto.randomUUID() }]);
+  }, []);
+  const deleteSupplier = useCallback((id: string) => {
+    setSuppliers((prev) => prev.filter((s) => s.id !== id));
+  }, []);
+  const addBill = useCallback((b: Omit<Bill, "id">) => {
+    setBills((prev) => [...prev, { ...b, id: crypto.randomUUID() }]);
+  }, []);
+  const payBill = useCallback((id: string) => {
+    setBills((prev) => prev.map((b) => b.id === id ? { ...b, status: "pago" as const, paidAt: new Date() } : b));
+  }, []);
+  const deleteBill = useCallback((id: string) => {
+    setBills((prev) => prev.filter((b) => b.id !== id));
+  }, []);
+
   return (
     <ProductContext.Provider value={{
-      products, movements, clients, debts, sales, cashRegister, operators, terminals, actionLogs, adminPin,
+      products, movements, clients, debts, sales, cashRegister, operators, terminals, actionLogs, suppliers, bills, adminPin,
       addProduct, updateProduct, deleteProduct, sellProducts, cancelSale, addStock, importXML,
       addClient, updateClient, deleteClient,
       createDebt, payDebt,
@@ -400,6 +446,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       addOperator, updateOperator, deleteOperator,
       addTerminal, updateTerminal, deleteTerminal,
       addActionLog, setAdminPin,
+      addSupplier, deleteSupplier, addBill, payBill, deleteBill,
     }}>
       {children}
     </ProductContext.Provider>

@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ShoppingCart, Package, Warehouse, Users,
   DollarSign, BarChart3, Settings, ChevronLeft, ChevronRight, Store,
-  CreditCard,
+  CreditCard, FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +15,7 @@ const navItems = [
   { icon: Users, label: "Clientes", path: "/clientes" },
   { icon: CreditCard, label: "Caixa", path: "/caixa" },
   { icon: DollarSign, label: "Financeiro", path: "/financeiro" },
+  { icon: FileText, label: "Contas a Pagar", path: "/contas-pagar" },
   { icon: BarChart3, label: "Relatórios", path: "/relatorios" },
   { icon: Settings, label: "Configurações", path: "/configuracoes" },
 ];
