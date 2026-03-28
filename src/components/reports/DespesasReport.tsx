@@ -77,11 +77,11 @@ export default function DespesasReport() {
   }, [paidBills]);
 
   const handleExportPDF = () => {
-    const summaryData = byCategory.map((c) => ({
+    const summaryCards = byCategory.map((c) => ({
       label: c.name.charAt(0).toUpperCase() + c.name.slice(1),
       value: formatBRL(c.value),
     }));
-    summaryData.push({ label: "Total", value: formatBRL(total) });
+    summaryCards.push({ label: "Total", value: formatBRL(total) });
 
     const tableHeaders = ["Categoria", "Valor", "% do Total"];
     const tableRows = byCategory.map((c) => [
@@ -90,12 +90,7 @@ export default function DespesasReport() {
       `${((c.value / total) * 100).toFixed(1)}%`,
     ]);
 
-    exportReportPDF({
-      title: "Relatório de Despesas por Categoria",
-      summaryData,
-      tableHeaders,
-      tableRows,
-    });
+    exportReportPDF("Relatório de Despesas por Categoria", tableHeaders, tableRows, summaryCards);
   };
 
   return (
