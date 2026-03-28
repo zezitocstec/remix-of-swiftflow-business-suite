@@ -152,6 +152,11 @@ interface ProductContextType {
   deleteTerminal: (id: string) => void;
   addActionLog: (log: Omit<ActionLog, "id" | "date">) => void;
   setAdminPin: (pin: string) => void;
+  addSupplier: (s: Omit<Supplier, "id">) => void;
+  deleteSupplier: (id: string) => void;
+  addBill: (b: Omit<Bill, "id">) => void;
+  payBill: (id: string) => void;
+  deleteBill: (id: string) => void;
 }
 
 const ProductContext = createContext<ProductContextType | null>(null);
