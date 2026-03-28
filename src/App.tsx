@@ -15,6 +15,7 @@ import Relatorios from "./pages/Relatorios";
 import RelatorioEstoque from "./pages/RelatorioEstoque";
 import Caixa from "./pages/Caixa";
 import Configuracoes from "./pages/Configuracoes";
+import ContasPagar from "./pages/ContasPagar";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
