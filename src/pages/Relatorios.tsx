@@ -661,6 +661,7 @@ export default function Relatorios() {
         {view === "faturamento" && <Faturamento />}
         {view === "estoque" && <EstoqueReport />}
         {view === "financeiro" && <FinanceiroReport />}
+        {view === "despesas" && <DespesasReport />}
       </div>
     </div>
   );
