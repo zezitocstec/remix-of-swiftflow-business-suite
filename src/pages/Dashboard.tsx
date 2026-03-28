@@ -199,12 +199,18 @@ export default function Dashboard() {
           <div className="rounded-md border border-border bg-card p-4">
             <h2 className="text-sm font-semibold text-foreground mb-4">Alertas</h2>
             <div className="space-y-2 max-h-[220px] overflow-auto">
-              {stockAlerts.length === 0 && billAlerts.length === 0 && (
+              {stockAlerts.length === 0 && billAlerts.length === 0 && dueSoonAlerts.length === 0 && (
                 <p className="text-xs text-muted-foreground">Nenhum alerta no momento.</p>
               )}
               {billAlerts.map((a, i) => (
                 <div key={`bill-${i}`} className="flex items-start gap-2 p-2 rounded-md bg-destructive/10 text-sm">
                   <FileText className="h-4 w-4 text-destructive shrink-0 mt-0.5" strokeWidth={1.5} />
+                  <span className="text-foreground">{a.msg}</span>
+                </div>
+              ))}
+              {dueSoonAlerts.map((a, i) => (
+                <div key={`soon-${i}`} className="flex items-start gap-2 p-2 rounded-md bg-warning/10 text-sm">
+                  <Clock className="h-4 w-4 text-warning shrink-0 mt-0.5" strokeWidth={1.5} />
                   <span className="text-foreground">{a.msg}</span>
                 </div>
               ))}
