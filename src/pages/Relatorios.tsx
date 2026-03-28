@@ -23,6 +23,7 @@ const reports = [
   { id: "vendas-terminal" as ReportView, icon: Monitor, title: "Vendas por Terminal", desc: "Detalhamento por caixa, ticket médio, métodos de pagamento" },
   { id: "estoque" as ReportView, icon: Package, title: "Estoque", desc: "Movimentação, inventário, giro de produtos" },
   { id: "financeiro" as ReportView, icon: BarChart3, title: "Financeiro", desc: "Fluxo de caixa, contas a pagar/receber" },
+  { id: "despesas" as ReportView, icon: DollarSign, title: "Despesas por Categoria", desc: "Gráfico de pizza, evolução mensal, detalhamento" },
   { id: "curva-abc" as ReportView, icon: BarChart3, title: "Curva ABC", desc: "Classificação de produtos por faturamento" },
 ];
 
