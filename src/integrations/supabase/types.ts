@@ -647,7 +647,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      verify_operator_pin: {
+        Args: { p_operator_id: string; p_pin: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
