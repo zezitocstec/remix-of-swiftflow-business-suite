@@ -14,7 +14,634 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      action_logs: {
+        Row: {
+          amount: number | null
+          authorized_by: string | null
+          created_at: string
+          description: string
+          id: string
+          operator_id: string
+          operator_name: string
+          sale_id: string | null
+          terminal_id: string
+          terminal_name: string
+          type: string
+        }
+        Insert: {
+          amount?: number | null
+          authorized_by?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          operator_id: string
+          operator_name: string
+          sale_id?: string | null
+          terminal_id: string
+          terminal_name: string
+          type: string
+        }
+        Update: {
+          amount?: number | null
+          authorized_by?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          operator_id?: string
+          operator_name?: string
+          sale_id?: string | null
+          terminal_id?: string
+          terminal_name?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      bills: {
+        Row: {
+          amount: number
+          category: string | null
+          created_at: string
+          description: string
+          due_date: string
+          id: string
+          paid_at: string | null
+          status: string
+          supplier_id: string | null
+          supplier_name: string | null
+        }
+        Insert: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          description: string
+          due_date: string
+          id?: string
+          paid_at?: string | null
+          status?: string
+          supplier_id?: string | null
+          supplier_name?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          description?: string
+          due_date?: string
+          id?: string
+          paid_at?: string | null
+          status?: string
+          supplier_id?: string | null
+          supplier_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bills_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_deposits: {
+        Row: {
+          amount: number
+          cash_register_id: string
+          created_at: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          amount?: number
+          cash_register_id: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          amount?: number
+          cash_register_id?: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_deposits_cash_register_id_fkey"
+            columns: ["cash_register_id"]
+            isOneToOne: false
+            referencedRelation: "cash_registers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_registers: {
+        Row: {
+          closed_at: string | null
+          id: string
+          opened_at: string
+          opening_balance: number
+          operator_id: string | null
+          operator_name: string
+          terminal_id: string | null
+          terminal_name: string
+        }
+        Insert: {
+          closed_at?: string | null
+          id?: string
+          opened_at?: string
+          opening_balance?: number
+          operator_id?: string | null
+          operator_name: string
+          terminal_id?: string | null
+          terminal_name: string
+        }
+        Update: {
+          closed_at?: string | null
+          id?: string
+          opened_at?: string
+          opening_balance?: number
+          operator_id?: string | null
+          operator_name?: string
+          terminal_id?: string | null
+          terminal_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_registers_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_registers_terminal_id_fkey"
+            columns: ["terminal_id"]
+            isOneToOne: false
+            referencedRelation: "terminals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_withdrawals: {
+        Row: {
+          amount: number
+          cash_register_id: string
+          created_at: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          amount?: number
+          cash_register_id: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          amount?: number
+          cash_register_id?: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_withdrawals_cash_register_id_fkey"
+            columns: ["cash_register_id"]
+            isOneToOne: false
+            referencedRelation: "cash_registers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          compras: number
+          cpf_cnpj: string | null
+          created_at: string
+          credit_limit: number
+          credit_used: number
+          data_nascimento: string | null
+          email: string | null
+          id: string
+          nome: string
+          observacoes: string | null
+          telefone: string | null
+          total: number
+        }
+        Insert: {
+          compras?: number
+          cpf_cnpj?: string | null
+          created_at?: string
+          credit_limit?: number
+          credit_used?: number
+          data_nascimento?: string | null
+          email?: string | null
+          id?: string
+          nome: string
+          observacoes?: string | null
+          telefone?: string | null
+          total?: number
+        }
+        Update: {
+          compras?: number
+          cpf_cnpj?: string | null
+          created_at?: string
+          credit_limit?: number
+          credit_used?: number
+          data_nascimento?: string | null
+          email?: string | null
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          telefone?: string | null
+          total?: number
+        }
+        Relationships: []
+      }
+      debt_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          debt_id: string
+          id: string
+          method: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          debt_id: string
+          id?: string
+          method?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          debt_id?: string
+          id?: string
+          method?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debt_payments_debt_id_fkey"
+            columns: ["debt_id"]
+            isOneToOne: false
+            referencedRelation: "debts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      debts: {
+        Row: {
+          amount: number
+          client_id: string
+          client_name: string
+          created_at: string
+          id: string
+          paid: number
+          sale_date: string
+        }
+        Insert: {
+          amount?: number
+          client_id: string
+          client_name: string
+          created_at?: string
+          id?: string
+          paid?: number
+          sale_date?: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          client_name?: string
+          created_at?: string
+          id?: string
+          paid?: number
+          sale_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operators: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          perm_abrir_caixa: boolean
+          perm_cancelar_cupom: boolean
+          perm_cancelar_item: boolean
+          pin: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          perm_abrir_caixa?: boolean
+          perm_cancelar_cupom?: boolean
+          perm_cancelar_item?: boolean
+          pin: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          perm_abrir_caixa?: boolean
+          perm_cancelar_cupom?: boolean
+          perm_cancelar_item?: boolean
+          pin?: string
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          barcode: string | null
+          category: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          min_stock: number | null
+          name: string
+          price: number
+          sku: string
+          stock: number
+          updated_at: string
+        }
+        Insert: {
+          barcode?: string | null
+          category?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          min_stock?: number | null
+          name: string
+          price?: number
+          sku?: string
+          stock?: number
+          updated_at?: string
+        }
+        Update: {
+          barcode?: string | null
+          category?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          min_stock?: number | null
+          name?: string
+          price?: number
+          sku?: string
+          stock?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sale_items: {
+        Row: {
+          id: string
+          price: number
+          product_id: string | null
+          product_name: string
+          quantity: number
+          sale_id: string
+        }
+        Insert: {
+          id?: string
+          price?: number
+          product_id?: string | null
+          product_name: string
+          quantity?: number
+          sale_id: string
+        }
+        Update: {
+          id?: string
+          price?: number
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          sale_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sale_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_items_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sale_payments: {
+        Row: {
+          amount: number
+          id: string
+          method: string
+          sale_id: string
+        }
+        Insert: {
+          amount?: number
+          id?: string
+          method: string
+          sale_id: string
+        }
+        Update: {
+          amount?: number
+          id?: string
+          method?: string
+          sale_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sale_payments_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales: {
+        Row: {
+          cash_register_id: string | null
+          client_id: string | null
+          client_name: string | null
+          created_at: string
+          cupom_numero: number | null
+          id: string
+          operator_id: string | null
+          operator_name: string | null
+          terminal_id: string | null
+          terminal_name: string | null
+          total: number
+        }
+        Insert: {
+          cash_register_id?: string | null
+          client_id?: string | null
+          client_name?: string | null
+          created_at?: string
+          cupom_numero?: number | null
+          id?: string
+          operator_id?: string | null
+          operator_name?: string | null
+          terminal_id?: string | null
+          terminal_name?: string | null
+          total?: number
+        }
+        Update: {
+          cash_register_id?: string | null
+          client_id?: string | null
+          client_name?: string | null
+          created_at?: string
+          cupom_numero?: number | null
+          id?: string
+          operator_id?: string | null
+          operator_name?: string | null
+          terminal_id?: string | null
+          terminal_name?: string | null
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_cash_register_id_fkey"
+            columns: ["cash_register_id"]
+            isOneToOne: false
+            referencedRelation: "cash_registers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_terminal_id_fkey"
+            columns: ["terminal_id"]
+            isOneToOne: false
+            referencedRelation: "terminals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_movements: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string | null
+          product_name: string
+          quantity: number
+          reason: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id?: string | null
+          product_name: string
+          quantity?: number
+          reason?: string | null
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          reason?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppliers: {
+        Row: {
+          cnpj: string | null
+          created_at: string
+          email: string | null
+          id: string
+          nome: string
+          telefone: string | null
+        }
+        Insert: {
+          cnpj?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome: string
+          telefone?: string | null
+        }
+        Update: {
+          cnpj?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome?: string
+          telefone?: string | null
+        }
+        Relationships: []
+      }
+      terminals: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          cupom_atual: number
+          cupom_fim: number
+          cupom_inicio: number
+          id: string
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          cupom_atual?: number
+          cupom_fim?: number
+          cupom_inicio?: number
+          id?: string
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          cupom_atual?: number
+          cupom_fim?: number
+          cupom_inicio?: number
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
