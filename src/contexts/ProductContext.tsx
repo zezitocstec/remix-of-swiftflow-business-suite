@@ -191,7 +191,29 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   const [cashRegister, setCashRegister] = useState<CashRegister | null>(null);
   const [actionLogs, setActionLogs] = useState<ActionLog[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [bills, setBills] = useState<Bill[]>([]);
+  const [bills, setBills] = useState<Bill[]>(() => {
+    const now = new Date();
+    const m = (offset: number) => {
+      const d = new Date(now.getFullYear(), now.getMonth() + offset, 10);
+      return d;
+    };
+    return [
+      { id: "seed-1", description: "Aluguel do ponto comercial", amount: 3500, dueDate: m(-2), category: "aluguel", status: "pago" as const, paidAt: m(-2) },
+      { id: "seed-2", description: "Aluguel do ponto comercial", amount: 3500, dueDate: m(-1), category: "aluguel", status: "pago" as const, paidAt: m(-1) },
+      { id: "seed-3", description: "Aluguel do ponto comercial", amount: 3500, dueDate: m(0), category: "aluguel", status: "pendente" as const },
+      { id: "seed-4", description: "Conta de energia elétrica", amount: 890, dueDate: m(-2), category: "energia", status: "pago" as const, paidAt: m(-2) },
+      { id: "seed-5", description: "Conta de energia elétrica", amount: 920, dueDate: m(-1), category: "energia", status: "pago" as const, paidAt: m(-1) },
+      { id: "seed-6", description: "Conta de energia elétrica", amount: 950, dueDate: m(0), category: "energia", status: "pendente" as const },
+      { id: "seed-7", description: "Folha de pagamento", amount: 8200, dueDate: m(-2), category: "salários", status: "pago" as const, paidAt: m(-2) },
+      { id: "seed-8", description: "Folha de pagamento", amount: 8200, dueDate: m(-1), category: "salários", status: "pago" as const, paidAt: m(-1) },
+      { id: "seed-9", description: "Folha de pagamento", amount: 8200, dueDate: m(0), category: "salários", status: "pendente" as const },
+      { id: "seed-10", description: "Compra de mercadorias - Dist. ABC", amount: 4500, dueDate: m(-2), category: "fornecedor", status: "pago" as const, paidAt: m(-2), supplierName: "Distribuidora ABC" },
+      { id: "seed-11", description: "Compra de mercadorias - Dist. XYZ", amount: 3200, dueDate: m(-1), category: "fornecedor", status: "pago" as const, paidAt: m(-1), supplierName: "Distribuidora XYZ" },
+      { id: "seed-12", description: "Compra de mercadorias - Dist. ABC", amount: 5100, dueDate: m(0), category: "fornecedor", status: "pendente" as const, supplierName: "Distribuidora ABC" },
+      { id: "seed-13", description: "Internet e telefonia", amount: 350, dueDate: m(-1), category: "outros", status: "pago" as const, paidAt: m(-1) },
+      { id: "seed-14", description: "Material de limpeza", amount: 280, dueDate: m(0), category: "outros", status: "pendente" as const },
+    ];
+  });
   const [adminPin, setAdminPin] = useState("1234");
 
   const addActionLog = useCallback((log: Omit<ActionLog, "id" | "date">) => {
