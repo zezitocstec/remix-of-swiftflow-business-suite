@@ -59,15 +59,15 @@ export default function CashRegisterControls() {
   const [actionAmount, setActionAmount] = useState("");
   const [actionReason, setActionReason] = useState("");
 
-  const handleClose = () => {
+  const handleClose = async () => {
     if (!cashRegister) return;
     const cr = cashRegister;
-    addActionLog({
+    await addActionLog({
       type: "fechamento_caixa", operatorId: cr.operatorId, operatorName: cr.operatorName,
       terminalId: cr.terminalId, terminalName: cr.terminalName,
       description: `Caixa fechado`,
     });
-    const report = closeCashRegister();
+    const report = await closeCashRegister();
     if (report) {
       const totalSales = report.sales.reduce((s, v) => s + v.amount, 0);
       const cashSales = report.sales.filter(s => s.method === "Dinheiro").reduce((s, v) => s + v.amount, 0);

@@ -42,9 +42,9 @@ export default function Estoque() {
       return;
     }
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       const content = ev.target?.result as string;
-      const count = importXML(content);
+      const count = await importXML(content);
       if (count > 0) {
         toast({ title: "Importação concluída", description: `${count} produto(s) processado(s) do XML.` });
       } else {
