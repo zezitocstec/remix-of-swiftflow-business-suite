@@ -169,11 +169,11 @@ export default function PDV() {
   const [showReceiptOptions, setShowReceiptOptions] = useState(false);
   const [lastSaleRecord, setLastSaleRecord] = useState<any>(null);
 
-  const finalizeSale = (methods: { method: string; amount: number }[]) => {
+  const finalizeSale = async (methods: { method: string; amount: number }[]) => {
     const isPedido = methods.some((m) => m.method === "Pedido (Fiado)");
 
     if (isPedido && selectedClient) {
-      const debtId = createDebt(selectedClient.id, total);
+      const debtId = await createDebt(selectedClient.id, total);
       if (!debtId) {
         toast({ title: "Crédito insuficiente", description: `${selectedClient.nome} não tem crédito disponível suficiente.`, variant: "destructive" });
         return;
@@ -181,7 +181,7 @@ export default function PDV() {
     }
 
     const items = cart.map((i) => ({ productId: i.product.id, quantity: i.quantity }));
-    const saleId = sellProducts(items, methods, selectedClient?.id, currentTerminal?.id, currentOperator?.id);
+    const saleId = await sellProducts(items, methods, selectedClient?.id, currentTerminal?.id, currentOperator?.id);
     setLastSaleId(saleId);
 
     const saleRecord = {
@@ -197,7 +197,7 @@ export default function PDV() {
 
     // Log
     if (currentOperator && currentTerminal) {
-      addActionLog({
+      await addActionLog({
         type: "venda", operatorId: currentOperator.id, operatorName: currentOperator.nome,
         terminalId: currentTerminal.id, terminalName: currentTerminal.nome,
         description: `Venda #${saleId.slice(0, 8)} • ${totalItems} itens • ${methods.map(m => m.method).join("+")}`,
