@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { TenantProvider } from "@/contexts/TenantContext";
 import { ProductProvider } from "@/contexts/ProductContext";
 import { AppLayout } from "@/components/AppLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -31,27 +32,29 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
-        <ProductProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/pdv" element={<ProtectedRoute><PDV /></ProtectedRoute>} />
-              <Route path="/" element={<ProtectedRoute><LayoutPage><Index /></LayoutPage></ProtectedRoute>} />
-              <Route path="/produtos" element={<ProtectedRoute><LayoutPage><Produtos /></LayoutPage></ProtectedRoute>} />
-              <Route path="/estoque" element={<ProtectedRoute><LayoutPage><Estoque /></LayoutPage></ProtectedRoute>} />
-              <Route path="/clientes" element={<ProtectedRoute><LayoutPage><Clientes /></LayoutPage></ProtectedRoute>} />
-              <Route path="/financeiro" element={<ProtectedRoute><LayoutPage><Financeiro /></LayoutPage></ProtectedRoute>} />
-              <Route path="/caixa" element={<ProtectedRoute><LayoutPage><Caixa /></LayoutPage></ProtectedRoute>} />
-              <Route path="/relatorios" element={<ProtectedRoute><LayoutPage><Relatorios /></LayoutPage></ProtectedRoute>} />
-              <Route path="/relatorios/estoque" element={<ProtectedRoute><LayoutPage><RelatorioEstoque /></LayoutPage></ProtectedRoute>} />
-              <Route path="/contas-pagar" element={<ProtectedRoute><LayoutPage><ContasPagar /></LayoutPage></ProtectedRoute>} />
-              <Route path="/configuracoes" element={<ProtectedRoute><LayoutPage><Configuracoes /></LayoutPage></ProtectedRoute>} />
-              <Route path="*" element={<LayoutPage><NotFound /></LayoutPage>} />
-            </Routes>
-          </BrowserRouter>
-        </ProductProvider>
+        <TenantProvider>
+          <ProductProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/pdv" element={<ProtectedRoute><PDV /></ProtectedRoute>} />
+                <Route path="/" element={<ProtectedRoute><LayoutPage><Index /></LayoutPage></ProtectedRoute>} />
+                <Route path="/produtos" element={<ProtectedRoute><LayoutPage><Produtos /></LayoutPage></ProtectedRoute>} />
+                <Route path="/estoque" element={<ProtectedRoute><LayoutPage><Estoque /></LayoutPage></ProtectedRoute>} />
+                <Route path="/clientes" element={<ProtectedRoute><LayoutPage><Clientes /></LayoutPage></ProtectedRoute>} />
+                <Route path="/financeiro" element={<ProtectedRoute><LayoutPage><Financeiro /></LayoutPage></ProtectedRoute>} />
+                <Route path="/caixa" element={<ProtectedRoute><LayoutPage><Caixa /></LayoutPage></ProtectedRoute>} />
+                <Route path="/relatorios" element={<ProtectedRoute><LayoutPage><Relatorios /></LayoutPage></ProtectedRoute>} />
+                <Route path="/relatorios/estoque" element={<ProtectedRoute><LayoutPage><RelatorioEstoque /></LayoutPage></ProtectedRoute>} />
+                <Route path="/contas-pagar" element={<ProtectedRoute><LayoutPage><ContasPagar /></LayoutPage></ProtectedRoute>} />
+                <Route path="/configuracoes" element={<ProtectedRoute><LayoutPage><Configuracoes /></LayoutPage></ProtectedRoute>} />
+                <Route path="*" element={<LayoutPage><NotFound /></LayoutPage>} />
+              </Routes>
+            </BrowserRouter>
+          </ProductProvider>
+        </TenantProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
