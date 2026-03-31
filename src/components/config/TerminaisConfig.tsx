@@ -76,6 +76,20 @@ export default function TerminaisConfig() {
               <Label>Nome do Terminal</Label>
               <Input value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="Ex: Caixa 01" autoFocus />
             </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label>Cupom Início</Label>
+                <Input type="number" value={form.cupom_inicio} onChange={(e) => setForm((f) => ({ ...f, cupom_inicio: Number(e.target.value) }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Cupom Atual</Label>
+                <Input type="number" value={form.cupom_atual} onChange={(e) => setForm((f) => ({ ...f, cupom_atual: Number(e.target.value) }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Cupom Fim</Label>
+                <Input type="number" value={form.cupom_fim} onChange={(e) => setForm((f) => ({ ...f, cupom_fim: Number(e.target.value) }))} />
+              </div>
+            </div>
             <div className="flex items-center justify-between">
               <Label>Ativo</Label>
               <Switch checked={form.ativo} onCheckedChange={(v) => setForm((f) => ({ ...f, ativo: v }))} />
