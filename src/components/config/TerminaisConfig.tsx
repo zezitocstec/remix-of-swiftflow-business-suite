@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { toast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Monitor } from "lucide-react";
 
-const emptyForm = { nome: "", ativo: true };
+const emptyForm = { nome: "", ativo: true, cupom_inicio: 100000, cupom_atual: 100000, cupom_fim: 999999 };
 
 export default function TerminaisConfig() {
   const { terminals, addTerminal, updateTerminal, deleteTerminal } = useProducts();
