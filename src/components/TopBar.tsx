@@ -1,5 +1,6 @@
 import { Bell, Search } from "lucide-react";
 import { useTenant } from "@/contexts/TenantContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface TopBarProps {
   title: string;
