@@ -50,7 +50,10 @@ export default function TerminaisConfig() {
               <div className={`h-10 w-10 rounded-full flex items-center justify-center ${t.ativo ? "bg-primary/10" : "bg-muted"}`}>
                 <Monitor className="h-5 w-5 text-primary" />
               </div>
-              <p className="text-sm font-medium text-foreground">{t.nome}</p>
+              <div>
+                <p className="text-sm font-medium text-foreground">{t.nome}</p>
+                <p className="text-xs text-muted-foreground">Cupons: {t.cupomInicio ?? '—'} – {t.cupomFim ?? '—'} (atual: {t.cupomAtual ?? '—'})</p>
+              </div>
             </div>
             <div className="flex items-center gap-1">
               <span className={`text-xs px-2 py-0.5 rounded-full ${t.ativo ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
