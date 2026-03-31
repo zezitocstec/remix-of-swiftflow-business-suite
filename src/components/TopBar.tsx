@@ -9,6 +9,8 @@ interface TopBarProps {
 
 export function TopBar({ title, subtitle }: TopBarProps) {
   const { companyName } = useTenant();
+  const { user } = useAuth();
+  const initial = user?.email?.charAt(0)?.toUpperCase() || "U";
 
   return (
     <header className="flex items-center justify-between h-14 px-6 border-b border-border bg-card">
@@ -28,7 +30,7 @@ export function TopBar({ title, subtitle }: TopBarProps) {
           <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-destructive rounded-full" />
         </button>
         <div className="h-7 w-7 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-medium ml-2">
-          A
+          {initial}
         </div>
       </div>
     </header>
