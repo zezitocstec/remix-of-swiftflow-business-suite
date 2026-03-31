@@ -3,9 +3,11 @@ import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ShoppingCart, Package, Warehouse, Users,
   DollarSign, BarChart3, Settings, ChevronLeft, ChevronRight, Store,
-  CreditCard, FileText,
+  CreditCard, FileText, LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTenant } from "@/contexts/TenantContext";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
@@ -23,12 +25,14 @@ const navItems = [
 export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const { signOut } = useAuth();
+  const { companyName } = useTenant();
 
   return (
     <aside className={cn("flex flex-col border-r border-border bg-card transition-all duration-200 h-screen sticky top-0", collapsed ? "w-16" : "w-56")}>
       <div className="flex items-center gap-2 px-4 h-14 border-b border-border">
         <Store className="h-5 w-5 text-primary shrink-0" />
-        {!collapsed && <span className="font-semibold text-sm tracking-tight text-foreground">itsega4</span>}
+        {!collapsed && <span className="font-semibold text-sm tracking-tight text-foreground truncate">{companyName || "itsega4"}</span>}
       </div>
       <nav className="flex-1 py-2 space-y-0.5 px-2">
         {navItems.map((item) => {
@@ -43,9 +47,15 @@ export function AppSidebar() {
           );
         })}
       </nav>
-      <button onClick={() => setCollapsed(!collapsed)} className="flex items-center justify-center h-10 border-t border-border text-muted-foreground hover:text-foreground transition-colors">
-        {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-      </button>
+      <div className="border-t border-border">
+        <button onClick={() => signOut()} className={cn("flex items-center gap-3 w-full px-5 py-2.5 text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors", collapsed && "justify-center px-0")}>
+          <LogOut className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+          {!collapsed && <span>Sair</span>}
+        </button>
+        <button onClick={() => setCollapsed(!collapsed)} className="flex items-center justify-center w-full h-10 text-muted-foreground hover:text-foreground transition-colors">
+          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </button>
+      </div>
     </aside>
   );
 }
