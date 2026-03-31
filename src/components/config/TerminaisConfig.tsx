@@ -18,7 +18,7 @@ export default function TerminaisConfig() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const openNew = () => { setEditId(null); setForm(emptyForm); setDialogOpen(true); };
-  const openEdit = (t: Terminal) => { setEditId(t.id); setForm({ nome: t.nome, ativo: t.ativo, cupom_inicio: t.cupom_inicio ?? 100000, cupom_atual: t.cupom_atual ?? 100000, cupom_fim: t.cupom_fim ?? 999999 }); setDialogOpen(true); };
+  const openEdit = (t: Terminal) => { setEditId(t.id); setForm({ nome: t.nome, ativo: t.ativo, cupom_inicio: t.cupomInicio ?? 100000, cupom_atual: t.cupomAtual ?? 100000, cupom_fim: t.cupomFim ?? 999999 }); setDialogOpen(true); };
 
   const handleSave = () => {
     if (!form.nome.trim()) { toast({ title: "Nome obrigatório", variant: "destructive" }); return; }
