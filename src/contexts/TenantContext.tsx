@@ -26,51 +26,61 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
     const loadOrCreateCompany = async () => {
       setLoading(true);
+      try {
+        // Check if user already has a company
+        const { data: membership, error: memErr } = await supabase
+          .from("company_members")
+          .select("company_id")
+          .eq("user_id", user.id)
+          .limit(1)
+          .maybeSingle();
 
-      // Check if user already has a company
-      const { data: membership } = await supabase
-        .from("company_members")
-        .select("company_id")
-        .eq("user_id", user.id)
-        .limit(1)
-        .maybeSingle();
+        if (memErr) console.error("Error fetching membership:", memErr);
 
-      if (membership?.company_id) {
-        const { data: company } = await supabase
+        if (membership?.company_id) {
+          const { data: company } = await supabase
+            .from("companies")
+            .select("id, nome")
+            .eq("id", membership.company_id)
+            .single();
+
+          if (company) {
+            setTenantId(company.id);
+            setCompanyName(company.nome);
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Auto-create a company for new users
+        const { data: newCompany, error: companyError } = await supabase
           .from("companies")
+          .insert({ nome: `Empresa de ${user.email?.split("@")[0] || "Usuário"}` })
           .select("id, nome")
-          .eq("id", membership.company_id)
           .single();
 
-        if (company) {
-          setTenantId(company.id);
-          setCompanyName(company.nome);
+        if (companyError || !newCompany) {
+          console.error("Failed to create company:", companyError);
           setLoading(false);
           return;
         }
-      }
 
-      // Auto-create a company for new users
-      const { data: newCompany, error: companyError } = await supabase
-        .from("companies")
-        .insert({ nome: `Empresa de ${user.email?.split("@")[0] || "Usuário"}` })
-        .select("id, nome")
-        .single();
+        // Link user to the company
+        const { error: linkError } = await supabase
+          .from("company_members")
+          .insert({ user_id: user.id, company_id: newCompany.id, role: "owner" });
 
-      if (companyError || !newCompany) {
-        console.error("Failed to create company:", companyError);
+        if (linkError) {
+          console.error("Failed to link user to company:", linkError);
+        }
+
+        setTenantId(newCompany.id);
+        setCompanyName(newCompany.nome);
+      } catch (err) {
+        console.error("TenantContext error:", err);
+      } finally {
         setLoading(false);
-        return;
       }
-
-      // Link user to the company
-      await supabase
-        .from("company_members")
-        .insert({ user_id: user.id, company_id: newCompany.id, role: "owner" });
-
-      setTenantId(newCompany.id);
-      setCompanyName(newCompany.nome);
-      setLoading(false);
     };
 
     loadOrCreateCompany();

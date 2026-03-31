@@ -22,6 +22,8 @@ export default function TerminaisConfig() {
 
   const handleSave = () => {
     if (!form.nome.trim()) { toast({ title: "Nome obrigatório", variant: "destructive" }); return; }
+    if (form.cupom_inicio > form.cupom_fim) { toast({ title: "Cupom Início não pode ser maior que Cupom Fim", variant: "destructive" }); return; }
+    if (form.cupom_atual < form.cupom_inicio || form.cupom_atual > form.cupom_fim) { toast({ title: "Cupom Atual deve estar entre Início e Fim", variant: "destructive" }); return; }
     const payload = { nome: form.nome, ativo: form.ativo, cupomInicio: form.cupom_inicio, cupomAtual: form.cupom_atual, cupomFim: form.cupom_fim };
     if (editId) { updateTerminal(editId, payload); toast({ title: "Terminal atualizado" }); }
     else { addTerminal(payload); toast({ title: "Terminal cadastrado" }); }
