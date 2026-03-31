@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { toast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Monitor } from "lucide-react";
 
-const emptyForm = { nome: "", ativo: true };
+const emptyForm = { nome: "", ativo: true, cupom_inicio: 100000, cupom_atual: 100000, cupom_fim: 999999 };
 
 export default function TerminaisConfig() {
   const { terminals, addTerminal, updateTerminal, deleteTerminal } = useProducts();
@@ -18,12 +18,13 @@ export default function TerminaisConfig() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const openNew = () => { setEditId(null); setForm(emptyForm); setDialogOpen(true); };
-  const openEdit = (t: Terminal) => { setEditId(t.id); setForm({ nome: t.nome, ativo: t.ativo }); setDialogOpen(true); };
+  const openEdit = (t: Terminal) => { setEditId(t.id); setForm({ nome: t.nome, ativo: t.ativo, cupom_inicio: t.cupomInicio ?? 100000, cupom_atual: t.cupomAtual ?? 100000, cupom_fim: t.cupomFim ?? 999999 }); setDialogOpen(true); };
 
   const handleSave = () => {
     if (!form.nome.trim()) { toast({ title: "Nome obrigatório", variant: "destructive" }); return; }
-    if (editId) { updateTerminal(editId, form); toast({ title: "Terminal atualizado" }); }
-    else { addTerminal(form); toast({ title: "Terminal cadastrado" }); }
+    const payload = { nome: form.nome, ativo: form.ativo, cupomInicio: form.cupom_inicio, cupomAtual: form.cupom_atual, cupomFim: form.cupom_fim };
+    if (editId) { updateTerminal(editId, payload); toast({ title: "Terminal atualizado" }); }
+    else { addTerminal(payload); toast({ title: "Terminal cadastrado" }); }
     setDialogOpen(false);
   };
 
@@ -49,7 +50,10 @@ export default function TerminaisConfig() {
               <div className={`h-10 w-10 rounded-full flex items-center justify-center ${t.ativo ? "bg-primary/10" : "bg-muted"}`}>
                 <Monitor className="h-5 w-5 text-primary" />
               </div>
-              <p className="text-sm font-medium text-foreground">{t.nome}</p>
+              <div>
+                <p className="text-sm font-medium text-foreground">{t.nome}</p>
+                <p className="text-xs text-muted-foreground">Cupons: {t.cupomInicio ?? '—'} – {t.cupomFim ?? '—'} (atual: {t.cupomAtual ?? '—'})</p>
+              </div>
             </div>
             <div className="flex items-center gap-1">
               <span className={`text-xs px-2 py-0.5 rounded-full ${t.ativo ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
@@ -75,6 +79,20 @@ export default function TerminaisConfig() {
             <div className="space-y-2">
               <Label>Nome do Terminal</Label>
               <Input value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="Ex: Caixa 01" autoFocus />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label>Cupom Início</Label>
+                <Input type="number" value={form.cupom_inicio} onChange={(e) => setForm((f) => ({ ...f, cupom_inicio: Number(e.target.value) }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Cupom Atual</Label>
+                <Input type="number" value={form.cupom_atual} onChange={(e) => setForm((f) => ({ ...f, cupom_atual: Number(e.target.value) }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Cupom Fim</Label>
+                <Input type="number" value={form.cupom_fim} onChange={(e) => setForm((f) => ({ ...f, cupom_fim: Number(e.target.value) }))} />
+              </div>
             </div>
             <div className="flex items-center justify-between">
               <Label>Ativo</Label>

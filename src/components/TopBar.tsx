@@ -1,4 +1,5 @@
 import { Bell, Search } from "lucide-react";
+import { useTenant } from "@/contexts/TenantContext";
 
 interface TopBarProps {
   title: string;
@@ -6,6 +7,8 @@ interface TopBarProps {
 }
 
 export function TopBar({ title, subtitle }: TopBarProps) {
+  const { companyName } = useTenant();
+
   return (
     <header className="flex items-center justify-between h-14 px-6 border-b border-border bg-card">
       <div>
@@ -13,6 +16,9 @@ export function TopBar({ title, subtitle }: TopBarProps) {
         {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
       </div>
       <div className="flex items-center gap-2">
+        {companyName && (
+          <span className="text-xs text-muted-foreground mr-2 hidden sm:inline">{companyName}</span>
+        )}
         <button className="p-2 rounded-md hover:bg-secondary text-muted-foreground transition-colors">
           <Search className="h-4 w-4" strokeWidth={1.5} />
         </button>
