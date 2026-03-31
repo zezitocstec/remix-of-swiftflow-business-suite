@@ -22,8 +22,9 @@ export default function TerminaisConfig() {
 
   const handleSave = () => {
     if (!form.nome.trim()) { toast({ title: "Nome obrigatório", variant: "destructive" }); return; }
-    if (editId) { updateTerminal(editId, form); toast({ title: "Terminal atualizado" }); }
-    else { addTerminal(form); toast({ title: "Terminal cadastrado" }); }
+    const payload = { nome: form.nome, ativo: form.ativo, cupomInicio: form.cupom_inicio, cupomAtual: form.cupom_atual, cupomFim: form.cupom_fim };
+    if (editId) { updateTerminal(editId, payload); toast({ title: "Terminal atualizado" }); }
+    else { addTerminal(payload); toast({ title: "Terminal cadastrado" }); }
     setDialogOpen(false);
   };
 
