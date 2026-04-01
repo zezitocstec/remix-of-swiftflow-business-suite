@@ -672,7 +672,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   const updateOperator = useCallback(async (id: string, data: Partial<Operator>) => {
     const updates: any = {};
     if (data.nome !== undefined) updates.nome = data.nome;
-    if (data.pin !== undefined) updates.pin = data.pin;
+    if (data.pin !== undefined && data.pin !== "") updates.pin = data.pin;
     if (data.ativo !== undefined) updates.ativo = data.ativo;
     if (data.permissions) {
       updates.perm_abrir_caixa = data.permissions.abrirCaixa;

@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { formatBRL, type Product, type CartItem } from "@/lib/mock-data";
 import { useProducts, type Client, type Operator, type Terminal } from "@/contexts/ProductContext";
 import { toast } from "@/hooks/use-toast";
@@ -84,20 +85,23 @@ export default function PDV() {
     setAuthError("");
   };
 
-  const validateAuth = () => {
+  const validateAuth = async () => {
     if (!authDialog) return;
-    const authorizer = operators.find(o => o.ativo && o.pin === authPin && o.permissions[authDialog.type]);
-    if (!authorizer) {
-      setAuthError("PIN inválido ou operador sem permissão");
-      setAuthPin("");
-      return;
+    // Try each active operator with the required permission via server-side RPC
+    for (const op of operators.filter(o => o.ativo && o.permissions[authDialog.type])) {
+      const { data: valid } = await supabase.rpc("verify_operator_pin", { p_operator_id: op.id, p_pin: authPin });
+      if (valid) {
+        if (authDialog.type === "cancelarItem" && authDialog.itemId) {
+          executeRemoveItem(authDialog.itemId, op);
+        } else if (authDialog.type === "cancelarCupom") {
+          executeCancelSale(op);
+        }
+        setAuthDialog(null);
+        return;
+      }
     }
-    if (authDialog.type === "cancelarItem" && authDialog.itemId) {
-      executeRemoveItem(authDialog.itemId, authorizer);
-    } else if (authDialog.type === "cancelarCupom") {
-      executeCancelSale(authorizer);
-    }
-    setAuthDialog(null);
+    setAuthError("PIN inválido ou operador sem permissão");
+    setAuthPin("");
     setAuthPin("");
   };
 
@@ -354,17 +358,20 @@ export default function PDV() {
               <Input type="password" inputMode="numeric" maxLength={6} placeholder="Digite o PIN" value={pinInput}
                 onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ""))}
                 className="h-14 text-2xl text-center tracking-[0.5em]" autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && pinInput) {
-                    if (pinInput === selectedOperator?.pin) setSetupStep("terminal");
+                onKeyDown={async (e) => {
+                  if (e.key === "Enter" && pinInput && selectedOperator) {
+                    const { data: valid } = await supabase.rpc("verify_operator_pin", { p_operator_id: selectedOperator.id, p_pin: pinInput });
+                    if (valid) setSetupStep("terminal");
                     else { toast({ title: "PIN incorreto", variant: "destructive" }); setPinInput(""); }
                   }
                 }}
               />
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => { setSetupStep("operator"); setSelectedOperator(null); }} className="h-14 touch-manipulation">Voltar</Button>
-                <Button onClick={() => {
-                  if (pinInput === selectedOperator?.pin) setSetupStep("terminal");
+                <Button onClick={async () => {
+                  if (!selectedOperator || !pinInput) return;
+                  const { data: valid } = await supabase.rpc("verify_operator_pin", { p_operator_id: selectedOperator.id, p_pin: pinInput });
+                  if (valid) setSetupStep("terminal");
                   else { toast({ title: "PIN incorreto", variant: "destructive" }); setPinInput(""); }
                 }} disabled={!pinInput} className="flex-1 h-14 text-base touch-manipulation">Confirmar</Button>
               </div>

@@ -27,7 +27,8 @@ export default function OperadoresConfig() {
 
   const handleSave = async () => {
     if (!form.nome.trim()) { toast({ title: "Nome obrigatório", variant: "destructive" }); return; }
-    if (!form.pin || form.pin.length < 4) { toast({ title: "PIN deve ter no mínimo 4 dígitos", variant: "destructive" }); return; }
+    if (!editId && (!form.pin || form.pin.length < 4)) { toast({ title: "PIN deve ter no mínimo 4 dígitos", variant: "destructive" }); return; }
+    if (editId && form.pin && form.pin.length < 4) { toast({ title: "PIN deve ter no mínimo 4 dígitos", variant: "destructive" }); return; }
     setSaving(true);
     try {
       if (editId) {
@@ -105,8 +106,8 @@ export default function OperadoresConfig() {
               <Input value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="Ex: Maria" autoFocus />
             </div>
             <div className="space-y-2">
-              <Label>PIN de Acesso (mín. 4 dígitos)</Label>
-              <Input type="password" inputMode="numeric" maxLength={6} value={form.pin} onChange={(e) => setForm((f) => ({ ...f, pin: e.target.value.replace(/\D/g, "") }))} placeholder="••••" />
+              <Label>PIN de Acesso {editId ? "(deixe vazio para manter)" : "(mín. 4 dígitos)"}</Label>
+              <Input type="password" inputMode="numeric" maxLength={6} value={form.pin} onChange={(e) => setForm((f) => ({ ...f, pin: e.target.value.replace(/\D/g, "") }))} placeholder={editId ? "••••  (novo PIN)" : "••••"} />
             </div>
             <div className="flex items-center justify-between">
               <Label>Operador Ativo</Label>
