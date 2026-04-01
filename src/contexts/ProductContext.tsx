@@ -657,14 +657,15 @@ export function ProductProvider({ children }: { children: ReactNode }) {
 
   // ─── Operators CRUD ───
   const addOperator = useCallback(async (op: Omit<Operator, "id">) => {
-    if (!tenantId) return;
-    const { data } = await supabase.from("operators").insert({
+    if (!tenantId) { console.error("addOperator: no tenantId"); return; }
+    const { data, error } = await supabase.from("operators").insert({
       nome: op.nome, pin: op.pin, ativo: op.ativo,
       perm_abrir_caixa: op.permissions.abrirCaixa,
       perm_cancelar_item: op.permissions.cancelarItem,
       perm_cancelar_cupom: op.permissions.cancelarCupom,
       tenant_id: tenantId,
     }).select("id, nome, ativo, perm_abrir_caixa, perm_cancelar_item, perm_cancelar_cupom").single();
+    if (error) console.error("addOperator error:", error);
     if (data) setOperators(prev => [...prev, { id: data.id, nome: data.nome, pin: "", ativo: data.ativo, permissions: { abrirCaixa: data.perm_abrir_caixa, cancelarItem: data.perm_cancelar_item, cancelarCupom: data.perm_cancelar_cupom } }]);
   }, [tenantId]);
 
@@ -678,25 +679,28 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       updates.perm_cancelar_item = data.permissions.cancelarItem;
       updates.perm_cancelar_cupom = data.permissions.cancelarCupom;
     }
-    await supabase.from("operators").update(updates).eq("id", id);
+    const { error } = await supabase.from("operators").update(updates).eq("id", id);
+    if (error) console.error("updateOperator error:", error);
     setOperators(prev => prev.map(o => o.id === id ? { ...o, ...data, pin: "" } : o));
   }, []);
 
   const deleteOperator = useCallback(async (id: string) => {
-    await supabase.from("operators").delete().eq("id", id);
+    const { error } = await supabase.from("operators").delete().eq("id", id);
+    if (error) console.error("deleteOperator error:", error);
     setOperators(prev => prev.filter(o => o.id !== id));
   }, []);
 
   // ─── Terminals CRUD ───
   const addTerminal = useCallback(async (t: Omit<Terminal, "id">) => {
-    if (!tenantId) return;
-    const { data } = await supabase.from("terminals").insert({
+    if (!tenantId) { console.error("addTerminal: no tenantId"); return; }
+    const { data, error } = await supabase.from("terminals").insert({
       nome: t.nome, ativo: t.ativo,
       cupom_inicio: t.cupomInicio ?? 100000,
       cupom_atual: t.cupomAtual ?? t.cupomInicio ?? 100000,
       cupom_fim: t.cupomFim ?? 999999,
       tenant_id: tenantId,
     }).select().single();
+    if (error) console.error("addTerminal error:", error);
     if (data) setTerminals(prev => [...prev, { id: data.id, nome: data.nome, ativo: data.ativo, cupomInicio: data.cupom_inicio, cupomAtual: data.cupom_atual, cupomFim: data.cupom_fim }]);
   }, [tenantId]);
 
