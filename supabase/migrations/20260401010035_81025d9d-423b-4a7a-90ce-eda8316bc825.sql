@@ -1,0 +1,16 @@
+DROP POLICY IF EXISTS "Allow all access to action_logs" ON public.action_logs;
+DROP POLICY IF EXISTS "Allow all access to bills" ON public.bills;
+DROP POLICY IF EXISTS "Allow all access to cash_deposits" ON public.cash_deposits;
+DROP POLICY IF EXISTS "Allow all access to cash_registers" ON public.cash_registers;
+DROP POLICY IF EXISTS "Allow all access to cash_withdrawals" ON public.cash_withdrawals;
+DROP POLICY IF EXISTS "Allow all access to clients" ON public.clients;
+DROP POLICY IF EXISTS "Allow all access to debt_payments" ON public.debt_payments;
+DROP POLICY IF EXISTS "Allow all access to debts" ON public.debts;
+DROP POLICY IF EXISTS "Allow all access to operators" ON public.operators;
+DROP POLICY IF EXISTS "Allow all access to products" ON public.products;
+DROP POLICY IF EXISTS "Allow all access to sale_items" ON public.sale_items;
+DROP POLICY IF EXISTS "Allow all access to sale_payments" ON public.sale_payments;
+DROP POLICY IF EXISTS "Allow all access to sales" ON public.sales;
+DROP POLICY IF EXISTS "Allow all access to stock_movements" ON public.stock_movements;
+DROP POLICY IF EXISTS "Allow all access to suppliers" ON public.suppliers;
+DROP POLICY IF EXISTS "Allow all access to terminals" ON public.terminals;

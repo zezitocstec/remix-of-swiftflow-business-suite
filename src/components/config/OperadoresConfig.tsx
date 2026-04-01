@@ -16,6 +16,7 @@ export default function OperadoresConfig() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const openNew = () => { setEditId(null); setForm(emptyForm); setDialogOpen(true); };
   const openEdit = (op: Operator) => {
@@ -24,17 +25,22 @@ export default function OperadoresConfig() {
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.nome.trim()) { toast({ title: "Nome obrigatório", variant: "destructive" }); return; }
     if (!form.pin || form.pin.length < 4) { toast({ title: "PIN deve ter no mínimo 4 dígitos", variant: "destructive" }); return; }
-    if (editId) {
-      updateOperator(editId, form);
-      toast({ title: "Operador atualizado" });
-    } else {
-      addOperator(form);
-      toast({ title: "Operador cadastrado" });
-    }
-    setDialogOpen(false);
+    setSaving(true);
+    try {
+      if (editId) {
+        await updateOperator(editId, form);
+        toast({ title: "Operador atualizado" });
+      } else {
+        await addOperator(form);
+        toast({ title: "Operador cadastrado" });
+      }
+      setDialogOpen(false);
+    } catch (e) {
+      toast({ title: "Erro ao salvar operador", variant: "destructive" });
+    } finally { setSaving(false); }
   };
 
   const handleDelete = () => {
@@ -133,7 +139,7 @@ export default function OperadoresConfig() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave}>{editId ? "Salvar" : "Cadastrar"}</Button>
+            <Button onClick={handleSave} disabled={saving}>{saving ? "Salvando..." : editId ? "Salvar" : "Cadastrar"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
