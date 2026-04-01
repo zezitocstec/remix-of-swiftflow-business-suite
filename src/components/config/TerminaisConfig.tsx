@@ -16,6 +16,7 @@ export default function TerminaisConfig() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const openNew = () => { setEditId(null); setForm(emptyForm); setDialogOpen(true); };
   const openEdit = (t: Terminal) => { setEditId(t.id); setForm({ nome: t.nome, ativo: t.ativo, cupom_inicio: t.cupomInicio ?? 100000, cupom_atual: t.cupomAtual ?? 100000, cupom_fim: t.cupomFim ?? 999999 }); setDialogOpen(true); };
