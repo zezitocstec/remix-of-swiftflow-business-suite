@@ -27,7 +27,8 @@ export default function OperadoresConfig() {
 
   const handleSave = async () => {
     if (!form.nome.trim()) { toast({ title: "Nome obrigatório", variant: "destructive" }); return; }
-    if (!form.pin || form.pin.length < 4) { toast({ title: "PIN deve ter no mínimo 4 dígitos", variant: "destructive" }); return; }
+    if (!editId && (!form.pin || form.pin.length < 4)) { toast({ title: "PIN deve ter no mínimo 4 dígitos", variant: "destructive" }); return; }
+    if (editId && form.pin && form.pin.length < 4) { toast({ title: "PIN deve ter no mínimo 4 dígitos", variant: "destructive" }); return; }
     setSaving(true);
     try {
       if (editId) {
