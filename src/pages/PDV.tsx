@@ -85,20 +85,23 @@ export default function PDV() {
     setAuthError("");
   };
 
-  const validateAuth = () => {
+  const validateAuth = async () => {
     if (!authDialog) return;
-    const authorizer = operators.find(o => o.ativo && o.pin === authPin && o.permissions[authDialog.type]);
-    if (!authorizer) {
-      setAuthError("PIN inválido ou operador sem permissão");
-      setAuthPin("");
-      return;
+    // Try each active operator with the required permission via server-side RPC
+    for (const op of operators.filter(o => o.ativo && o.permissions[authDialog.type])) {
+      const { data: valid } = await supabase.rpc("verify_operator_pin", { p_operator_id: op.id, p_pin: authPin });
+      if (valid) {
+        if (authDialog.type === "cancelarItem" && authDialog.itemId) {
+          executeRemoveItem(authDialog.itemId, op);
+        } else if (authDialog.type === "cancelarCupom") {
+          executeCancelSale(op);
+        }
+        setAuthDialog(null);
+        return;
+      }
     }
-    if (authDialog.type === "cancelarItem" && authDialog.itemId) {
-      executeRemoveItem(authDialog.itemId, authorizer);
-    } else if (authDialog.type === "cancelarCupom") {
-      executeCancelSale(authorizer);
-    }
-    setAuthDialog(null);
+    setAuthError("PIN inválido ou operador sem permissão");
+    setAuthPin("");
     setAuthPin("");
   };
 
