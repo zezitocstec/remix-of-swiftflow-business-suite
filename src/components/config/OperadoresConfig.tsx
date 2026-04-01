@@ -139,7 +139,7 @@ export default function OperadoresConfig() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave}>{editId ? "Salvar" : "Cadastrar"}</Button>
+            <Button onClick={handleSave} disabled={saving}>{saving ? "Salvando..." : editId ? "Salvar" : "Cadastrar"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
