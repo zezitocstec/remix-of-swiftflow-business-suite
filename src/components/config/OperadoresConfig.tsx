@@ -16,6 +16,7 @@ export default function OperadoresConfig() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const openNew = () => { setEditId(null); setForm(emptyForm); setDialogOpen(true); };
   const openEdit = (op: Operator) => {
