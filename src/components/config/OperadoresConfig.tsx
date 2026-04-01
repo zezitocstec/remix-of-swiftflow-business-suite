@@ -25,17 +25,22 @@ export default function OperadoresConfig() {
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.nome.trim()) { toast({ title: "Nome obrigatório", variant: "destructive" }); return; }
     if (!form.pin || form.pin.length < 4) { toast({ title: "PIN deve ter no mínimo 4 dígitos", variant: "destructive" }); return; }
-    if (editId) {
-      updateOperator(editId, form);
-      toast({ title: "Operador atualizado" });
-    } else {
-      addOperator(form);
-      toast({ title: "Operador cadastrado" });
-    }
-    setDialogOpen(false);
+    setSaving(true);
+    try {
+      if (editId) {
+        await updateOperator(editId, form);
+        toast({ title: "Operador atualizado" });
+      } else {
+        await addOperator(form);
+        toast({ title: "Operador cadastrado" });
+      }
+      setDialogOpen(false);
+    } catch (e) {
+      toast({ title: "Erro ao salvar operador", variant: "destructive" });
+    } finally { setSaving(false); }
   };
 
   const handleDelete = () => {
