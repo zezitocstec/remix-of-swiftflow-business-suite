@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { formatBRL, type Product, type CartItem } from "@/lib/mock-data";
 import { useProducts, type Client, type Operator, type Terminal } from "@/contexts/ProductContext";
 import { toast } from "@/hooks/use-toast";
