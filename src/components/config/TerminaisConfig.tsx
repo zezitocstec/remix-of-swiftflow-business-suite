@@ -21,14 +21,19 @@ export default function TerminaisConfig() {
   const openNew = () => { setEditId(null); setForm(emptyForm); setDialogOpen(true); };
   const openEdit = (t: Terminal) => { setEditId(t.id); setForm({ nome: t.nome, ativo: t.ativo, cupom_inicio: t.cupomInicio ?? 100000, cupom_atual: t.cupomAtual ?? 100000, cupom_fim: t.cupomFim ?? 999999 }); setDialogOpen(true); };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.nome.trim()) { toast({ title: "Nome obrigatório", variant: "destructive" }); return; }
     if (form.cupom_inicio > form.cupom_fim) { toast({ title: "Cupom Início não pode ser maior que Cupom Fim", variant: "destructive" }); return; }
     if (form.cupom_atual < form.cupom_inicio || form.cupom_atual > form.cupom_fim) { toast({ title: "Cupom Atual deve estar entre Início e Fim", variant: "destructive" }); return; }
-    const payload = { nome: form.nome, ativo: form.ativo, cupomInicio: form.cupom_inicio, cupomAtual: form.cupom_atual, cupomFim: form.cupom_fim };
-    if (editId) { updateTerminal(editId, payload); toast({ title: "Terminal atualizado" }); }
-    else { addTerminal(payload); toast({ title: "Terminal cadastrado" }); }
-    setDialogOpen(false);
+    setSaving(true);
+    try {
+      const payload = { nome: form.nome, ativo: form.ativo, cupomInicio: form.cupom_inicio, cupomAtual: form.cupom_atual, cupomFim: form.cupom_fim };
+      if (editId) { await updateTerminal(editId, payload); toast({ title: "Terminal atualizado" }); }
+      else { await addTerminal(payload); toast({ title: "Terminal cadastrado" }); }
+      setDialogOpen(false);
+    } catch (e) {
+      toast({ title: "Erro ao salvar terminal", variant: "destructive" });
+    } finally { setSaving(false); }
   };
 
   const handleDelete = () => {
