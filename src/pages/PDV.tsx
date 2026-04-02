@@ -582,7 +582,7 @@ export default function PDV() {
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setAuthDialog(null)} className="touch-manipulation">Cancelar</Button>
-            <Button variant="destructive" onClick={validateAuth} disabled={!authPin} className="touch-manipulation">Autorizar</Button>
+            <Button variant="destructive" onClick={validateAuth} disabled={!authPin || authValidating} className="touch-manipulation">{authValidating ? "Verificando..." : "Autorizar"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
