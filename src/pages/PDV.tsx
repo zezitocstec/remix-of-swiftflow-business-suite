@@ -377,9 +377,9 @@ export default function PDV() {
                 className="h-14 text-2xl text-center tracking-[0.5em]" autoFocus
                 onKeyDown={async (e) => {
                   if (e.key === "Enter" && pinInput && selectedOperator) {
-                    const { data: valid } = await supabase.rpc("verify_operator_pin", { p_operator_id: selectedOperator.id, p_pin: pinInput });
-                    if (valid) setSetupStep("terminal");
-                    else { toast({ title: "PIN incorreto", variant: "destructive" }); setPinInput(""); }
+                    const result = await verifyOperatorViaEdge(selectedOperator.id, pinInput, "abrirCaixa");
+                    if (result.valid && result.hasPermission) setSetupStep("terminal");
+                    else { toast({ title: result.error || "PIN incorreto ou sem permissão", variant: "destructive" }); setPinInput(""); }
                   }
                 }}
               />
@@ -387,9 +387,9 @@ export default function PDV() {
                 <Button variant="outline" onClick={() => { setSetupStep("operator"); setSelectedOperator(null); }} className="h-14 touch-manipulation">Voltar</Button>
                 <Button onClick={async () => {
                   if (!selectedOperator || !pinInput) return;
-                  const { data: valid } = await supabase.rpc("verify_operator_pin", { p_operator_id: selectedOperator.id, p_pin: pinInput });
-                  if (valid) setSetupStep("terminal");
-                  else { toast({ title: "PIN incorreto", variant: "destructive" }); setPinInput(""); }
+                  const result = await verifyOperatorViaEdge(selectedOperator.id, pinInput, "abrirCaixa");
+                  if (result.valid && result.hasPermission) setSetupStep("terminal");
+                  else { toast({ title: result.error || "PIN incorreto ou sem permissão", variant: "destructive" }); setPinInput(""); }
                 }} disabled={!pinInput} className="flex-1 h-14 text-base touch-manipulation">Confirmar</Button>
               </div>
             </div>
