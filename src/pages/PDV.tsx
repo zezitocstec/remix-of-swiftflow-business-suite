@@ -73,11 +73,21 @@ export default function PDV() {
   const [authPin, setAuthPin] = useState("");
   const [authError, setAuthError] = useState("");
 
+  const verifyOperatorViaEdge = async (operatorId: string, pin: string, requiredPermission?: string) => {
+    const { data, error } = await supabase.functions.invoke("verify-operator", {
+      body: { operator_id: operatorId, pin, required_permission: requiredPermission },
+    });
+    if (error) return { valid: false, error: "Erro de conexão" };
+    return data as { valid: boolean; error?: string; operator?: { id: string; nome: string }; hasPermission?: boolean };
+  };
+
   const requestAuth = (type: "cancelarItem" | "cancelarCupom", itemId?: string) => {
-    // Check if current operator already has the permission
-    if (currentOperator?.permissions[type]) {
-      if (type === "cancelarItem" && itemId) executeRemoveItem(itemId, currentOperator);
-      else if (type === "cancelarCupom") executeCancelSale(currentOperator);
+    // For current operator, verify permission server-side
+    if (currentOperator) {
+      // We still show auth dialog - permission will be verified server-side
+      setAuthDialog({ type, itemId });
+      setAuthPin("");
+      setAuthError("");
       return;
     }
     setAuthDialog({ type, itemId });
@@ -85,24 +95,31 @@ export default function PDV() {
     setAuthError("");
   };
 
+  const [authValidating, setAuthValidating] = useState(false);
+
   const validateAuth = async () => {
     if (!authDialog) return;
-    // Try each active operator with the required permission via server-side RPC
-    for (const op of operators.filter(o => o.ativo && o.permissions[authDialog.type])) {
-      const { data: valid } = await supabase.rpc("verify_operator_pin", { p_operator_id: op.id, p_pin: authPin });
-      if (valid) {
-        if (authDialog.type === "cancelarItem" && authDialog.itemId) {
-          executeRemoveItem(authDialog.itemId, op);
-        } else if (authDialog.type === "cancelarCupom") {
-          executeCancelSale(op);
+    setAuthValidating(true);
+    try {
+      // Try each active operator - permission check happens server-side
+      for (const op of operators.filter(o => o.ativo)) {
+        const result = await verifyOperatorViaEdge(op.id, authPin, authDialog.type);
+        if (result.valid && result.hasPermission) {
+          const authorizer: Operator = { id: op.id, nome: result.operator?.nome || op.nome, pin: "", ativo: true, permissions: { abrirCaixa: true, cancelarItem: authDialog.type === "cancelarItem", cancelarCupom: authDialog.type === "cancelarCupom" } };
+          if (authDialog.type === "cancelarItem" && authDialog.itemId) {
+            executeRemoveItem(authDialog.itemId, authorizer);
+          } else if (authDialog.type === "cancelarCupom") {
+            executeCancelSale(authorizer);
+          }
+          setAuthDialog(null);
+          return;
         }
-        setAuthDialog(null);
-        return;
       }
+      setAuthError("PIN inválido ou operador sem permissão");
+      setAuthPin("");
+    } finally {
+      setAuthValidating(false);
     }
-    setAuthError("PIN inválido ou operador sem permissão");
-    setAuthPin("");
-    setAuthPin("");
   };
 
   const addToCart = useCallback((product: Product) => {
