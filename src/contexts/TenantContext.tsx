@@ -52,30 +52,27 @@ export function TenantProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        // Auto-create a company for new users
-        const { data: newCompany, error: companyError } = await supabase
-          .from("companies")
-          .insert({ nome: `Empresa de ${user.email?.split("@")[0] || "Usuário"}` })
-          .select("id, nome")
-          .single();
+        // Auto-create a company for new users via atomic RPC
+        const { data: newCompanyId, error: rpcError } = await supabase
+          .rpc("create_company_with_membership", {
+            p_nome: `Empresa de ${user.email?.split("@")[0] || "Usuário"}`,
+          });
 
-        if (companyError || !newCompany) {
-          console.error("Failed to create company:", companyError);
+        if (rpcError || !newCompanyId) {
+          console.error("Failed to create company:", rpcError);
           setLoading(false);
           return;
         }
 
-        // Link user to the company
-        const { error: linkError } = await supabase
-          .from("company_members")
-          .insert({ user_id: user.id, company_id: newCompany.id, role: "owner" });
+        // Fetch company name
+        const { data: newCompany } = await supabase
+          .from("companies")
+          .select("id, nome")
+          .eq("id", newCompanyId)
+          .single();
 
-        if (linkError) {
-          console.error("Failed to link user to company:", linkError);
-        }
-
-        setTenantId(newCompany.id);
-        setCompanyName(newCompany.nome);
+        setTenantId(newCompanyId);
+        setCompanyName(newCompany?.nome || null);
       } catch (err) {
         console.error("TenantContext error:", err);
       } finally {

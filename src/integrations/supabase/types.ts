@@ -875,6 +875,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_company_with_membership: {
+        Args: { p_nome: string }
+        Returns: string
+      }
       get_my_company_id: { Args: never; Returns: string }
       verify_operator_pin: {
         Args: { p_operator_id: string; p_pin: string }
