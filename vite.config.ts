@@ -44,7 +44,7 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       manifest: {
-        name: "PDV - Ponto de Venda",
+        name: "PDV - IT.Sega4 ",
         short_name: "PDV",
         description: "Sistema de Ponto de Venda rápido e offline",
         theme_color: "#2563eb",
