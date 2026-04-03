@@ -6,12 +6,13 @@ import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { RotateCcw, Users, CreditCard, Printer, User, Banknote, Lock, Monitor } from "lucide-react";
+import { RotateCcw, Users, CreditCard, Printer, User, Banknote, Lock, Monitor, Fingerprint } from "lucide-react";
 import ProductGrid from "@/components/pdv/ProductGrid";
 import CartPanel from "@/components/pdv/CartPanel";
 import type { ParkedSale } from "@/components/pdv/types";
 import { usePDVShortcuts } from "@/hooks/usePDVShortcuts";
 import { printReceipt } from "@/components/pdv/ReceiptPrint";
+import { isPlatformAuthAvailable, authenticateBiometric } from "@/lib/webauthn";
 
 export default function PDV() {
   const { products, sellProducts, cancelSale, clients, createDebt, debts, payDebt, sales, cashRegister, openCashRegister, operators, terminals, addActionLog } = useProducts();
@@ -23,8 +24,12 @@ export default function PDV() {
   const [pinInput, setPinInput] = useState("");
   const [setupBalance, setSetupBalance] = useState("");
 
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(false);
+
   useEffect(() => {
     if (!cashRegister) setSetupStep("operator");
+    isPlatformAuthAvailable().then(setBiometricAvailable);
   }, []);
 
   useEffect(() => {
@@ -36,6 +41,31 @@ export default function PDV() {
       setSetupBalance("");
     }
   }, [cashRegister]);
+
+  const handleBiometricLogin = async () => {
+    setBiometricLoading(true);
+    try {
+      const result = await authenticateBiometric();
+      if (result.valid && result.operator) {
+        const op = operators.find(o => o.id === result.operator!.id);
+        if (op && result.operator.permissions?.abrirCaixa) {
+          setSelectedOperator(op);
+          setSetupStep("terminal");
+          toast({ title: "Autenticado!", description: `Bem-vindo, ${result.operator.nome}` });
+        } else if (op && !result.operator.permissions?.abrirCaixa) {
+          toast({ title: "Sem permissão", description: "Este operador não tem permissão para abrir caixa.", variant: "destructive" });
+        } else {
+          toast({ title: "Operador não encontrado", variant: "destructive" });
+        }
+      } else {
+        toast({ title: "Falha na biometria", description: result.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Erro na biometria", variant: "destructive" });
+    } finally {
+      setBiometricLoading(false);
+    }
+  };
 
   // Auto dark mode
   useEffect(() => {
@@ -369,6 +399,31 @@ export default function PDV() {
                   </button>
                 ))
               )}
+              {biometricAvailable && activeOperators.length > 0 && (
+                <>
+                  <div className="relative my-2">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-border" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-card px-2 text-muted-foreground">ou</span>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={handleBiometricLogin}
+                    disabled={biometricLoading}
+                    className="w-full h-14 text-base gap-2 touch-manipulation"
+                  >
+                    {biometricLoading ? (
+                      <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
+                    ) : (
+                      <Fingerprint className="h-5 w-5" />
+                    )}
+                    {biometricLoading ? "Verificando..." : "Entrar com Digital"}
+                  </Button>
+                </>
+              )}
             </div>
           ) : setupStep === "pin" ? (
             <div className="space-y-4">
@@ -565,7 +620,7 @@ export default function PDV() {
               Autorização Necessária
             </DialogTitle>
             <DialogDescription>
-              {authDialog?.type === "cancelarItem" ? "Cancelamento de item" : "Cancelamento de cupom"} requer PIN de um operador autorizado.
+              {authDialog?.type === "cancelarItem" ? "Cancelamento de item" : "Cancelamento de cupom"} requer autorização de um operador.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -580,8 +635,43 @@ export default function PDV() {
             />
             {authError && <p className="text-xs text-destructive text-center">{authError}</p>}
           </div>
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 sm:gap-2">
             <Button variant="outline" onClick={() => setAuthDialog(null)} className="touch-manipulation">Cancelar</Button>
+            {biometricAvailable && (
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  if (!authDialog) return;
+                  setBiometricLoading(true);
+                  try {
+                    const result = await authenticateBiometric();
+                    if (result.valid && result.operator) {
+                      const permKey = authDialog.type === "cancelarItem" ? "cancelarItem" : "cancelarCupom";
+                      if (result.operator.permissions?.[permKey]) {
+                        const authorizer: Operator = { id: result.operator.id, nome: result.operator.nome, pin: "", ativo: true, permissions: result.operator.permissions as any };
+                        if (authDialog.type === "cancelarItem" && authDialog.itemId) {
+                          executeRemoveItem(authDialog.itemId, authorizer);
+                        } else if (authDialog.type === "cancelarCupom") {
+                          executeCancelSale(authorizer);
+                        }
+                        setAuthDialog(null);
+                      } else {
+                        setAuthError("Operador sem permissão para esta ação");
+                      }
+                    } else {
+                      setAuthError(result.error || "Falha na biometria");
+                    }
+                  } finally {
+                    setBiometricLoading(false);
+                  }
+                }}
+                disabled={biometricLoading}
+                className="touch-manipulation gap-1"
+              >
+                {biometricLoading ? <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" /> : <Fingerprint className="h-4 w-4" />}
+                Digital
+              </Button>
+            )}
             <Button variant="destructive" onClick={validateAuth} disabled={!authPin || authValidating} className="touch-manipulation">{authValidating ? "Verificando..." : "Autorizar"}</Button>
           </DialogFooter>
         </DialogContent>

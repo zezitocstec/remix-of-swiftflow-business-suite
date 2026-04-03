@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useProducts, type Operator } from "@/contexts/ProductContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Shield, ShieldCheck } from "lucide-react";
+import { Plus, Pencil, Trash2, Shield, ShieldCheck, Fingerprint } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { isWebAuthnSupported, isPlatformAuthAvailable, registerBiometric } from "@/lib/webauthn";
 
 const emptyForm = { nome: "", pin: "", ativo: true, permissions: { abrirCaixa: true, cancelarItem: false, cancelarCupom: false } };
 
@@ -17,6 +19,27 @@ export default function OperadoresConfig() {
   const [form, setForm] = useState(emptyForm);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [biometricSupported, setBiometricSupported] = useState(false);
+  const [biometricCredentials, setBiometricCredentials] = useState<Record<string, number>>({});
+  const [registeringBiometric, setRegisteringBiometric] = useState<string | null>(null);
+
+  useEffect(() => {
+    isPlatformAuthAvailable().then(setBiometricSupported);
+    loadBiometricCounts();
+  }, []);
+
+  const loadBiometricCounts = async () => {
+    const { data } = await supabase
+      .from("webauthn_credentials" as any)
+      .select("operator_id");
+    if (data) {
+      const counts: Record<string, number> = {};
+      (data as any[]).forEach((row: any) => {
+        counts[row.operator_id] = (counts[row.operator_id] || 0) + 1;
+      });
+      setBiometricCredentials(counts);
+    }
+  };
 
   const openNew = () => { setEditId(null); setForm(emptyForm); setDialogOpen(true); };
   const openEdit = (op: Operator) => {
@@ -49,6 +72,29 @@ export default function OperadoresConfig() {
     setDeleteId(null);
   };
 
+  const handleRegisterBiometric = async (operatorId: string) => {
+    setRegisteringBiometric(operatorId);
+    const result = await registerBiometric(operatorId);
+    setRegisteringBiometric(null);
+    if (result.success) {
+      toast({ title: "Biometria cadastrada!", description: "Digital registrada com sucesso." });
+      loadBiometricCounts();
+    } else {
+      toast({ title: "Erro no cadastro", description: result.error, variant: "destructive" });
+    }
+  };
+
+  const handleRemoveBiometric = async (operatorId: string) => {
+    const { error } = await supabase
+      .from("webauthn_credentials" as any)
+      .delete()
+      .eq("operator_id", operatorId);
+    if (!error) {
+      toast({ title: "Biometria removida" });
+      loadBiometricCounts();
+    }
+  };
+
   const setPerm = (key: keyof typeof form.permissions, val: boolean) => {
     setForm((f) => ({ ...f, permissions: { ...f.permissions, [key]: val } }));
   };
@@ -76,6 +122,11 @@ export default function OperadoresConfig() {
                   {op.permissions.abrirCaixa && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">Caixa</span>}
                   {op.permissions.cancelarItem && <span className="text-[10px] bg-warning/10 text-warning px-1.5 py-0.5 rounded">Cancel. Item</span>}
                   {op.permissions.cancelarCupom && <span className="text-[10px] bg-destructive/10 text-destructive px-1.5 py-0.5 rounded">Cancel. Cupom</span>}
+                  {(biometricCredentials[op.id] || 0) > 0 && (
+                    <span className="text-[10px] bg-accent text-accent-foreground px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                      <Fingerprint className="h-3 w-3" /> Digital
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -83,6 +134,17 @@ export default function OperadoresConfig() {
               <span className={`text-xs px-2 py-0.5 rounded-full ${op.ativo ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
                 {op.ativo ? "Ativo" : "Inativo"}
               </span>
+              {biometricSupported && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRegisterBiometric(op.id)}
+                  disabled={registeringBiometric === op.id}
+                  title="Cadastrar digital"
+                >
+                  <Fingerprint className={`h-4 w-4 ${(biometricCredentials[op.id] || 0) > 0 ? "text-primary" : "text-muted-foreground"}`} />
+                </Button>
+              )}
               <Button variant="ghost" size="sm" onClick={() => openEdit(op)}><Pencil className="h-4 w-4" /></Button>
               <Button variant="ghost" size="sm" onClick={() => setDeleteId(op.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
             </div>
@@ -113,6 +175,42 @@ export default function OperadoresConfig() {
               <Label>Operador Ativo</Label>
               <Switch checked={form.ativo} onCheckedChange={(v) => setForm((f) => ({ ...f, ativo: v }))} />
             </div>
+
+            {/* Biometric section in edit mode */}
+            {editId && biometricSupported && (
+              <div className="border-t border-border pt-4 space-y-3">
+                <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <Fingerprint className="h-4 w-4" /> Autenticação Biométrica
+                </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-foreground">
+                      {(biometricCredentials[editId] || 0) > 0
+                        ? `${biometricCredentials[editId]} digital(is) cadastrada(s)`
+                        : "Nenhuma digital cadastrada"
+                      }
+                    </p>
+                    <p className="text-xs text-muted-foreground">Use a digital para login rápido no PDV</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleRegisterBiometric(editId)}
+                      disabled={registeringBiometric === editId}
+                    >
+                      {registeringBiometric === editId ? "Registrando..." : "Cadastrar"}
+                    </Button>
+                    {(biometricCredentials[editId] || 0) > 0 && (
+                      <Button size="sm" variant="ghost" onClick={() => handleRemoveBiometric(editId)} className="text-destructive">
+                        Remover
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="border-t border-border pt-4 space-y-3">
               <p className="text-sm font-medium text-foreground">Permissões</p>
               <div className="flex items-center justify-between">

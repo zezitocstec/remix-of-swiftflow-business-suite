@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useProducts } from "@/contexts/ProductContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Lock } from "lucide-react";
+import { Lock, Fingerprint } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { isPlatformAuthAvailable, authenticateBiometric } from "@/lib/webauthn";
 
 interface AdminGateProps {
   children: React.ReactNode;
@@ -13,6 +14,12 @@ export default function AdminGate({ children }: AdminGateProps) {
   const { adminPin } = useProducts();
   const [authenticated, setAuthenticated] = useState(false);
   const [pin, setPin] = useState("");
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(false);
+
+  useEffect(() => {
+    isPlatformAuthAvailable().then(setBiometricAvailable);
+  }, []);
 
   const handleSubmit = () => {
     if (pin === adminPin) {
@@ -20,6 +27,23 @@ export default function AdminGate({ children }: AdminGateProps) {
     } else {
       toast({ title: "PIN incorreto", description: "Acesso negado à área administrativa.", variant: "destructive" });
       setPin("");
+    }
+  };
+
+  const handleBiometric = async () => {
+    setBiometricLoading(true);
+    try {
+      const result = await authenticateBiometric();
+      if (result.valid) {
+        setAuthenticated(true);
+        toast({ title: "Acesso liberado", description: `Autenticado via biometria: ${result.operator?.nome}` });
+      } else {
+        toast({ title: "Falha na biometria", description: result.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Erro na biometria", variant: "destructive" });
+    } finally {
+      setBiometricLoading(false);
     }
   };
 
@@ -49,6 +73,32 @@ export default function AdminGate({ children }: AdminGateProps) {
         <Button onClick={handleSubmit} disabled={!pin} className="w-full h-14 text-base">
           Acessar
         </Button>
+
+        {biometricAvailable && (
+          <>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">ou</span>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              onClick={handleBiometric}
+              disabled={biometricLoading}
+              className="w-full h-14 text-base gap-2"
+            >
+              {biometricLoading ? (
+                <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
+              ) : (
+                <Fingerprint className="h-5 w-5" />
+              )}
+              {biometricLoading ? "Verificando..." : "Entrar com Digital"}
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );
