@@ -399,6 +399,31 @@ export default function PDV() {
                   </button>
                 ))
               )}
+              {biometricAvailable && activeOperators.length > 0 && (
+                <>
+                  <div className="relative my-2">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-border" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-card px-2 text-muted-foreground">ou</span>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={handleBiometricLogin}
+                    disabled={biometricLoading}
+                    className="w-full h-14 text-base gap-2 touch-manipulation"
+                  >
+                    {biometricLoading ? (
+                      <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
+                    ) : (
+                      <Fingerprint className="h-5 w-5" />
+                    )}
+                    {biometricLoading ? "Verificando..." : "Entrar com Digital"}
+                  </Button>
+                </>
+              )}
             </div>
           ) : setupStep === "pin" ? (
             <div className="space-y-4">
