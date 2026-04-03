@@ -620,7 +620,7 @@ export default function PDV() {
               Autorização Necessária
             </DialogTitle>
             <DialogDescription>
-              {authDialog?.type === "cancelarItem" ? "Cancelamento de item" : "Cancelamento de cupom"} requer PIN de um operador autorizado.
+              {authDialog?.type === "cancelarItem" ? "Cancelamento de item" : "Cancelamento de cupom"} requer autorização de um operador.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -635,8 +635,43 @@ export default function PDV() {
             />
             {authError && <p className="text-xs text-destructive text-center">{authError}</p>}
           </div>
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 sm:gap-2">
             <Button variant="outline" onClick={() => setAuthDialog(null)} className="touch-manipulation">Cancelar</Button>
+            {biometricAvailable && (
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  if (!authDialog) return;
+                  setBiometricLoading(true);
+                  try {
+                    const result = await authenticateBiometric();
+                    if (result.valid && result.operator) {
+                      const permKey = authDialog.type === "cancelarItem" ? "cancelarItem" : "cancelarCupom";
+                      if (result.operator.permissions?.[permKey]) {
+                        const authorizer: Operator = { id: result.operator.id, nome: result.operator.nome, pin: "", ativo: true, permissions: result.operator.permissions as any };
+                        if (authDialog.type === "cancelarItem" && authDialog.itemId) {
+                          executeRemoveItem(authDialog.itemId, authorizer);
+                        } else if (authDialog.type === "cancelarCupom") {
+                          executeCancelSale(authorizer);
+                        }
+                        setAuthDialog(null);
+                      } else {
+                        setAuthError("Operador sem permissão para esta ação");
+                      }
+                    } else {
+                      setAuthError(result.error || "Falha na biometria");
+                    }
+                  } finally {
+                    setBiometricLoading(false);
+                  }
+                }}
+                disabled={biometricLoading}
+                className="touch-manipulation gap-1"
+              >
+                {biometricLoading ? <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" /> : <Fingerprint className="h-4 w-4" />}
+                Digital
+              </Button>
+            )}
             <Button variant="destructive" onClick={validateAuth} disabled={!authPin || authValidating} className="touch-manipulation">{authValidating ? "Verificando..." : "Autorizar"}</Button>
           </DialogFooter>
         </DialogContent>
