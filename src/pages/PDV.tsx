@@ -24,8 +24,12 @@ export default function PDV() {
   const [pinInput, setPinInput] = useState("");
   const [setupBalance, setSetupBalance] = useState("");
 
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(false);
+
   useEffect(() => {
     if (!cashRegister) setSetupStep("operator");
+    isPlatformAuthAvailable().then(setBiometricAvailable);
   }, []);
 
   useEffect(() => {
@@ -37,6 +41,31 @@ export default function PDV() {
       setSetupBalance("");
     }
   }, [cashRegister]);
+
+  const handleBiometricLogin = async () => {
+    setBiometricLoading(true);
+    try {
+      const result = await authenticateBiometric();
+      if (result.valid && result.operator) {
+        const op = operators.find(o => o.id === result.operator!.id);
+        if (op && result.operator.permissions?.abrirCaixa) {
+          setSelectedOperator(op);
+          setSetupStep("terminal");
+          toast({ title: "Autenticado!", description: `Bem-vindo, ${result.operator.nome}` });
+        } else if (op && !result.operator.permissions?.abrirCaixa) {
+          toast({ title: "Sem permissão", description: "Este operador não tem permissão para abrir caixa.", variant: "destructive" });
+        } else {
+          toast({ title: "Operador não encontrado", variant: "destructive" });
+        }
+      } else {
+        toast({ title: "Falha na biometria", description: result.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Erro na biometria", variant: "destructive" });
+    } finally {
+      setBiometricLoading(false);
+    }
+  };
 
   // Auto dark mode
   useEffect(() => {
