@@ -631,7 +631,7 @@ export default function Relatorios() {
   return (
     <div className="flex flex-col h-screen">
       <TopBar title="Relatórios" subtitle={view === "menu" ? "Análises e métricas" : reports.find(r => r.id === view)?.title || ""} />
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-3 sm:p-6">
         {view !== "menu" && (
           <Button variant="ghost" size="sm" onClick={() => setView("menu")} className="mb-4">
             <ArrowLeft className="h-4 w-4 mr-1" /> Voltar

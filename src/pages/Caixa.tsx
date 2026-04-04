@@ -53,7 +53,7 @@ export default function Caixa() {
   return (
     <div className="flex flex-col h-screen">
       <TopBar title="Caixa" subtitle={cashRegister ? `${cashRegister.terminalName} — aberto` : "Caixa fechado"} />
-      <div className="flex-1 overflow-auto p-6 space-y-6">
+      <div className="flex-1 overflow-auto p-3 sm:p-6 space-y-6">
         {!cashRegister ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <Lock className="h-12 w-12 text-muted-foreground" />
