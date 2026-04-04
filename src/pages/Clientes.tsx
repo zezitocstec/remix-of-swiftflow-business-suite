@@ -118,7 +118,7 @@ export default function Clientes() {
   return (
     <div className="flex flex-col h-screen">
       <TopBar title="Clientes" subtitle={`${clients.length} clientes cadastrados`} />
-      <div className="flex-1 overflow-auto p-6 space-y-4">
+      <div className="flex-1 overflow-auto p-3 sm:p-6 space-y-4">
         <div className="flex items-center gap-3">
           <div className="flex-1 flex items-center gap-2 rounded-md border border-border bg-card px-3 h-9">
             <Search className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />

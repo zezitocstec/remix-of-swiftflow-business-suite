@@ -163,7 +163,7 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col h-screen">
       <TopBar title="Dashboard" subtitle="Visão geral do negócio" />
-      <div className="flex-1 overflow-auto p-6 space-y-6">
+      <div className="flex-1 overflow-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
         {/* KPIs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KPICard icon={DollarSign} label="Faturamento Hoje" value={formatBRL(faturamentoHoje)} />
