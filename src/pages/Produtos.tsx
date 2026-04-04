@@ -71,7 +71,7 @@ export default function Produtos() {
   return (
     <div className="flex flex-col h-screen">
       <TopBar title="Produtos" subtitle={`${products.length} produtos cadastrados`} />
-      <div className="flex-1 overflow-auto p-6 space-y-4">
+      <div className="flex-1 overflow-auto p-3 sm:p-6 space-y-4">
         <div className="flex items-center gap-3">
           <div className="flex-1 flex items-center gap-2 rounded-md border border-border bg-card px-3 h-9">
             <Search className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
@@ -80,8 +80,8 @@ export default function Produtos() {
           <Button size="sm" onClick={openNew}><Plus className="h-4 w-4" /> Novo Produto</Button>
         </div>
 
-        <div className="rounded-md border border-border bg-card overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="rounded-md border border-border bg-card overflow-x-auto">
+          <table className="w-full text-sm min-w-[700px]">
             <thead>
               <tr className="border-b border-border bg-secondary text-muted-foreground">
                 <th className="text-left py-2.5 px-4 font-medium">Produto</th>

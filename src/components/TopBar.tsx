@@ -13,23 +13,23 @@ export function TopBar({ title, subtitle }: TopBarProps) {
   const initial = user?.email?.charAt(0)?.toUpperCase() || "U";
 
   return (
-    <header className="flex items-center justify-between h-14 px-6 border-b border-border bg-card">
-      <div>
-        <h1 className="text-base font-semibold tracking-tight-display text-foreground">{title}</h1>
-        {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+    <header className="flex items-center justify-between h-14 px-4 sm:px-6 border-b border-border bg-card">
+      <div className="min-w-0">
+        <h1 className="text-base font-semibold tracking-tight text-foreground truncate">{title}</h1>
+        {subtitle && <p className="text-xs text-muted-foreground truncate">{subtitle}</p>}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
         {companyName && (
-          <span className="text-xs text-muted-foreground mr-2 hidden sm:inline">{companyName}</span>
+          <span className="text-xs text-muted-foreground mr-2 hidden lg:inline">{companyName}</span>
         )}
-        <button className="p-2 rounded-md hover:bg-secondary text-muted-foreground transition-colors">
+        <button className="p-2 rounded-md hover:bg-secondary text-muted-foreground transition-colors hidden sm:block">
           <Search className="h-4 w-4" strokeWidth={1.5} />
         </button>
         <button className="p-2 rounded-md hover:bg-secondary text-muted-foreground transition-colors relative">
           <Bell className="h-4 w-4" strokeWidth={1.5} />
           <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-destructive rounded-full" />
         </button>
-        <div className="h-7 w-7 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-medium ml-2">
+        <div className="h-7 w-7 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-medium ml-1 sm:ml-2">
           {initial}
         </div>
       </div>

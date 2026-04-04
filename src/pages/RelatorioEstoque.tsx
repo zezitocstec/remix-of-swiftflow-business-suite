@@ -40,7 +40,7 @@ export default function RelatorioEstoque() {
   return (
     <div className="flex flex-col h-screen">
       <TopBar title="Relatório de Estoque" subtitle="Análise detalhada do inventário" />
-      <div className="flex-1 overflow-auto p-6 space-y-6">
+      <div className="flex-1 overflow-auto p-3 sm:p-6 space-y-6">
         {/* Filter */}
         <div className="flex items-center gap-3">
           <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}

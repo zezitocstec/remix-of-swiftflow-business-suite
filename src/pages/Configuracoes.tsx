@@ -44,7 +44,7 @@ export default function Configuracoes() {
           ))}
         </div>
 
-        <div className="p-6 max-w-4xl">
+        <div className="p-3 sm:p-6 max-w-4xl">
           {active === "empresa" && <EmpresaForm />}
           {active === "impressora" && <ImpressoraConfig />}
           {active === "venda" && <VendaConfig />}

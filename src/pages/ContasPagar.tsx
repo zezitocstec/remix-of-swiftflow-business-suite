@@ -108,7 +108,7 @@ export default function ContasPagar() {
   return (
     <div className="flex flex-col h-screen">
       <TopBar title="Contas a Pagar" subtitle="Fornecedores e vencimentos" />
-      <div className="flex-1 overflow-auto p-6 space-y-6">
+      <div className="flex-1 overflow-auto p-3 sm:p-6 space-y-6">
         {/* KPIs */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="rounded-md border border-border bg-card p-4 flex items-start gap-3">

@@ -58,7 +58,7 @@ export default function Estoque() {
   return (
     <div className="flex flex-col h-screen">
       <TopBar title="Estoque" subtitle="Controle de inventário" />
-      <div className="flex-1 overflow-auto p-6 space-y-6">
+      <div className="flex-1 overflow-auto p-3 sm:p-6 space-y-6">
         {/* Actions */}
         <div className="flex items-center gap-3">
           <Button size="sm" onClick={() => setEntryDialogOpen(true)}>
