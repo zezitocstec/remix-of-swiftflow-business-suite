@@ -80,8 +80,8 @@ export default function Produtos() {
           <Button size="sm" onClick={openNew}><Plus className="h-4 w-4" /> Novo Produto</Button>
         </div>
 
-        <div className="rounded-md border border-border bg-card overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="rounded-md border border-border bg-card overflow-x-auto">
+          <table className="w-full text-sm min-w-[700px]">
             <thead>
               <tr className="border-b border-border bg-secondary text-muted-foreground">
                 <th className="text-left py-2.5 px-4 font-medium">Produto</th>
