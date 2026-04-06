@@ -470,6 +470,40 @@ export default function BackupConfig() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Admin PIN Dialog */}
+      <Dialog open={pinDialog} onOpenChange={(open) => { setPinDialog(open); if (!open) setPendingAction(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-primary" />
+              Autenticação Necessária
+            </DialogTitle>
+            <DialogDescription>
+              Digite o PIN do administrador para continuar com esta ação.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            type="password"
+            inputMode="numeric"
+            maxLength={6}
+            placeholder="PIN"
+            value={pinValue}
+            onChange={(e) => setPinValue(e.target.value.replace(/\D/g, ""))}
+            className="h-14 text-2xl text-center tracking-[0.5em]"
+            autoFocus
+            onKeyDown={(e) => { if (e.key === "Enter") handlePinSubmit(); }}
+          />
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setPinDialog(false); setPendingAction(null); }}>
+              Cancelar
+            </Button>
+            <Button onClick={handlePinSubmit} disabled={!pinValue}>
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
