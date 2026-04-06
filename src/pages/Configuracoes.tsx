@@ -87,6 +87,7 @@ export default function Configuracoes() {
           {active === "venda" && <VendaConfig />}
           {active === "usuarios" && <OperadoresConfig />}
           {active === "terminais" && <TerminaisConfig />}
+          {active === "seguranca" && <SegurancaConfig />}
           {active === "logs" && <LogsConfig />}
           {active === "backup" && <BackupConfig />}
           {active === "fiscal" && (
