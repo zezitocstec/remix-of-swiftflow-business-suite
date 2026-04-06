@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Download, Upload, Loader2, AlertTriangle, Trash2, RotateCcw, Building2 } from "lucide-react";
+import { Download, Upload, Loader2, AlertTriangle, Trash2, RotateCcw, Building2, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProducts } from "@/contexts/ProductContext";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ const RESET_SECTIONS = [
 export default function BackupConfig() {
   const { tenantId } = useTenant();
   const { user } = useAuth();
+  const { adminPin } = useProducts();
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(false);
@@ -51,6 +53,11 @@ export default function BackupConfig() {
   const [newCompanyName, setNewCompanyName] = useState("");
   const [creatingCompany, setCreatingCompany] = useState(false);
   const [newCompanyConfirmText, setNewCompanyConfirmText] = useState("");
+
+  // Admin PIN verification state
+  const [pinDialog, setPinDialog] = useState(false);
+  const [pinValue, setPinValue] = useState("");
+  const [pendingAction, setPendingAction] = useState<"reset" | "newCompany" | null>(null);
 
   const handleExport = async () => {
     if (!tenantId) return;
@@ -134,6 +141,32 @@ export default function BackupConfig() {
     } else {
       setSelectedResets(RESET_SECTIONS.map((s) => s.id));
     }
+  };
+
+  const requestPinForAction = (action: "reset" | "newCompany") => {
+    setPendingAction(action);
+    setPinValue("");
+    setPinDialog(true);
+  };
+
+  const handlePinSubmit = () => {
+    if (pinValue !== adminPin) {
+      toast.error("PIN incorreto. Acesso negado.");
+      setPinValue("");
+      return;
+    }
+    setPinDialog(false);
+    setPinValue("");
+    if (pendingAction === "reset") {
+      setResetDialog(true);
+      setSelectedResets([]);
+      setResetConfirmText("");
+    } else if (pendingAction === "newCompany") {
+      setNewCompanyDialog(true);
+      setNewCompanyName("");
+      setNewCompanyConfirmText("");
+    }
+    setPendingAction(null);
   };
 
   const handleReset = async () => {
@@ -272,7 +305,7 @@ export default function BackupConfig() {
         <Button
           variant="destructive"
           className="gap-2"
-          onClick={() => { setResetDialog(true); setSelectedResets([]); setResetConfirmText(""); }}
+          onClick={() => requestPinForAction("reset")}
         >
           <RotateCcw className="h-4 w-4" />
           Resetar Dados
@@ -290,7 +323,7 @@ export default function BackupConfig() {
         <Button
           variant="destructive"
           className="gap-2"
-          onClick={() => { setNewCompanyDialog(true); setNewCompanyName(""); setNewCompanyConfirmText(""); }}
+          onClick={() => requestPinForAction("newCompany")}
         >
           <Building2 className="h-4 w-4" />
           Iniciar Nova Empresa
@@ -433,6 +466,40 @@ export default function BackupConfig() {
             >
               {creatingCompany ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Confirmar e Recomeçar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Admin PIN Dialog */}
+      <Dialog open={pinDialog} onOpenChange={(open) => { setPinDialog(open); if (!open) setPendingAction(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-primary" />
+              Autenticação Necessária
+            </DialogTitle>
+            <DialogDescription>
+              Digite o PIN do administrador para continuar com esta ação.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            type="password"
+            inputMode="numeric"
+            maxLength={6}
+            placeholder="PIN"
+            value={pinValue}
+            onChange={(e) => setPinValue(e.target.value.replace(/\D/g, ""))}
+            className="h-14 text-2xl text-center tracking-[0.5em]"
+            autoFocus
+            onKeyDown={(e) => { if (e.key === "Enter") handlePinSubmit(); }}
+          />
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setPinDialog(false); setPendingAction(null); }}>
+              Cancelar
+            </Button>
+            <Button onClick={handlePinSubmit} disabled={!pinValue}>
+              Confirmar
             </Button>
           </DialogFooter>
         </DialogContent>
