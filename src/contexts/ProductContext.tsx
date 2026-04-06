@@ -183,7 +183,12 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   const [actionLogs, setActionLogs] = useState<ActionLog[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [bills, setBills] = useState<Bill[]>([]);
-  const [adminPin, setAdminPin] = useState("1234");
+  const [adminPin, setAdminPinState] = useState(() => localStorage.getItem("adminPin") || "1234");
+
+  const setAdminPin = useCallback((pin: string) => {
+    setAdminPinState(pin);
+    localStorage.setItem("adminPin", pin);
+  }, []);
   const [loading, setLoading] = useState(true);
 
   // ─── Load all data from Supabase on tenant change ───

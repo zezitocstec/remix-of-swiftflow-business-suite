@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { TopBar } from "@/components/TopBar";
-import { Building2, Printer, Receipt, Shield, Users, Monitor, ClipboardList, ChevronDown, DatabaseBackup } from "lucide-react";
+import { Building2, Printer, Receipt, Shield, Users, Monitor, ClipboardList, ChevronDown, DatabaseBackup, Lock } from "lucide-react";
 import EmpresaForm from "@/components/config/EmpresaForm";
 import ImpressoraConfig from "@/components/config/ImpressoraConfig";
 import VendaConfig from "@/components/config/VendaConfig";
@@ -8,6 +8,7 @@ import OperadoresConfig from "@/components/config/OperadoresConfig";
 import TerminaisConfig from "@/components/config/TerminaisConfig";
 import LogsConfig from "@/components/config/LogsConfig";
 import BackupConfig from "@/components/config/BackupConfig";
+import SegurancaConfig from "@/components/config/SegurancaConfig";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +22,7 @@ const tabs = [
   { id: "venda", icon: Receipt, label: "Venda / Fiscal" },
   { id: "usuarios", icon: Users, label: "Usuários" },
   { id: "terminais", icon: Monitor, label: "Terminais" },
+  { id: "seguranca", icon: Lock, label: "Segurança" },
   { id: "logs", icon: ClipboardList, label: "Logs" },
   { id: "backup", icon: DatabaseBackup, label: "Backup" },
   { id: "fiscal", icon: Shield, label: "Fiscal (NFC-e)" },
@@ -85,6 +87,7 @@ export default function Configuracoes() {
           {active === "venda" && <VendaConfig />}
           {active === "usuarios" && <OperadoresConfig />}
           {active === "terminais" && <TerminaisConfig />}
+          {active === "seguranca" && <SegurancaConfig />}
           {active === "logs" && <LogsConfig />}
           {active === "backup" && <BackupConfig />}
           {active === "fiscal" && (
