@@ -305,7 +305,7 @@ export default function BackupConfig() {
         <Button
           variant="destructive"
           className="gap-2"
-          onClick={() => { setResetDialog(true); setSelectedResets([]); setResetConfirmText(""); }}
+          onClick={() => requestPinForAction("reset")}
         >
           <RotateCcw className="h-4 w-4" />
           Resetar Dados
@@ -323,7 +323,7 @@ export default function BackupConfig() {
         <Button
           variant="destructive"
           className="gap-2"
-          onClick={() => { setNewCompanyDialog(true); setNewCompanyName(""); setNewCompanyConfirmText(""); }}
+          onClick={() => requestPinForAction("newCompany")}
         >
           <Building2 className="h-4 w-4" />
           Iniciar Nova Empresa
