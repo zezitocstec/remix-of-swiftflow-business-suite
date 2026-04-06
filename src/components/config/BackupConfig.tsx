@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Download, Upload, Loader2, AlertTriangle, Trash2, RotateCcw, Building2 } from "lucide-react";
+import { Download, Upload, Loader2, AlertTriangle, Trash2, RotateCcw, Building2, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProducts } from "@/contexts/ProductContext";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ const RESET_SECTIONS = [
 export default function BackupConfig() {
   const { tenantId } = useTenant();
   const { user } = useAuth();
+  const { adminPin } = useProducts();
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(false);
@@ -51,6 +53,11 @@ export default function BackupConfig() {
   const [newCompanyName, setNewCompanyName] = useState("");
   const [creatingCompany, setCreatingCompany] = useState(false);
   const [newCompanyConfirmText, setNewCompanyConfirmText] = useState("");
+
+  // Admin PIN verification state
+  const [pinDialog, setPinDialog] = useState(false);
+  const [pinValue, setPinValue] = useState("");
+  const [pendingAction, setPendingAction] = useState<"reset" | "newCompany" | null>(null);
 
   const handleExport = async () => {
     if (!tenantId) return;
