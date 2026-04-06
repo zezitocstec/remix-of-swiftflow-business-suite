@@ -143,6 +143,32 @@ export default function BackupConfig() {
     }
   };
 
+  const requestPinForAction = (action: "reset" | "newCompany") => {
+    setPendingAction(action);
+    setPinValue("");
+    setPinDialog(true);
+  };
+
+  const handlePinSubmit = () => {
+    if (pinValue !== adminPin) {
+      toast.error("PIN incorreto. Acesso negado.");
+      setPinValue("");
+      return;
+    }
+    setPinDialog(false);
+    setPinValue("");
+    if (pendingAction === "reset") {
+      setResetDialog(true);
+      setSelectedResets([]);
+      setResetConfirmText("");
+    } else if (pendingAction === "newCompany") {
+      setNewCompanyDialog(true);
+      setNewCompanyName("");
+      setNewCompanyConfirmText("");
+    }
+    setPendingAction(null);
+  };
+
   const handleReset = async () => {
     if (!tenantId || selectedResets.length === 0) return;
     setResetting(true);
