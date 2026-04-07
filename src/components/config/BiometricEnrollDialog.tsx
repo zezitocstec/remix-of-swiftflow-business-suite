@@ -58,7 +58,7 @@ export default function BiometricEnrollDialog({
       .select("id, device_name, created_at")
       .eq("operator_id", operatorId)
       .order("created_at", { ascending: true });
-    setCredentials((data as Credential[]) || []);
+    setCredentials(((data as unknown) as Credential[]) || []);
     setLoading(false);
   };
 
