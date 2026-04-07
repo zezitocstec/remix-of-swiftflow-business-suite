@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { toast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Shield, ShieldCheck, Fingerprint } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { isWebAuthnSupported, isPlatformAuthAvailable, registerBiometric } from "@/lib/webauthn";
+import { isWebAuthnSupported, isPlatformAuthAvailable } from "@/lib/webauthn";
+import BiometricEnrollDialog from "@/components/config/BiometricEnrollDialog";
 
 const emptyForm = { nome: "", pin: "", ativo: true, permissions: { abrirCaixa: true, cancelarItem: false, cancelarCupom: false } };
 
