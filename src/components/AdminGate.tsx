@@ -37,6 +37,10 @@ export default function AdminGate({ children }: AdminGateProps) {
       if (result.valid) {
         setAuthenticated(true);
         toast({ title: "Acesso liberado", description: `Autenticado via biometria: ${result.operator?.nome}` });
+      } else if (result.error?.includes("Nenhuma biometria") || result.error?.includes("No biometric")) {
+        toast({ title: "Nenhuma digital cadastrada", description: "Cadastre uma digital em Configurações > Operadores.", variant: "default" });
+      } else if (result.error?.includes("cancelada")) {
+        toast({ title: "Autenticação cancelada", description: "Toque novamente quando estiver pronto." });
       } else {
         toast({ title: "Falha na biometria", description: result.error, variant: "destructive" });
       }
