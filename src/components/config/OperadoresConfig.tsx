@@ -23,7 +23,7 @@ export default function OperadoresConfig() {
   const [biometricSupported, setBiometricSupported] = useState(false);
   const [biometricCredentials, setBiometricCredentials] = useState<Record<string, number>>({});
   const [registeringBiometric, setRegisteringBiometric] = useState<string | null>(null);
-
+  const [enrollDialogOp, setEnrollDialogOp] = useState<{ id: string; nome: string } | null>(null);
   useEffect(() => {
     isPlatformAuthAvailable().then(setBiometricSupported);
     loadBiometricCounts();
