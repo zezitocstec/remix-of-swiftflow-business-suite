@@ -74,14 +74,20 @@ export default function OperadoresConfig() {
 
   const handleRegisterBiometric = async (operatorId: string) => {
     setRegisteringBiometric(operatorId);
-    const result = await registerBiometric(operatorId);
-    setRegisteringBiometric(null);
-    if (result.success) {
-      toast({ title: "Biometria cadastrada!", description: "Digital registrada com sucesso." });
-      loadBiometricCounts();
-    } else {
-      toast({ title: "Erro no cadastro", description: result.error, variant: "destructive" });
+    try {
+      const result = await registerBiometric(operatorId);
+      if (result.success) {
+        toast({ title: "Biometria cadastrada!", description: "Digital registrada com sucesso." });
+        loadBiometricCounts();
+      } else if (result.error?.includes("cancelada")) {
+        toast({ title: "Cadastro cancelado", description: "Toque no ícone de digital para tentar novamente quando estiver pronto.", variant: "default" });
+      } else {
+        toast({ title: "Erro no cadastro", description: result.error || "Tente novamente.", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Erro inesperado", description: "Não foi possível acessar o sensor biométrico. Verifique as permissões do navegador.", variant: "destructive" });
     }
+    setRegisteringBiometric(null);
   };
 
   const handleRemoveBiometric = async (operatorId: string) => {
