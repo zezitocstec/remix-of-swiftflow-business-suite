@@ -250,6 +250,20 @@ export default function OperadoresConfig() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Biometric Enroll Dialog */}
+      {enrollDialogOp && (
+        <BiometricEnrollDialog
+          open={!!enrollDialogOp}
+          onOpenChange={(open) => { if (!open) setEnrollDialogOp(null); }}
+          operatorId={enrollDialogOp.id}
+          operatorName={enrollDialogOp.nome}
+          onSuccess={() => {
+            loadBiometricCounts();
+            toast({ title: "Biometria cadastrada!", description: "Digital registrada com sucesso." });
+          }}
+        />
+      )}
     </div>
   );
 }
