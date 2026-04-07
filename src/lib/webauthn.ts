@@ -112,7 +112,11 @@ export async function authenticateBiometric(operatorId?: string): Promise<{
     });
 
     if (optErr || !options?.challenge) {
-      return { valid: false, error: options?.error || "Nenhuma biometria cadastrada" };
+      const errMsg = options?.error || (optErr as any)?.message || "";
+      if (errMsg.includes("No biometric") || errMsg.includes("404")) {
+        return { valid: false, error: "Nenhuma biometria cadastrada" };
+      }
+      return { valid: false, error: "Nenhuma biometria cadastrada" };
     }
 
     // 2. Get assertion from browser
