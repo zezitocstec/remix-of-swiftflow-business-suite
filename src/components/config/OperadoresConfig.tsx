@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { toast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Shield, ShieldCheck, Fingerprint } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { isWebAuthnSupported, isPlatformAuthAvailable, registerBiometric } from "@/lib/webauthn";
+import { isWebAuthnSupported, isPlatformAuthAvailable } from "@/lib/webauthn";
+import BiometricEnrollDialog from "@/components/config/BiometricEnrollDialog";
 
 const emptyForm = { nome: "", pin: "", ativo: true, permissions: { abrirCaixa: true, cancelarItem: false, cancelarCupom: false } };
 
@@ -22,7 +23,7 @@ export default function OperadoresConfig() {
   const [biometricSupported, setBiometricSupported] = useState(false);
   const [biometricCredentials, setBiometricCredentials] = useState<Record<string, number>>({});
   const [registeringBiometric, setRegisteringBiometric] = useState<string | null>(null);
-
+  const [enrollDialogOp, setEnrollDialogOp] = useState<{ id: string; nome: string } | null>(null);
   useEffect(() => {
     isPlatformAuthAvailable().then(setBiometricSupported);
     loadBiometricCounts();
@@ -72,22 +73,9 @@ export default function OperadoresConfig() {
     setDeleteId(null);
   };
 
-  const handleRegisterBiometric = async (operatorId: string) => {
-    setRegisteringBiometric(operatorId);
-    try {
-      const result = await registerBiometric(operatorId);
-      if (result.success) {
-        toast({ title: "Biometria cadastrada!", description: "Digital registrada com sucesso." });
-        loadBiometricCounts();
-      } else if (result.error?.includes("cancelada")) {
-        toast({ title: "Cadastro cancelado", description: "Toque no ícone de digital para tentar novamente quando estiver pronto.", variant: "default" });
-      } else {
-        toast({ title: "Erro no cadastro", description: result.error || "Tente novamente.", variant: "destructive" });
-      }
-    } catch {
-      toast({ title: "Erro inesperado", description: "Não foi possível acessar o sensor biométrico. Verifique as permissões do navegador.", variant: "destructive" });
-    }
-    setRegisteringBiometric(null);
+  const handleRegisterBiometric = (operatorId: string) => {
+    const op = operators.find(o => o.id === operatorId);
+    if (op) setEnrollDialogOp({ id: op.id, nome: op.nome });
   };
 
   const handleRemoveBiometric = async (operatorId: string) => {
@@ -203,9 +191,8 @@ export default function OperadoresConfig() {
                       size="sm"
                       variant="outline"
                       onClick={() => handleRegisterBiometric(editId)}
-                      disabled={registeringBiometric === editId}
                     >
-                      {registeringBiometric === editId ? "Registrando..." : "Cadastrar"}
+                      Cadastrar
                     </Button>
                     {(biometricCredentials[editId] || 0) > 0 && (
                       <Button size="sm" variant="ghost" onClick={() => handleRemoveBiometric(editId)} className="text-destructive">
@@ -262,6 +249,20 @@ export default function OperadoresConfig() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Biometric Enroll Dialog */}
+      {enrollDialogOp && (
+        <BiometricEnrollDialog
+          open={!!enrollDialogOp}
+          onOpenChange={(open) => { if (!open) setEnrollDialogOp(null); }}
+          operatorId={enrollDialogOp.id}
+          operatorName={enrollDialogOp.nome}
+          onSuccess={() => {
+            loadBiometricCounts();
+            toast({ title: "Biometria cadastrada!", description: "Digital registrada com sucesso." });
+          }}
+        />
+      )}
     </div>
   );
 }
