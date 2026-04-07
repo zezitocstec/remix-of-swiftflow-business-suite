@@ -191,9 +191,8 @@ export default function OperadoresConfig() {
                       size="sm"
                       variant="outline"
                       onClick={() => handleRegisterBiometric(editId)}
-                      disabled={registeringBiometric === editId}
                     >
-                      {registeringBiometric === editId ? "Registrando..." : "Cadastrar"}
+                      Cadastrar
                     </Button>
                     {(biometricCredentials[editId] || 0) > 0 && (
                       <Button size="sm" variant="ghost" onClick={() => handleRemoveBiometric(editId)} className="text-destructive">
