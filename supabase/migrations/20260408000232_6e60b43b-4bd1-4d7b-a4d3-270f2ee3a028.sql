@@ -1,0 +1,12 @@
+ALTER TABLE public.products
+  ADD COLUMN IF NOT EXISTS ncm text DEFAULT '',
+  ADD COLUMN IF NOT EXISTS cfop text DEFAULT '',
+  ADD COLUMN IF NOT EXISTS cst text DEFAULT '',
+  ADD COLUMN IF NOT EXISTS csosn text DEFAULT '',
+  ADD COLUMN IF NOT EXISTS icms_aliquota numeric DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS pis_aliquota numeric DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS cofins_aliquota numeric DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS cest text DEFAULT '',
+  ADD COLUMN IF NOT EXISTS descricao text DEFAULT '',
+  ADD COLUMN IF NOT EXISTS origem text DEFAULT '0',
+  ADD COLUMN IF NOT EXISTS unidade text DEFAULT 'UN';

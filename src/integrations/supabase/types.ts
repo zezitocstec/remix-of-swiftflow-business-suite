@@ -555,43 +555,76 @@ export type Database = {
         Row: {
           barcode: string | null
           category: string | null
+          cest: string | null
+          cfop: string | null
+          cofins_aliquota: number | null
           created_at: string
+          csosn: string | null
+          cst: string | null
+          descricao: string | null
+          icms_aliquota: number | null
           id: string
           image_url: string | null
           min_stock: number | null
           name: string
+          ncm: string | null
+          origem: string | null
+          pis_aliquota: number | null
           price: number
           sku: string
           stock: number
           tenant_id: string | null
+          unidade: string | null
           updated_at: string
         }
         Insert: {
           barcode?: string | null
           category?: string | null
+          cest?: string | null
+          cfop?: string | null
+          cofins_aliquota?: number | null
           created_at?: string
+          csosn?: string | null
+          cst?: string | null
+          descricao?: string | null
+          icms_aliquota?: number | null
           id?: string
           image_url?: string | null
           min_stock?: number | null
           name: string
+          ncm?: string | null
+          origem?: string | null
+          pis_aliquota?: number | null
           price?: number
           sku?: string
           stock?: number
           tenant_id?: string | null
+          unidade?: string | null
           updated_at?: string
         }
         Update: {
           barcode?: string | null
           category?: string | null
+          cest?: string | null
+          cfop?: string | null
+          cofins_aliquota?: number | null
           created_at?: string
+          csosn?: string | null
+          cst?: string | null
+          descricao?: string | null
+          icms_aliquota?: number | null
           id?: string
           image_url?: string | null
           min_stock?: number | null
           name?: string
+          ncm?: string | null
+          origem?: string | null
+          pis_aliquota?: number | null
           price?: number
           sku?: string
           stock?: number
           tenant_id?: string | null
+          unidade?: string | null
           updated_at?: string
         }
         Relationships: [
