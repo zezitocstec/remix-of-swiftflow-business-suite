@@ -18,7 +18,7 @@ const categories = ["Bebidas", "Padaria", "Grãos", "Laticínios", "Limpeza", "H
 const emptyForm = {
   name: "", sku: "", price: 0, stock: 0, minStock: 0, category: "Outros", barcode: "",
   ncm: "", cfop: "5102", cst: "", csosn: "", icms_aliquota: 0, pis_aliquota: 0,
-  cofins_aliquota: 0, cest: "", descricao: "", origem: "0", unidade: "UN",
+  cofins_aliquota: 0, cest: "", descricao: "", origem: "0", unidade: "UN", imageUrl: "" as string | undefined,
 };
 
 export default function Produtos() {
@@ -45,7 +45,7 @@ export default function Produtos() {
     setEditingProduct(p);
     setForm({
       name: p.name, sku: p.sku, price: p.price, stock: p.stock, minStock: p.minStock || 0,
-      category: p.category, barcode: p.barcode,
+      category: p.category, barcode: p.barcode, imageUrl: p.imageUrl,
       ncm: (p as any).ncm || "", cfop: (p as any).cfop || "5102", cst: (p as any).cst || "",
       csosn: (p as any).csosn || "", icms_aliquota: (p as any).icms_aliquota || 0,
       pis_aliquota: (p as any).pis_aliquota || 0, cofins_aliquota: (p as any).cofins_aliquota || 0,
