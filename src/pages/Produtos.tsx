@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { toast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import BarcodeScanner from "@/components/pdv/BarcodeScanner";
+import ProductImageUpload from "@/components/produtos/ProductImageUpload";
 import { supabase } from "@/integrations/supabase/client";
 
 const categories = ["Bebidas", "Padaria", "Grãos", "Laticínios", "Limpeza", "Higiene", "Óleos", "Massas", "Hortifruti", "Carnes", "Importado", "Outros"];
