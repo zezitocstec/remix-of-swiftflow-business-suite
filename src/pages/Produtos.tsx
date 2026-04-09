@@ -171,7 +171,16 @@ export default function Produtos() {
                   <tr key={p.id} className={`border-b border-border last:border-0 transition-colors ${
                     isLowStock ? "bg-warning/5 hover:bg-warning/10" : isOutOfStock ? "bg-destructive/5 hover:bg-destructive/10" : "hover:bg-secondary/50"
                   }`}>
-                    <td className="py-2.5 px-4 font-medium text-foreground">{p.name}</td>
+                    <td className="py-2.5 px-4 font-medium text-foreground">
+                      <div className="flex items-center gap-2">
+                        {p.imageUrl ? (
+                          <img src={p.imageUrl} alt={p.name} className="h-8 w-8 rounded object-cover shrink-0" />
+                        ) : (
+                          <div className="h-8 w-8 rounded bg-muted shrink-0" />
+                        )}
+                        {p.name}
+                      </div>
+                    </td>
                     <td className="py-2.5 px-4 text-muted-foreground">{p.sku}</td>
                     <td className="py-2.5 px-4 text-muted-foreground">{p.category}</td>
                     <td className="py-2.5 px-4 text-muted-foreground font-mono text-xs">{(p as any).ncm || '—'}</td>
@@ -221,6 +230,9 @@ export default function Produtos() {
             </TabsList>
 
             <TabsContent value="geral" className="space-y-4 mt-4">
+              {/* Image upload */}
+              <ProductImageUpload imageUrl={form.imageUrl} onImageChange={(url) => updateField("imageUrl", url ?? "")} />
+
               {/* Barcode with scanner button */}
               <div className="flex gap-2 items-end">
                 <div className="flex-1 space-y-1.5">
