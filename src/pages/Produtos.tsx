@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { toast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import BarcodeScanner from "@/components/pdv/BarcodeScanner";
+import ProductImageUpload from "@/components/produtos/ProductImageUpload";
 import { supabase } from "@/integrations/supabase/client";
 
 const categories = ["Bebidas", "Padaria", "Grãos", "Laticínios", "Limpeza", "Higiene", "Óleos", "Massas", "Hortifruti", "Carnes", "Importado", "Outros"];
@@ -17,7 +18,7 @@ const categories = ["Bebidas", "Padaria", "Grãos", "Laticínios", "Limpeza", "H
 const emptyForm = {
   name: "", sku: "", price: 0, stock: 0, minStock: 0, category: "Outros", barcode: "",
   ncm: "", cfop: "5102", cst: "", csosn: "", icms_aliquota: 0, pis_aliquota: 0,
-  cofins_aliquota: 0, cest: "", descricao: "", origem: "0", unidade: "UN",
+  cofins_aliquota: 0, cest: "", descricao: "", origem: "0", unidade: "UN", imageUrl: "" as string | undefined,
 };
 
 export default function Produtos() {
@@ -44,7 +45,7 @@ export default function Produtos() {
     setEditingProduct(p);
     setForm({
       name: p.name, sku: p.sku, price: p.price, stock: p.stock, minStock: p.minStock || 0,
-      category: p.category, barcode: p.barcode,
+      category: p.category, barcode: p.barcode, imageUrl: p.imageUrl,
       ncm: (p as any).ncm || "", cfop: (p as any).cfop || "5102", cst: (p as any).cst || "",
       csosn: (p as any).csosn || "", icms_aliquota: (p as any).icms_aliquota || 0,
       pis_aliquota: (p as any).pis_aliquota || 0, cofins_aliquota: (p as any).cofins_aliquota || 0,
@@ -170,7 +171,16 @@ export default function Produtos() {
                   <tr key={p.id} className={`border-b border-border last:border-0 transition-colors ${
                     isLowStock ? "bg-warning/5 hover:bg-warning/10" : isOutOfStock ? "bg-destructive/5 hover:bg-destructive/10" : "hover:bg-secondary/50"
                   }`}>
-                    <td className="py-2.5 px-4 font-medium text-foreground">{p.name}</td>
+                    <td className="py-2.5 px-4 font-medium text-foreground">
+                      <div className="flex items-center gap-2">
+                        {p.imageUrl ? (
+                          <img src={p.imageUrl} alt={p.name} className="h-8 w-8 rounded object-cover shrink-0" />
+                        ) : (
+                          <div className="h-8 w-8 rounded bg-muted shrink-0" />
+                        )}
+                        {p.name}
+                      </div>
+                    </td>
                     <td className="py-2.5 px-4 text-muted-foreground">{p.sku}</td>
                     <td className="py-2.5 px-4 text-muted-foreground">{p.category}</td>
                     <td className="py-2.5 px-4 text-muted-foreground font-mono text-xs">{(p as any).ncm || '—'}</td>
@@ -220,6 +230,9 @@ export default function Produtos() {
             </TabsList>
 
             <TabsContent value="geral" className="space-y-4 mt-4">
+              {/* Image upload */}
+              <ProductImageUpload imageUrl={form.imageUrl} onImageChange={(url) => updateField("imageUrl", url ?? "")} />
+
               {/* Barcode with scanner button */}
               <div className="flex gap-2 items-end">
                 <div className="flex-1 space-y-1.5">
