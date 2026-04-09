@@ -1,13 +1,79 @@
 import { supabase } from "@/integrations/supabase/client";
 
+function getPermissionsPolicy(): { allowsFeature?: (feature: string) => boolean } | null {
+  return ((document as any).permissionsPolicy || (document as any).featurePolicy || null) as {
+    allowsFeature?: (feature: string) => boolean;
+  } | null;
+}
+
+function isWebAuthnFeatureAllowed(feature: string): boolean {
+  const policy = getPermissionsPolicy();
+  if (!policy?.allowsFeature) return true;
+
+  try {
+    return policy.allowsFeature(feature);
+  } catch {
+    return true;
+  }
+}
+
+function getWebAuthnContextError(mode: "create" | "get"): string | null {
+  if (!window.isSecureContext) {
+    return "A biometria exige conexão segura (HTTPS).";
+  }
+
+  if (!(navigator.credentials && window.PublicKeyCredential)) {
+    return "Este dispositivo ou navegador não oferece suporte à biometria via WebAuthn.";
+  }
+
+  const feature = mode === "create" ? "publickey-credentials-create" : "publickey-credentials-get";
+  if (!isWebAuthnFeatureAllowed(feature)) {
+    return "A biometria está bloqueada dentro deste preview. Abra o app em uma aba própria ou publique o app para testar no Android.";
+  }
+
+  return null;
+}
+
+function getFriendlyWebAuthnError(err: any, mode: "create" | "get"): string {
+  const rawMessage = err?.message || "";
+  const actionText = mode === "create" ? "cadastrar" : "usar";
+
+  if (
+    rawMessage.includes("publickey-credentials-") &&
+    rawMessage.includes("not enabled in this document")
+  ) {
+    return "A biometria está bloqueada dentro do preview do Lovable. Abra o app em uma aba própria ou publique o app para testar no Android.";
+  }
+
+  if (rawMessage.includes("Permissions Policy")) {
+    return "A biometria foi bloqueada pela Permissions Policy do preview. Abra o app fora do editor para testar no Android.";
+  }
+
+  if (err?.name === "InvalidStateError") {
+    return "Esta digital já está cadastrada neste dispositivo.";
+  }
+
+  if (err?.name === "SecurityError") {
+    return "Erro de segurança: domínio inválido para WebAuthn.";
+  }
+
+  if (err?.name === "NotAllowedError") {
+    return `A solicitação de biometria foi bloqueada ou cancelada pelo navegador. Se você estiver no preview do Lovable, abra o app fora do editor para ${actionText} a digital.`;
+  }
+
+  return rawMessage || "Erro inesperado";
+}
+
 // Check if WebAuthn is supported
 export function isWebAuthnSupported(): boolean {
-  return !!(navigator.credentials && window.PublicKeyCredential);
+  return !!(navigator.credentials && window.PublicKeyCredential && window.isSecureContext);
 }
 
 // Check if platform authenticator (fingerprint/face) is available
 export async function isPlatformAuthAvailable(): Promise<boolean> {
   if (!isWebAuthnSupported()) return false;
+  if (!isWebAuthnFeatureAllowed("publickey-credentials-get")) return false;
+
   try {
     return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
   } catch {
@@ -33,6 +99,11 @@ function bufferToBase64Url(buffer: ArrayBuffer): string {
 
 // Register a new biometric credential for an operator
 export async function registerBiometric(operatorId: string, deviceName?: string): Promise<{ success: boolean; error?: string }> {
+  const contextError = getWebAuthnContextError("create");
+  if (contextError) {
+    return { success: false, error: contextError };
+  }
+
   try {
     // 1. Get registration options from server
     const { data: options, error: optErr } = await supabase.functions.invoke("webauthn", {
@@ -93,16 +164,7 @@ export async function registerBiometric(operatorId: string, deviceName?: string)
     return { success: true };
   } catch (err: any) {
     console.error("[webauthn] register error:", err.name, err.message);
-    if (err.name === "NotAllowedError") {
-      return { success: false, error: "Autenticação cancelada ou não permitida. Verifique se a biometria está ativada nas configurações do dispositivo." };
-    }
-    if (err.name === "SecurityError") {
-      return { success: false, error: "Erro de segurança: domínio inválido para WebAuthn." };
-    }
-    if (err.name === "InvalidStateError") {
-      return { success: false, error: "Esta digital já está cadastrada neste dispositivo." };
-    }
-    return { success: false, error: err.message || "Erro inesperado" };
+    return { success: false, error: getFriendlyWebAuthnError(err, "create") };
   }
 }
 
@@ -112,6 +174,11 @@ export async function authenticateBiometric(operatorId?: string): Promise<{
   error?: string;
   operator?: { id: string; nome: string; permissions: { abrirCaixa: boolean; cancelarItem: boolean; cancelarCupom: boolean } };
 }> {
+  const contextError = getWebAuthnContextError("get");
+  if (contextError) {
+    return { valid: false, error: contextError };
+  }
+
   try {
     // 1. Get auth options
     const { data: options, error: optErr } = await supabase.functions.invoke("webauthn", {
@@ -172,9 +239,6 @@ export async function authenticateBiometric(operatorId?: string): Promise<{
     return result;
   } catch (err: any) {
     console.error("[webauthn] auth error:", err.name, err.message);
-    if (err.name === "NotAllowedError") {
-      return { valid: false, error: "Autenticação cancelada ou não permitida. Verifique se a biometria está ativada." };
-    }
-    return { valid: false, error: err.message || "Erro inesperado" };
+    return { valid: false, error: getFriendlyWebAuthnError(err, "get") };
   }
 }
