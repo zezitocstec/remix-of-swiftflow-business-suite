@@ -92,8 +92,15 @@ export async function registerBiometric(operatorId: string, deviceName?: string)
 
     return { success: true };
   } catch (err: any) {
+    console.error("[webauthn] register error:", err.name, err.message);
     if (err.name === "NotAllowedError") {
-      return { success: false, error: "Autenticação cancelada pelo usuário" };
+      return { success: false, error: "Autenticação cancelada ou não permitida. Verifique se a biometria está ativada nas configurações do dispositivo." };
+    }
+    if (err.name === "SecurityError") {
+      return { success: false, error: "Erro de segurança: domínio inválido para WebAuthn." };
+    }
+    if (err.name === "InvalidStateError") {
+      return { success: false, error: "Esta digital já está cadastrada neste dispositivo." };
     }
     return { success: false, error: err.message || "Erro inesperado" };
   }
@@ -164,8 +171,9 @@ export async function authenticateBiometric(operatorId?: string): Promise<{
 
     return result;
   } catch (err: any) {
+    console.error("[webauthn] auth error:", err.name, err.message);
     if (err.name === "NotAllowedError") {
-      return { valid: false, error: "Autenticação cancelada pelo usuário" };
+      return { valid: false, error: "Autenticação cancelada ou não permitida. Verifique se a biometria está ativada." };
     }
     return { valid: false, error: err.message || "Erro inesperado" };
   }

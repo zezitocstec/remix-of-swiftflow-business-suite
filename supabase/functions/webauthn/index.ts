@@ -41,46 +41,47 @@ function base64UrlDecode(str: string): Uint8Array {
   return bytes;
 }
 
-// Generate random challenge
 function generateChallenge(): string {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
   return base64UrlEncode(bytes);
 }
 
-// Simple CBOR parsing to extract public key from attestation
-function parseCosePublicKey(authData: Uint8Array): string {
-  // authData: rpIdHash(32) + flags(1) + signCount(4) + attestedCredData
-  // attestedCredData: aaguid(16) + credIdLen(2) + credId(credIdLen) + credentialPublicKey(CBOR)
-  const flags = authData[32];
-  const hasAttestedCred = (flags & 0x40) !== 0;
-  if (!hasAttestedCred) throw new Error("No attested credential data");
-
-  const credIdLen = (authData[53] << 8) | authData[54];
-  const publicKeyStart = 55 + credIdLen;
-  const publicKeyBytes = authData.slice(publicKeyStart);
-  return base64UrlEncode(publicKeyBytes);
-}
-
 function getSignCount(authData: Uint8Array): number {
   return (authData[33] << 24) | (authData[34] << 16) | (authData[35] << 8) | authData[36];
 }
 
-function getCredIdFromAuthData(authData: Uint8Array): string {
-  const credIdLen = (authData[53] << 8) | authData[54];
-  const credId = authData.slice(55, 55 + credIdLen);
-  return base64UrlEncode(credId);
+// ----- Challenge persistence via DB -----
+
+async function storeChallenge(supabaseAdmin: any, key: string, challenge: string) {
+  // Upsert: if key exists, update it
+  await supabaseAdmin
+    .from("webauthn_challenges")
+    .upsert({ challenge_key: key, challenge, created_at: new Date().toISOString() }, { onConflict: "challenge_key" });
 }
 
-// In-memory challenge store (short-lived, edge function scoped)
-const challenges = new Map<string, { challenge: string; ts: number }>();
+async function getAndDeleteChallenge(supabaseAdmin: any, key: string): Promise<string | null> {
+  const { data } = await supabaseAdmin
+    .from("webauthn_challenges")
+    .select("challenge, created_at")
+    .eq("challenge_key", key)
+    .maybeSingle();
 
-function cleanChallenges() {
-  const now = Date.now();
-  for (const [k, v] of challenges) {
-    if (now - v.ts > 300000) challenges.delete(k);
+  if (!data) return null;
+
+  // Check expiry (5 minutes)
+  const age = Date.now() - new Date(data.created_at).getTime();
+  if (age > 300000) {
+    await supabaseAdmin.from("webauthn_challenges").delete().eq("challenge_key", key);
+    return null;
   }
+
+  // Delete after reading
+  await supabaseAdmin.from("webauthn_challenges").delete().eq("challenge_key", key);
+  return data.challenge;
 }
+
+// ----- Auth helpers -----
 
 async function getUserId(req: Request): Promise<string | null> {
   const authHeader = req.headers.get("Authorization");
@@ -95,11 +96,7 @@ async function getUserId(req: Request): Promise<string | null> {
   return data.user.id;
 }
 
-async function getTenantId(userId: string): Promise<string | null> {
-  const supabaseAdmin = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
+async function getTenantId(supabaseAdmin: any, userId: string): Promise<string | null> {
   const { data } = await supabaseAdmin
     .from("company_members")
     .select("company_id")
@@ -123,7 +120,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    const tenantId = await getTenantId(userId);
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    const tenantId = await getTenantId(supabaseAdmin, userId);
     if (!tenantId) {
       return new Response(JSON.stringify({ error: "No tenant" }), {
         status: 403,
@@ -136,10 +138,7 @@ Deno.serve(async (req) => {
     const origin = getOrigin(req);
     const rpId = getRpId(origin);
 
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    console.log(`[webauthn] action=${action} rpId=${rpId} origin=${origin}`);
 
     if (action === "register-options") {
       const { operator_id } = body;
@@ -150,7 +149,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Verify operator belongs to tenant
       const { data: op } = await supabaseAdmin
         .from("operators")
         .select("id, nome")
@@ -165,7 +163,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Get existing credentials to exclude
       const { data: existing } = await supabaseAdmin
         .from("webauthn_credentials")
         .select("credential_id")
@@ -173,8 +170,7 @@ Deno.serve(async (req) => {
 
       const challenge = generateChallenge();
       const key = `reg_${operator_id}`;
-      cleanChallenges();
-      challenges.set(key, { challenge, ts: Date.now() });
+      await storeChallenge(supabaseAdmin, key, challenge);
 
       const options = {
         challenge,
@@ -185,21 +181,23 @@ Deno.serve(async (req) => {
           displayName: op.nome,
         },
         pubKeyCredParams: [
-          { alg: -7, type: "public-key" },   // ES256
-          { alg: -257, type: "public-key" },  // RS256
+          { alg: -7, type: "public-key" },
+          { alg: -257, type: "public-key" },
         ],
         authenticatorSelection: {
-          authenticatorAttachment: "platform",
           userVerification: "required",
           residentKey: "preferred",
+          requireResidentKey: false,
         },
-        timeout: 60000,
+        timeout: 120000,
         attestation: "none",
         excludeCredentials: (existing || []).map((c: any) => ({
           id: c.credential_id,
           type: "public-key",
         })),
       };
+
+      console.log(`[webauthn] register-options sent for operator ${op.nome}`);
 
       return new Response(JSON.stringify(options), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -216,22 +214,19 @@ Deno.serve(async (req) => {
       }
 
       const key = `reg_${operator_id}`;
-      const stored = challenges.get(key);
-      if (!stored) {
-        return new Response(JSON.stringify({ error: "Challenge expired" }), {
+      const storedChallenge = await getAndDeleteChallenge(supabaseAdmin, key);
+      if (!storedChallenge) {
+        console.log(`[webauthn] challenge expired or not found for key=${key}`);
+        return new Response(JSON.stringify({ error: "Challenge expired. Tente novamente." }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      challenges.delete(key);
 
-      // Basic verification: decode attestationObject and extract credential
-      const attestationObject = base64UrlDecode(credential.response.attestationObject);
       const clientDataJSON = base64UrlDecode(credential.response.clientDataJSON);
-
-      // Verify clientDataJSON contains our challenge
       const clientData = JSON.parse(new TextDecoder().decode(clientDataJSON));
-      if (clientData.challenge !== stored.challenge) {
+      
+      if (clientData.challenge !== storedChallenge) {
         return new Response(JSON.stringify({ error: "Challenge mismatch" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -245,33 +240,28 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Simple CBOR decode for attestation object to get authData
-      // attestationObject is CBOR encoded map with keys: fmt, attStmt, authData
-      // We use a simple approach: find authData by scanning for known patterns
-      // For "none" attestation, the structure is predictable
-      
-      // Store credential_id from the response and public key
       const credentialId = credential.id;
 
-      // Store the raw response for future verification
-      // In production, you'd do full CBOR parsing. For simplicity, we store the credential ID and a hash.
       const { error: insertErr } = await supabaseAdmin
         .from("webauthn_credentials")
         .insert({
           operator_id,
           credential_id: credentialId,
-          public_key: credential.response.attestationObject, // Store for verification
+          public_key: credential.response.attestationObject,
           counter: 0,
           device_name: device_name || "Biometria",
           tenant_id: tenantId,
         });
 
       if (insertErr) {
+        console.log(`[webauthn] insert error: ${insertErr.message}`);
         return new Response(JSON.stringify({ error: "Failed to save credential" }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+
+      console.log(`[webauthn] credential registered for operator ${operator_id}`);
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -281,7 +271,6 @@ Deno.serve(async (req) => {
     if (action === "auth-options") {
       const { operator_id } = body;
 
-      // Get credentials for operator(s) in this tenant
       let query = supabaseAdmin
         .from("webauthn_credentials")
         .select("credential_id, operator_id")
@@ -302,8 +291,7 @@ Deno.serve(async (req) => {
 
       const challenge = generateChallenge();
       const key = `auth_${tenantId}`;
-      cleanChallenges();
-      challenges.set(key, { challenge, ts: Date.now() });
+      await storeChallenge(supabaseAdmin, key, challenge);
 
       const options = {
         challenge,
@@ -313,7 +301,7 @@ Deno.serve(async (req) => {
           type: "public-key",
         })),
         userVerification: "required",
-        timeout: 60000,
+        timeout: 120000,
       };
 
       return new Response(JSON.stringify(options), {
@@ -331,20 +319,18 @@ Deno.serve(async (req) => {
       }
 
       const key = `auth_${tenantId}`;
-      const stored = challenges.get(key);
-      if (!stored) {
-        return new Response(JSON.stringify({ error: "Challenge expired" }), {
+      const storedChallenge = await getAndDeleteChallenge(supabaseAdmin, key);
+      if (!storedChallenge) {
+        return new Response(JSON.stringify({ error: "Challenge expired. Tente novamente." }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      challenges.delete(key);
 
-      // Verify clientDataJSON
       const clientDataJSON = base64UrlDecode(credential.response.clientDataJSON);
       const clientData = JSON.parse(new TextDecoder().decode(clientDataJSON));
 
-      if (clientData.challenge !== stored.challenge) {
+      if (clientData.challenge !== storedChallenge) {
         return new Response(JSON.stringify({ error: "Challenge mismatch" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -358,7 +344,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Find the credential in DB
       const { data: cred } = await supabaseAdmin
         .from("webauthn_credentials")
         .select("id, operator_id, counter")
@@ -372,13 +357,11 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Update counter
       await supabaseAdmin
         .from("webauthn_credentials")
         .update({ counter: (cred.counter || 0) + 1 })
         .eq("id", cred.id);
 
-      // Get operator info
       const { data: operator } = await supabaseAdmin
         .from("operators")
         .select("id, nome, ativo, perm_abrir_caixa, perm_cancelar_item, perm_cancelar_cupom")
@@ -412,7 +395,8 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
+    console.error(`[webauthn] unhandled error: ${err.message}`);
+    return new Response(JSON.stringify({ error: "Internal server error", detail: err.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
