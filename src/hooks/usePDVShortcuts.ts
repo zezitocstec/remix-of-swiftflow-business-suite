@@ -7,6 +7,7 @@ interface ShortcutActions {
   onFinalize: () => void;
   onCancel: () => void;
   onDebtors?: () => void;
+  onCloseCashRegister?: () => void;
 }
 
 export function usePDVShortcuts(actions: ShortcutActions, enabled = true) {
@@ -20,6 +21,7 @@ export function usePDVShortcuts(actions: ShortcutActions, enabled = true) {
         case "F2": e.preventDefault(); actions.onPark(); break;
         case "F3": e.preventDefault(); actions.onRecall(); break;
         case "F4": e.preventDefault(); actions.onDebtors?.(); break;
+        case "F5": e.preventDefault(); actions.onCloseCashRegister?.(); break;
         case " ": if (!isInput) { e.preventDefault(); actions.onFinalize(); } break;
         case "Escape": e.preventDefault(); actions.onCancel(); break;
       }

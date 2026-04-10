@@ -260,7 +260,8 @@ export default function PDV() {
     toast({ title: "Venda finalizada!", description: `${totalItems} itens — ${formatBRL(total)} via ${methodStr}.` });
 
     if (isPedido) {
-      setShowReceiptOptions(true);
+      // Fiado: always 2 copies (Loja + Cliente) with client and operator names
+      printReceipt(saleRecord, "venda", 2);
     } else {
       printReceipt(saleRecord, "venda", 1);
     }
@@ -342,6 +343,7 @@ export default function PDV() {
     onRecall: () => { if (parkedSales.length > 0) setShowRecallDialog(true); },
     onFinalize: () => { if (cart.length > 0 && !showPayment) setShowPayment(true); },
     onCancel: () => { if (showPayment) setShowPayment(false); },
+    onCloseCashRegister: () => { if (cashRegister) window.dispatchEvent(new CustomEvent("pdv:close-cash-register")); },
   });
 
   const activeOperators = operators.filter(o => o.ativo && o.permissions.abrirCaixa);
@@ -590,26 +592,6 @@ export default function PDV() {
         </DialogContent>
       </Dialog>
 
-      {/* Receipt Options Dialog (Fiado) */}
-      <Dialog open={showReceiptOptions} onOpenChange={setShowReceiptOptions}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Imprimir Cupom do Pedido</DialogTitle>
-            <DialogDescription>Escolha quantas vias imprimir</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Button onClick={() => { if (lastSaleRecord) printReceipt(lastSaleRecord, "venda", 1); setShowReceiptOptions(false); }} className="w-full h-12 touch-manipulation">
-              <Printer className="h-4 w-4 mr-2" /> 1 Via (Loja)
-            </Button>
-            <Button variant="outline" onClick={() => { if (lastSaleRecord) printReceipt(lastSaleRecord, "venda", 2); setShowReceiptOptions(false); }} className="w-full h-12 touch-manipulation">
-              <Printer className="h-4 w-4 mr-2" /> 2 Vias (Loja + Cliente)
-            </Button>
-            <Button variant="ghost" onClick={() => setShowReceiptOptions(false)} className="w-full touch-manipulation text-xs">
-              Não imprimir
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* PIN Authorization Dialog */}
       <Dialog open={!!authDialog} onOpenChange={() => setAuthDialog(null)}>
