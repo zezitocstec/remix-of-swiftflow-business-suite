@@ -260,7 +260,8 @@ export default function PDV() {
     toast({ title: "Venda finalizada!", description: `${totalItems} itens — ${formatBRL(total)} via ${methodStr}.` });
 
     if (isPedido) {
-      setShowReceiptOptions(true);
+      // Fiado: always 2 copies (Loja + Cliente) with client and operator names
+      printReceipt(saleRecord, "venda", 2);
     } else {
       printReceipt(saleRecord, "venda", 1);
     }
