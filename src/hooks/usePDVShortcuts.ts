@@ -7,6 +7,7 @@ interface ShortcutActions {
   onFinalize: () => void;
   onCancel: () => void;
   onDebtors?: () => void;
+  onCloseCashRegister?: () => void;
 }
 
 export function usePDVShortcuts(actions: ShortcutActions, enabled = true) {

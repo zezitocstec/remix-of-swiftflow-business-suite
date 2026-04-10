@@ -9,6 +9,8 @@ export function printReceipt(sale: SaleRecord, type: "venda" | "pagamento", copi
   const dateStr = sale.date.toLocaleDateString("pt-BR");
   const timeStr = sale.date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
+  const isPedido = sale.methods.some(m => m.method === "Pedido (Fiado)");
+
   const buildReceipt = (copyLabel: string) => {
     const itemsHtml = sale.items.map(i => `
       <tr>
@@ -43,7 +45,7 @@ export function printReceipt(sale: SaleRecord, type: "venda" | "pagamento", copi
     return `
       <div style="width:280px;font-family:monospace;padding:16px;${copyLabel === 'Via Cliente' ? 'page-break-before:always;' : ''}">
         <div style="text-align:center;margin-bottom:12px">
-          <div style="font-weight:bold;font-size:14px">CUPOM ${type === "pagamento" ? "PAGAMENTO" : "PEDIDO"}</div>
+          <div style="font-weight:bold;font-size:14px">CUPOM ${type === "pagamento" ? "PAGAMENTO" : isPedido ? "PEDIDO" : "VENDA"}</div>
           <div style="font-size:10px;color:#666">${copyLabel}</div>
         </div>
         <div style="border-top:1px dashed #000;border-bottom:1px dashed #000;padding:6px 0;margin-bottom:8px">
@@ -78,9 +80,13 @@ export function printReceipt(sale: SaleRecord, type: "venda" | "pagamento", copi
     `;
   };
 
-  const receipts = copies === 2
+  // Fiado: always 2 copies (Loja + Cliente)
+  // Other sales: 1 copy only
+  const effectiveCopies = isPedido ? 2 : copies;
+
+  const receipts = effectiveCopies === 2
     ? buildReceipt("Via Loja") + buildReceipt("Via Cliente")
-    : buildReceipt("Via Loja");
+    : buildReceipt("Via Única");
 
   printWindow.document.write(`
     <html><head><title>Cupom #${receiptNumber}</title>
