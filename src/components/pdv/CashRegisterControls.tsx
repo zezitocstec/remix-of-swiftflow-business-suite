@@ -115,7 +115,14 @@ export default function CashRegisterControls() {
   const [countedDebito, setCountedDebito] = useState("");
   const [countedFiado, setCountedFiado] = useState("");
 
-  const resetCounted = () => {
+  // Listen for F5 shortcut event
+  useEffect(() => {
+    const handler = () => { resetCounted(); setCloseDialog(true); };
+    window.addEventListener("pdv:close-cash-register", handler);
+    return () => window.removeEventListener("pdv:close-cash-register", handler);
+  }, []);
+
+
     setCountedDinheiro("");
     setCountedPix("");
     setCountedCredito("");
