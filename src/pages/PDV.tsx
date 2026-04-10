@@ -342,6 +342,7 @@ export default function PDV() {
     onRecall: () => { if (parkedSales.length > 0) setShowRecallDialog(true); },
     onFinalize: () => { if (cart.length > 0 && !showPayment) setShowPayment(true); },
     onCancel: () => { if (showPayment) setShowPayment(false); },
+    onCloseCashRegister: () => { if (cashRegister) window.dispatchEvent(new CustomEvent("pdv:close-cash-register")); },
   });
 
   const activeOperators = operators.filter(o => o.ativo && o.permissions.abrirCaixa);
