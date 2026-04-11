@@ -15,8 +15,9 @@ import { exportReportPDF } from "@/lib/export-pdf";
 import EstoqueReport from "@/components/reports/EstoqueReport";
 import FinanceiroReport from "@/components/reports/FinanceiroReport";
 import DespesasReport from "@/components/reports/DespesasReport";
+import OrcamentosReport from "@/components/reports/OrcamentosReport";
 
-type ReportView = "menu" | "faturamento" | "vendas-terminal" | "estoque" | "financeiro" | "curva-abc" | "despesas";
+type ReportView = "menu" | "faturamento" | "vendas-terminal" | "estoque" | "financeiro" | "curva-abc" | "despesas" | "orcamentos";
 
 const reports = [
   { id: "faturamento" as ReportView, icon: DollarSign, title: "Faturamento", desc: "Receitas por período, comparativo mensal" },
@@ -25,6 +26,7 @@ const reports = [
   { id: "financeiro" as ReportView, icon: BarChart3, title: "Financeiro", desc: "Fluxo de caixa, contas a pagar/receber" },
   { id: "despesas" as ReportView, icon: DollarSign, title: "Despesas por Categoria", desc: "Gráfico de pizza, evolução mensal, detalhamento" },
   { id: "curva-abc" as ReportView, icon: BarChart3, title: "Curva ABC", desc: "Classificação de produtos por faturamento" },
+  { id: "orcamentos" as ReportView, icon: FileText, title: "Orçamentos", desc: "Propostas comerciais, status e valores" },
 ];
 
 const ABC_COLORS = { A: "hsl(var(--primary))", B: "hsl(var(--warning))", C: "hsl(var(--muted-foreground))" };
@@ -662,6 +664,7 @@ export default function Relatorios() {
         {view === "estoque" && <EstoqueReport />}
         {view === "financeiro" && <FinanceiroReport />}
         {view === "despesas" && <DespesasReport />}
+        {view === "orcamentos" && <OrcamentosReport />}
       </div>
     </div>
   );
