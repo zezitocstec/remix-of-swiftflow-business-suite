@@ -20,6 +20,7 @@ import RelatorioEstoque from "./pages/RelatorioEstoque";
 import Caixa from "./pages/Caixa";
 import Configuracoes from "./pages/Configuracoes";
 import ContasPagar from "./pages/ContasPagar";
+import Orcamentos from "./pages/Orcamentos";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ const App = () => (
                 <Route path="/relatorios" element={<ProtectedRoute><LayoutPage><Relatorios /></LayoutPage></ProtectedRoute>} />
                 <Route path="/relatorios/estoque" element={<ProtectedRoute><LayoutPage><RelatorioEstoque /></LayoutPage></ProtectedRoute>} />
                 <Route path="/contas-pagar" element={<ProtectedRoute><LayoutPage><ContasPagar /></LayoutPage></ProtectedRoute>} />
+                <Route path="/orcamentos" element={<ProtectedRoute><LayoutPage><Orcamentos /></LayoutPage></ProtectedRoute>} />
                 <Route path="/configuracoes" element={<ProtectedRoute><LayoutPage><Configuracoes /></LayoutPage></ProtectedRoute>} />
                 <Route path="*" element={<LayoutPage><NotFound /></LayoutPage>} />
               </Routes>
