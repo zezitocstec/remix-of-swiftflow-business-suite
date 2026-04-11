@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { TopBar } from "@/components/TopBar";
-import { Building2, Printer, Receipt, Shield, Users, Monitor, ClipboardList, ChevronDown, DatabaseBackup, Lock } from "lucide-react";
+import { Building2, Printer, Receipt, Shield, Users, Monitor, ClipboardList, ChevronDown, DatabaseBackup, Lock, UserCheck } from "lucide-react";
 import EmpresaForm from "@/components/config/EmpresaForm";
 import ImpressoraConfig from "@/components/config/ImpressoraConfig";
 import VendaConfig from "@/components/config/VendaConfig";
@@ -9,6 +9,7 @@ import TerminaisConfig from "@/components/config/TerminaisConfig";
 import LogsConfig from "@/components/config/LogsConfig";
 import BackupConfig from "@/components/config/BackupConfig";
 import SegurancaConfig from "@/components/config/SegurancaConfig";
+import VendedoresConfig from "@/components/config/VendedoresConfig";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +26,7 @@ const tabs = [
   { id: "seguranca", icon: Lock, label: "Segurança" },
   { id: "logs", icon: ClipboardList, label: "Logs" },
   { id: "backup", icon: DatabaseBackup, label: "Backup" },
+  { id: "vendedores", icon: UserCheck, label: "Vendedores" },
   { id: "fiscal", icon: Shield, label: "Fiscal (NFC-e)" },
 ] as const;
 
@@ -90,6 +92,7 @@ export default function Configuracoes() {
           {active === "seguranca" && <SegurancaConfig />}
           {active === "logs" && <LogsConfig />}
           {active === "backup" && <BackupConfig />}
+          {active === "vendedores" && <VendedoresConfig />}
           {active === "fiscal" && (
             <div className="text-sm text-muted-foreground p-8 text-center">
               Configurações fiscais (NFC-e, CFOP, CST, CSOSN, NCM) — em breve.
