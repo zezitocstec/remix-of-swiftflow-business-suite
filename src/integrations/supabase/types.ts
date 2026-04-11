@@ -551,6 +551,149 @@ export type Database = {
           },
         ]
       }
+      orcamento_items: {
+        Row: {
+          desconto_tipo: string
+          desconto_valor: number
+          id: string
+          orcamento_id: string
+          product_id: string | null
+          product_name: string
+          quantity: number
+          tenant_id: string | null
+          total: number
+          unit_price: number
+        }
+        Insert: {
+          desconto_tipo?: string
+          desconto_valor?: number
+          id?: string
+          orcamento_id: string
+          product_id?: string | null
+          product_name: string
+          quantity?: number
+          tenant_id?: string | null
+          total?: number
+          unit_price?: number
+        }
+        Update: {
+          desconto_tipo?: string
+          desconto_valor?: number
+          id?: string
+          orcamento_id?: string
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          tenant_id?: string | null
+          total?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamento_items_orcamento_id_fkey"
+            columns: ["orcamento_id"]
+            isOneToOne: false
+            referencedRelation: "orcamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamento_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamento_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orcamentos: {
+        Row: {
+          autorizado: boolean
+          client_id: string | null
+          client_name: string | null
+          created_at: string
+          desconto_tipo: string
+          desconto_valor: number
+          id: string
+          numero: number
+          observacoes: string | null
+          status: string
+          subtotal: number
+          tenant_id: string | null
+          total: number
+          updated_at: string
+          validade: string
+          vendedor_id: string | null
+          vendedor_name: string | null
+        }
+        Insert: {
+          autorizado?: boolean
+          client_id?: string | null
+          client_name?: string | null
+          created_at?: string
+          desconto_tipo?: string
+          desconto_valor?: number
+          id?: string
+          numero?: number
+          observacoes?: string | null
+          status?: string
+          subtotal?: number
+          tenant_id?: string | null
+          total?: number
+          updated_at?: string
+          validade?: string
+          vendedor_id?: string | null
+          vendedor_name?: string | null
+        }
+        Update: {
+          autorizado?: boolean
+          client_id?: string | null
+          client_name?: string | null
+          created_at?: string
+          desconto_tipo?: string
+          desconto_valor?: number
+          id?: string
+          numero?: number
+          observacoes?: string | null
+          status?: string
+          subtotal?: number
+          tenant_id?: string | null
+          total?: number
+          updated_at?: string
+          validade?: string
+          vendedor_id?: string | null
+          vendedor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamentos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamentos_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamentos_vendedor_id_fkey"
+            columns: ["vendedor_id"]
+            isOneToOne: false
+            referencedRelation: "vendedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           barcode: string | null
@@ -929,6 +1072,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "terminals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendedores: {
+        Row: {
+          ativo: boolean
+          comissao: number
+          created_at: string
+          id: string
+          nome: string
+          tenant_id: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          comissao?: number
+          created_at?: string
+          id?: string
+          nome: string
+          tenant_id?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          comissao?: number
+          created_at?: string
+          id?: string
+          nome?: string
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendedores_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "companies"
