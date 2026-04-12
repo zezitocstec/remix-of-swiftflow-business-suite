@@ -311,6 +311,64 @@ export default function PDV() {
     toast({ title: "Venda retomada", description: `${sale.customerName} — ${sale.items.length} itens.` });
   };
 
+  // ─── Load authorized quotes ───
+  const loadAuthorizedQuotes = async () => {
+    const { data } = await supabase
+      .from("orcamentos")
+      .select("*")
+      .eq("autorizado", true)
+      .neq("status", "convertido")
+      .order("created_at", { ascending: false });
+    setAuthorizedQuotes(data || []);
+    setQuoteSearch("");
+    setShowQuotePicker(true);
+  };
+
+  const loadQuoteIntoCart = async (quote: any) => {
+    const { data: items } = await supabase
+      .from("orcamento_items")
+      .select("*")
+      .eq("orcamento_id", quote.id);
+    if (!items || items.length === 0) {
+      toast({ title: "Orçamento vazio", variant: "destructive" });
+      return;
+    }
+    // Map quote items to cart items
+    const cartItems: CartItem[] = [];
+    for (const item of items) {
+      const product = products.find(p => p.id === item.product_id);
+      if (product) {
+        cartItems.push({ product, quantity: item.quantity, discount: 0 });
+      }
+    }
+    if (cartItems.length === 0) {
+      toast({ title: "Produtos não encontrados no cadastro", variant: "destructive" });
+      return;
+    }
+    setCart(cartItems);
+    // Apply general discount from quote
+    if (quote.desconto_valor > 0) {
+      setDiscount({ type: quote.desconto_tipo === "percent" ? "percent" : "value", amount: quote.desconto_valor });
+    }
+    // Set client if exists
+    if (quote.client_id) {
+      const client = clients.find(c => c.id === quote.client_id);
+      if (client) setSelectedClient(client);
+    }
+    // Mark quote as converted
+    await supabase.from("orcamentos").update({ status: "convertido" }).eq("id", quote.id);
+    setShowQuotePicker(false);
+    toast({ title: "Orçamento carregado", description: `#${quote.numero} — ${cartItems.length} itens adicionados ao carrinho.` });
+  };
+
+  const filteredQuotes = useMemo(() => {
+    if (!quoteSearch) return authorizedQuotes;
+    const q = quoteSearch.toLowerCase();
+    return authorizedQuotes.filter(
+      (o: any) => String(o.numero).includes(q) || (o.client_name || "").toLowerCase().includes(q)
+    );
+  }, [quoteSearch, authorizedQuotes]);
+
   const filteredClients = useMemo(() => {
     if (!clientSearch) return clients;
     const q = clientSearch.toLowerCase();
