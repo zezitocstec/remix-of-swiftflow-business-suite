@@ -654,6 +654,35 @@ export default function PDV() {
         </DialogContent>
       </Dialog>
 
+      {/* Quote Picker Dialog */}
+      <Dialog open={showQuotePicker} onOpenChange={setShowQuotePicker}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Orçamentos Autorizados
+            </DialogTitle>
+            <DialogDescription>Selecione um orçamento para carregar no caixa</DialogDescription>
+          </DialogHeader>
+          <Input placeholder="Buscar por número ou cliente..." value={quoteSearch} onChange={(e) => setQuoteSearch(e.target.value)} className="h-10" autoFocus />
+          <div className="space-y-2 max-h-60 overflow-auto">
+            {filteredQuotes.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nenhum orçamento autorizado disponível.</p>}
+            {filteredQuotes.map((q: any) => (
+              <button key={q.id} onClick={() => loadQuoteIntoCart(q)}
+                className="w-full flex items-center justify-between p-3 rounded-lg border border-border hover:border-primary hover:bg-secondary transition-all touch-manipulation text-left">
+                <div>
+                  <p className="text-sm font-medium text-foreground">#{q.numero} — {q.client_name || "Avulso"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {q.vendedor_name ? `Vendedor: ${q.vendedor_name} • ` : ""}
+                    Validade: {new Date(q.validade).toLocaleDateString("pt-BR")}
+                  </p>
+                </div>
+                <span className="text-sm font-bold tabular-nums text-foreground">{formatBRL(q.total)}</span>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* PIN Authorization Dialog */}
       <Dialog open={!!authDialog} onOpenChange={() => setAuthDialog(null)}>
