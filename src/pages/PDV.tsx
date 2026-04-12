@@ -100,7 +100,6 @@ export default function PDV() {
   const [showQuotePicker, setShowQuotePicker] = useState(false);
   const [authorizedQuotes, setAuthorizedQuotes] = useState<any[]>([]);
   const [quoteSearch, setQuoteSearch] = useState("");
-  const [debtPayMethod, setDebtPayMethod] = useState("Dinheiro");
 
   // PIN authorization state for cancellations
   const [authDialog, setAuthDialog] = useState<{ type: "cancelarItem" | "cancelarCupom"; itemId?: string } | null>(null);
