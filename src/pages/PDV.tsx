@@ -553,6 +553,7 @@ export default function PDV() {
         selectedClient={selectedClient} onSelectClient={() => setShowClientPicker(true)}
         onClearClient={() => setSelectedClient(null)} onOpenDebtors={() => setShowDebtors(true)}
         debtorCount={debtorClients.length}
+        onOpenQuotes={loadAuthorizedQuotes}
       />
       <CartPanel
         cart={cart} updateQty={updateQty} removeItem={removeItem} clearCart={clearCart}
