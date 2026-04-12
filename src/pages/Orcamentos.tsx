@@ -17,7 +17,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, subMonths, startOfMonth } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { cn } from "@/lib/utils";
 import {
   Plus, Search, Trash2, Edit, CheckCircle, FileText, CalendarIcon, Save, X, Printer, Download, Copy, History,
