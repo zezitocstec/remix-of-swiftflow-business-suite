@@ -265,6 +265,7 @@ export default function Orcamentos() {
                   <TableCell className="text-xs">{format(new Date(o.validade), "dd/MM/yyyy")}</TableCell>
                   <TableCell>{statusBadge(o)}</TableCell>
                   <TableCell className="text-right space-x-1">
+                    <Button size="icon" variant="ghost" onClick={() => handlePrint(o)} title="Imprimir"><Printer className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => handleEdit(o)}><Edit className="h-4 w-4" /></Button>
                     {!o.autorizado && <Button size="icon" variant="ghost" onClick={() => handleAuthorize(o)} title="Autorizar"><CheckCircle className="h-4 w-4 text-green-600" /></Button>}
                   </TableCell>
