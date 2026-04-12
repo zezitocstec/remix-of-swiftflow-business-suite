@@ -22,7 +22,7 @@ interface ProductGridProps {
 
 export default function ProductGrid({
   products, search, setSearch, onAddToCart, lastSaleId, onCancelLastSale,
-  selectedClient, onSelectClient, onClearClient, onOpenDebtors, debtorCount,
+  selectedClient, onSelectClient, onClearClient, onOpenDebtors, debtorCount, onOpenQuotes,
 }: ProductGridProps) {
   const [debouncedSearch, setDebouncedSearch] = useState(search);
 
