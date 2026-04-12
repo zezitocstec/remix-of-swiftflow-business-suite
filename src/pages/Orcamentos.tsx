@@ -133,12 +133,89 @@ export default function Orcamentos() {
     loadData();
   };
 
+  const handlePrint = async (o: Orcamento) => {
+    const { data: items } = await supabase.from("orcamento_items").select("*").eq("orcamento_id", o.id);
+    const { data: company } = await supabase.from("companies").select("*").eq("id", tenantId).single();
+
+    const printWindow = window.open("", "_blank", "width=400,height=700");
+    if (!printWindow) return;
+
+    const itemsHtml = (items || []).map((i: any) => {
+      const descStr = i.desconto_valor > 0
+        ? ` (${i.desconto_tipo === "percent" ? `${i.desconto_valor}%` : formatBRL(i.desconto_valor)} desc.)`
+        : "";
+      return `<tr>
+        <td style="text-align:left;font-size:11px;padding:4px 0;border-bottom:1px solid #eee">${i.product_name}${descStr}</td>
+        <td style="text-align:center;font-size:11px;padding:4px;border-bottom:1px solid #eee">${i.quantity}</td>
+        <td style="text-align:right;font-size:11px;padding:4px 0;border-bottom:1px solid #eee">${formatBRL(i.unit_price)}</td>
+        <td style="text-align:right;font-size:11px;padding:4px 0;border-bottom:1px solid #eee">${formatBRL(i.total)}</td>
+      </tr>`;
+    }).join("");
+
+    const descontoGeral = o.desconto_valor > 0
+      ? `<div style="display:flex;justify-content:space-between;font-size:12px;color:#666"><span>Desconto Geral (${o.desconto_tipo === "percent" ? `${o.desconto_valor}%` : formatBRL(o.desconto_valor)})</span><span>-${formatBRL(o.subtotal - o.total)}</span></div>`
+      : "";
+
+    const companyInfo = company ? `
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-weight:bold;font-size:16px">${company.nome_fantasia || company.nome}</div>
+        ${company.cnpj ? `<div style="font-size:10px;color:#666">CNPJ: ${company.cnpj}</div>` : ""}
+        ${company.telefone ? `<div style="font-size:10px;color:#666">Tel: ${company.telefone}</div>` : ""}
+        ${company.logradouro ? `<div style="font-size:10px;color:#666">${company.logradouro}${company.numero ? `, ${company.numero}` : ""} — ${company.cidade || ""}/${company.uf || ""}</div>` : ""}
+      </div>
+    ` : "";
+
+    printWindow.document.write(`<html><head><title>Orçamento #${o.numero}</title>
+    <style>@media print { body { margin: 0; } @page { size: A4; margin: 15mm; } }</style>
+    </head><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+      ${companyInfo}
+      <div style="text-align:center;font-weight:bold;font-size:18px;margin:12px 0;border-top:2px solid #000;border-bottom:2px solid #000;padding:8px 0">ORÇAMENTO #${o.numero}</div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:12px">
+        <div>
+          <div><strong>Cliente:</strong> ${o.client_name || "Avulso"}</div>
+          ${o.vendedor_name ? `<div><strong>Vendedor:</strong> ${o.vendedor_name}</div>` : ""}
+        </div>
+        <div style="text-align:right">
+          <div><strong>Data:</strong> ${format(new Date(o.created_at), "dd/MM/yyyy")}</div>
+          <div><strong>Validade:</strong> ${format(new Date(o.validade), "dd/MM/yyyy")}</div>
+          <div><strong>Status:</strong> ${o.autorizado ? "Autorizado" : "Rascunho"}</div>
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:12px">
+        <thead><tr style="border-bottom:2px solid #000">
+          <th style="text-align:left;font-size:11px;padding:4px 0">Produto</th>
+          <th style="text-align:center;font-size:11px;padding:4px">Qtd</th>
+          <th style="text-align:right;font-size:11px;padding:4px 0">Unit.</th>
+          <th style="text-align:right;font-size:11px;padding:4px 0">Total</th>
+        </tr></thead>
+        <tbody>${itemsHtml}</tbody>
+      </table>
+      <div style="border-top:2px solid #000;padding-top:8px">
+        <div style="display:flex;justify-content:space-between;font-size:12px"><span>Subtotal</span><span>${formatBRL(o.subtotal)}</span></div>
+        ${descontoGeral}
+        <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:bold;margin-top:4px;border-top:1px solid #000;padding-top:4px"><span>TOTAL</span><span>${formatBRL(o.total)}</span></div>
+      </div>
+      ${o.observacoes ? `<div style="margin-top:16px;font-size:11px;color:#666;border-top:1px dashed #ccc;padding-top:8px"><strong>Observações:</strong> ${o.observacoes}</div>` : ""}
+      <div style="margin-top:32px;text-align:center;font-size:10px;color:#999">Documento válido até ${format(new Date(o.validade), "dd/MM/yyyy")}</div>
+    </body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); printWindow.close(); }, 300);
+  };
+
   const statusBadge = (o: Orcamento) => {
-    if (o.autorizado) return <Badge className="bg-green-600 text-white">Autorizado</Badge>;
-    if (o.status === "convertido") return <Badge variant="secondary">Convertido</Badge>;
-    if (new Date(o.validade) < new Date()) return <Badge variant="destructive">Expirado</Badge>;
+    const s = getEffectiveStatus(o);
+    if (s === "autorizado") return <Badge className="bg-green-600 text-white">Autorizado</Badge>;
+    if (s === "convertido") return <Badge variant="secondary">Convertido</Badge>;
+    if (s === "expirado") return <Badge variant="destructive">Expirado</Badge>;
     return <Badge variant="outline">Rascunho</Badge>;
   };
+
+  const statusCounts = useMemo(() => {
+    const counts = { todos: orcamentos.length, rascunho: 0, autorizado: 0, convertido: 0, expirado: 0 };
+    orcamentos.forEach(o => { counts[getEffectiveStatus(o)]++; });
+    return counts;
+  }, [orcamentos]);
 
   return (
     <div className="flex flex-col h-screen">
@@ -150,6 +227,15 @@ export default function Orcamentos() {
             <Input placeholder="Buscar por número, cliente ou vendedor..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
           </div>
           <Button onClick={handleNew}><Plus className="h-4 w-4 mr-1" /> Novo Orçamento</Button>
+        </div>
+
+        {/* Status filter tabs */}
+        <div className="flex gap-1 flex-wrap">
+          {(["todos", "rascunho", "autorizado", "convertido", "expirado"] as const).map((s) => (
+            <Button key={s} variant={statusFilter === s ? "default" : "outline"} size="sm" onClick={() => setStatusFilter(s)} className="text-xs capitalize">
+              {s} ({statusCounts[s]})
+            </Button>
+          ))}
         </div>
 
         <div className="rounded-md border border-border overflow-hidden">
