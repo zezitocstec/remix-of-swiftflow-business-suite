@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { TopBar } from "@/components/TopBar";
 import { useProducts } from "@/contexts/ProductContext";
 import { useTenant } from "@/contexts/TenantContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBRL } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
-  Plus, Search, Trash2, Edit, CheckCircle, FileText, CalendarIcon, Save, X, Printer, Download, Copy,
+  Plus, Search, Trash2, Edit, CheckCircle, FileText, CalendarIcon, Save, X, Printer, Download, Copy, History,
 } from "lucide-react";
 
 interface OrcamentoItem {
