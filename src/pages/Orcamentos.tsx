@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
@@ -86,6 +87,7 @@ export default function Orcamentos() {
   const [historyOrcamento, setHistoryOrcamento] = useState<Orcamento | null>(null);
   const [historyEntries, setHistoryEntries] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Orcamento | null>(null);
 
   const logHistory = useCallback(async (orcamentoId: string, numero: number, acao: string, descricao: string) => {
     if (!tenantId) return;
@@ -148,6 +150,16 @@ export default function Orcamentos() {
     await supabase.from("orcamentos").update({ autorizado: true, status: "autorizado" }).eq("id", o.id);
     await logHistory(o.id, o.numero, "autorizado", "Orçamento autorizado");
     toast.success(`Orçamento #${o.numero} autorizado`);
+    loadData();
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    await supabase.from("orcamento_items").delete().eq("orcamento_id", deleteTarget.id);
+    await supabase.from("orcamento_historico").delete().eq("orcamento_id", deleteTarget.id);
+    await supabase.from("orcamentos").delete().eq("id", deleteTarget.id);
+    toast.success(`Orçamento #${deleteTarget.numero} excluído`);
+    setDeleteTarget(null);
     loadData();
   };
 
@@ -423,6 +435,11 @@ export default function Orcamentos() {
                     <Button size="icon" variant="ghost" onClick={() => handleShowHistory(o)} title="Histórico"><History className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => handleEdit(o)} title="Editar"><Edit className="h-4 w-4" /></Button>
                     {!o.autorizado && <Button size="icon" variant="ghost" onClick={() => handleAuthorize(o)} title="Autorizar"><CheckCircle className="h-4 w-4 text-green-600" /></Button>}
+                    {getEffectiveStatus(o) === "rascunho" && (
+                      <Button size="icon" variant="ghost" onClick={() => setDeleteTarget(o)} title="Excluir">
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -474,6 +491,24 @@ export default function Orcamentos() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Orçamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o orçamento #{deleteTarget?.numero}? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
