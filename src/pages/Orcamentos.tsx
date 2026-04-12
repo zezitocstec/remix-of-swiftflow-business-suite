@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
-  Plus, Search, Trash2, Edit, CheckCircle, FileText, CalendarIcon, Save, X,
+  Plus, Search, Trash2, Edit, CheckCircle, FileText, CalendarIcon, Save, X, Printer,
 } from "lucide-react";
 
 interface OrcamentoItem {
