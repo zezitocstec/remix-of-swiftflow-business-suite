@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
@@ -389,14 +390,41 @@ export default function Orcamentos() {
 
   const statusCounts = useMemo(() => {
     const counts = { todos: orcamentos.length, rascunho: 0, autorizado: 0, convertido: 0, expirado: 0 };
-    orcamentos.forEach(o => { counts[getEffectiveStatus(o)]++; });
-    return counts;
+    const totals = { rascunho: 0, autorizado: 0, convertido: 0, expirado: 0, geral: 0 };
+    orcamentos.forEach(o => {
+      const s = getEffectiveStatus(o);
+      counts[s]++;
+      totals[s] += o.total;
+      totals.geral += o.total;
+    });
+    return { counts, totals };
   }, [orcamentos]);
+
+  const summaryCards = [
+    { label: "Total Geral", count: statusCounts.counts.todos, value: statusCounts.totals.geral, color: "text-primary" },
+    { label: "Rascunho", count: statusCounts.counts.rascunho, value: statusCounts.totals.rascunho, color: "text-muted-foreground" },
+    { label: "Autorizados", count: statusCounts.counts.autorizado, value: statusCounts.totals.autorizado, color: "text-green-600" },
+    { label: "Convertidos", count: statusCounts.counts.convertido, value: statusCounts.totals.convertido, color: "text-secondary-foreground" },
+    { label: "Expirados", count: statusCounts.counts.expirado, value: statusCounts.totals.expirado, color: "text-destructive" },
+  ];
 
   return (
     <div className="flex flex-col h-screen">
       <TopBar title="Orçamentos" subtitle="Propostas comerciais" />
       <div className="flex-1 overflow-auto p-3 sm:p-6 space-y-4">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          {summaryCards.map((c) => (
+            <Card key={c.label} className="border-border">
+              <CardContent className="p-3">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{c.label}</p>
+                <p className={cn("text-lg font-bold", c.color)}>{c.count}</p>
+                <p className="text-xs text-muted-foreground">{formatBRL(c.value)}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -436,7 +464,7 @@ export default function Orcamentos() {
         <div className="flex gap-1 flex-wrap">
           {(["todos", "rascunho", "autorizado", "convertido", "expirado"] as const).map((s) => (
             <Button key={s} variant={statusFilter === s ? "default" : "outline"} size="sm" onClick={() => setStatusFilter(s)} className="text-xs capitalize">
-              {s} ({statusCounts[s]})
+              {s} ({statusCounts.counts[s]})
             </Button>
           ))}
         </div>
