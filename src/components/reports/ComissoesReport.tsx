@@ -4,7 +4,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { formatBRL } from "@/lib/mock-data";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, Download, FileText } from "lucide-react";
 import { format } from "date-fns";
@@ -44,6 +44,7 @@ export default function ComissoesReport() {
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [filterVendedor, setFilterVendedor] = useState("all");
 
   const load = useCallback(async () => {
     if (!tenantId) return;
@@ -60,6 +61,7 @@ export default function ComissoesReport() {
 
   const filtered = useMemo(() => {
     return orcamentos.filter((o) => {
+      if (filterVendedor !== "all" && o.vendedor_id !== filterVendedor) return false;
       if (dateFrom) {
         const start = new Date(dateFrom);
         start.setHours(0, 0, 0, 0);
@@ -72,7 +74,7 @@ export default function ComissoesReport() {
       }
       return true;
     });
-  }, [orcamentos, dateFrom, dateTo]);
+  }, [orcamentos, dateFrom, dateTo, filterVendedor]);
 
   const comissoes = useMemo<ComissaoRow[]>(() => {
     const vendedorMap = new Map(vendedores.map(v => [v.id, v]));
@@ -152,7 +154,19 @@ export default function ComissoesReport() {
             </Button>
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Vendedor</label>
+            <Select value={filterVendedor} onValueChange={setFilterVendedor}>
+              <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os vendedores</SelectItem>
+                {vendedores.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-1">
             <label className="text-xs text-muted-foreground">Data inicial</label>
             <Popover>
