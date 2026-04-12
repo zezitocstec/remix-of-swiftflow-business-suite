@@ -88,6 +88,8 @@ export default function Orcamentos() {
   const [historyEntries, setHistoryEntries] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Orcamento | null>(null);
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
   const logHistory = useCallback(async (orcamentoId: string, numero: number, acao: string, descricao: string) => {
     if (!tenantId) return;
@@ -130,10 +132,20 @@ export default function Orcamentos() {
         (o.client_name || "").toLowerCase().includes(q) ||
         (o.vendedor_name || "").toLowerCase().includes(q);
       if (!matchSearch) return false;
-      if (statusFilter === "todos") return true;
-      return getEffectiveStatus(o) === statusFilter;
+      if (statusFilter !== "todos" && getEffectiveStatus(o) !== statusFilter) return false;
+      if (dateFrom) {
+        const created = new Date(o.created_at);
+        if (created < dateFrom) return false;
+      }
+      if (dateTo) {
+        const created = new Date(o.created_at);
+        const endOfDay = new Date(dateTo);
+        endOfDay.setHours(23, 59, 59, 999);
+        if (created > endOfDay) return false;
+      }
+      return true;
     });
-  }, [orcamentos, search, statusFilter]);
+  }, [orcamentos, search, statusFilter, dateFrom, dateTo]);
 
   const handleNew = () => {
     setEditing(null);
@@ -390,6 +402,33 @@ export default function Orcamentos() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar por número, cliente ou vendedor..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
           </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("w-[140px] justify-start text-left text-xs", !dateFrom && "text-muted-foreground")}>
+                <CalendarIcon className="h-3.5 w-3.5 mr-1" />
+                {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Data inicial"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus className={cn("p-3 pointer-events-auto")} />
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("w-[140px] justify-start text-left text-xs", !dateTo && "text-muted-foreground")}>
+                <CalendarIcon className="h-3.5 w-3.5 mr-1" />
+                {dateTo ? format(dateTo, "dd/MM/yyyy") : "Data final"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus className={cn("p-3 pointer-events-auto")} />
+            </PopoverContent>
+          </Popover>
+          {(dateFrom || dateTo) && (
+            <Button variant="ghost" size="sm" onClick={() => { setDateFrom(undefined); setDateTo(undefined); }} className="text-xs">
+              <X className="h-3.5 w-3.5 mr-1" /> Limpar
+            </Button>
+          )}
           <Button onClick={handleNew}><Plus className="h-4 w-4 mr-1" /> Novo Orçamento</Button>
         </div>
 
