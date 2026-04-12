@@ -146,8 +146,21 @@ export default function Orcamentos() {
 
   const handleAuthorize = async (o: Orcamento) => {
     await supabase.from("orcamentos").update({ autorizado: true, status: "autorizado" }).eq("id", o.id);
+    await logHistory(o.id, o.numero, "autorizado", "Orçamento autorizado");
     toast.success(`Orçamento #${o.numero} autorizado`);
     loadData();
+  };
+
+  const handleShowHistory = async (o: Orcamento) => {
+    setHistoryOrcamento(o);
+    setHistoryLoading(true);
+    const { data } = await supabase
+      .from("orcamento_historico")
+      .select("*")
+      .eq("orcamento_id", o.id)
+      .order("created_at", { ascending: false });
+    setHistoryEntries(data || []);
+    setHistoryLoading(false);
   };
 
   const handlePrint = async (o: Orcamento) => {
