@@ -75,6 +75,7 @@ function calcTotals(items: OrcamentoItem[], descontoTipo: "percent" | "value", d
 export default function Orcamentos() {
   const { products, clients } = useProducts();
   const { tenantId, companyName } = useTenant();
+  const { user } = useAuth();
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
   const [search, setSearch] = useState("");
@@ -82,6 +83,21 @@ export default function Orcamentos() {
   const [editing, setEditing] = useState<Orcamento | null>(null);
   const [showEditor, setShowEditor] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [historyOrcamento, setHistoryOrcamento] = useState<Orcamento | null>(null);
+  const [historyEntries, setHistoryEntries] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const logHistory = useCallback(async (orcamentoId: string, numero: number, acao: string, descricao: string) => {
+    if (!tenantId) return;
+    await supabase.from("orcamento_historico").insert({
+      orcamento_id: orcamentoId,
+      orcamento_numero: numero,
+      acao,
+      descricao,
+      usuario_email: user?.email || "desconhecido",
+      tenant_id: tenantId,
+    });
+  }, [tenantId, user]);
 
   // ─── Load orcamentos & vendedores ───
   const loadData = useCallback(async () => {
