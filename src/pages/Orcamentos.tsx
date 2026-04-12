@@ -347,6 +347,10 @@ export default function Orcamentos() {
       await supabase.from("orcamento_items").insert(itemsPayload);
     }
 
+    if (newOrc) {
+      await logHistory(newOrc.id, newOrc.numero, "criado", `Duplicado a partir do orçamento #${o.numero}`);
+      await logHistory(o.id, o.numero, "duplicado", `Orçamento duplicado como #${newOrc.numero}`);
+    }
     toast.success(`Orçamento duplicado como #${newOrc?.numero}`);
     loadData();
   };
