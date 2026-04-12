@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
+import ComissoesReport from "@/components/reports/ComissoesReport";
 import { TopBar } from "@/components/TopBar";
 import { useProducts } from "@/contexts/ProductContext";
 import { formatBRL } from "@/lib/mock-data";
-import { BarChart3, DollarSign, Package, TrendingUp, ArrowLeft, Monitor, CalendarIcon, Download, FileText } from "lucide-react";
+import { BarChart3, DollarSign, Package, TrendingUp, ArrowLeft, Monitor, CalendarIcon, Download, FileText, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -17,7 +18,7 @@ import FinanceiroReport from "@/components/reports/FinanceiroReport";
 import DespesasReport from "@/components/reports/DespesasReport";
 import OrcamentosReport from "@/components/reports/OrcamentosReport";
 
-type ReportView = "menu" | "faturamento" | "vendas-terminal" | "estoque" | "financeiro" | "curva-abc" | "despesas" | "orcamentos";
+type ReportView = "menu" | "faturamento" | "vendas-terminal" | "estoque" | "financeiro" | "curva-abc" | "despesas" | "orcamentos" | "comissoes";
 
 const reports = [
   { id: "faturamento" as ReportView, icon: DollarSign, title: "Faturamento", desc: "Receitas por período, comparativo mensal" },
@@ -27,6 +28,7 @@ const reports = [
   { id: "despesas" as ReportView, icon: DollarSign, title: "Despesas por Categoria", desc: "Gráfico de pizza, evolução mensal, detalhamento" },
   { id: "curva-abc" as ReportView, icon: BarChart3, title: "Curva ABC", desc: "Classificação de produtos por faturamento" },
   { id: "orcamentos" as ReportView, icon: FileText, title: "Orçamentos", desc: "Propostas comerciais, status e valores" },
+  { id: "comissoes" as ReportView, icon: Users, title: "Comissões", desc: "Comissões dos vendedores por orçamentos convertidos" },
 ];
 
 const ABC_COLORS = { A: "hsl(var(--primary))", B: "hsl(var(--warning))", C: "hsl(var(--muted-foreground))" };
@@ -665,6 +667,7 @@ export default function Relatorios() {
         {view === "financeiro" && <FinanceiroReport />}
         {view === "despesas" && <DespesasReport />}
         {view === "orcamentos" && <OrcamentosReport />}
+        {view === "comissoes" && <ComissoesReport />}
       </div>
     </div>
   );
