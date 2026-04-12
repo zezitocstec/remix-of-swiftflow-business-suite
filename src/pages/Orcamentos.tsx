@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
-  Plus, Search, Trash2, Edit, CheckCircle, FileText, CalendarIcon, Save, X, Printer,
+  Plus, Search, Trash2, Edit, CheckCircle, FileText, CalendarIcon, Save, X, Printer, Download, Copy,
 } from "lucide-react";
 
 interface OrcamentoItem {
@@ -203,6 +203,124 @@ export default function Orcamentos() {
     setTimeout(() => { printWindow.print(); printWindow.close(); }, 300);
   };
 
+  const handleDownloadPDF = async (o: Orcamento) => {
+    const { data: items } = await supabase.from("orcamento_items").select("*").eq("orcamento_id", o.id);
+    const { data: company } = await supabase.from("companies").select("*").eq("id", tenantId).single();
+
+    const itemsHtml = (items || []).map((i: any) => {
+      const descStr = i.desconto_valor > 0
+        ? ` (${i.desconto_tipo === "percent" ? `${i.desconto_valor}%` : formatBRL(i.desconto_valor)} desc.)`
+        : "";
+      return `<tr>
+        <td style="text-align:left;font-size:11px;padding:4px 0;border-bottom:1px solid #eee">${i.product_name}${descStr}</td>
+        <td style="text-align:center;font-size:11px;padding:4px;border-bottom:1px solid #eee">${i.quantity}</td>
+        <td style="text-align:right;font-size:11px;padding:4px 0;border-bottom:1px solid #eee">${formatBRL(i.unit_price)}</td>
+        <td style="text-align:right;font-size:11px;padding:4px 0;border-bottom:1px solid #eee">${formatBRL(i.total)}</td>
+      </tr>`;
+    }).join("");
+
+    const descontoGeral = o.desconto_valor > 0
+      ? `<div style="display:flex;justify-content:space-between;font-size:12px;color:#666"><span>Desconto Geral (${o.desconto_tipo === "percent" ? `${o.desconto_valor}%` : formatBRL(o.desconto_valor)})</span><span>-${formatBRL(o.subtotal - o.total)}</span></div>`
+      : "";
+
+    const companyInfo = company ? `
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-weight:bold;font-size:16px">${company.nome_fantasia || company.nome}</div>
+        ${company.cnpj ? `<div style="font-size:10px;color:#666">CNPJ: ${company.cnpj}</div>` : ""}
+        ${company.telefone ? `<div style="font-size:10px;color:#666">Tel: ${company.telefone}</div>` : ""}
+        ${company.logradouro ? `<div style="font-size:10px;color:#666">${company.logradouro}${company.numero ? `, ${company.numero}` : ""} — ${company.cidade || ""}/${company.uf || ""}</div>` : ""}
+      </div>
+    ` : "";
+
+    const html = `<html><head><title>Orçamento #${o.numero}</title>
+    <style>@media print { body { margin: 0; } @page { size: A4; margin: 15mm; } }</style>
+    </head><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+      ${companyInfo}
+      <div style="text-align:center;font-weight:bold;font-size:18px;margin:12px 0;border-top:2px solid #000;border-bottom:2px solid #000;padding:8px 0">ORÇAMENTO #${o.numero}</div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:12px">
+        <div>
+          <div><strong>Cliente:</strong> ${o.client_name || "Avulso"}</div>
+          ${o.vendedor_name ? `<div><strong>Vendedor:</strong> ${o.vendedor_name}</div>` : ""}
+        </div>
+        <div style="text-align:right">
+          <div><strong>Data:</strong> ${format(new Date(o.created_at), "dd/MM/yyyy")}</div>
+          <div><strong>Validade:</strong> ${format(new Date(o.validade), "dd/MM/yyyy")}</div>
+          <div><strong>Status:</strong> ${o.autorizado ? "Autorizado" : "Rascunho"}</div>
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:12px">
+        <thead><tr style="border-bottom:2px solid #000">
+          <th style="text-align:left;font-size:11px;padding:4px 0">Produto</th>
+          <th style="text-align:center;font-size:11px;padding:4px">Qtd</th>
+          <th style="text-align:right;font-size:11px;padding:4px 0">Unit.</th>
+          <th style="text-align:right;font-size:11px;padding:4px 0">Total</th>
+        </tr></thead>
+        <tbody>${itemsHtml}</tbody>
+      </table>
+      <div style="border-top:2px solid #000;padding-top:8px">
+        <div style="display:flex;justify-content:space-between;font-size:12px"><span>Subtotal</span><span>${formatBRL(o.subtotal)}</span></div>
+        ${descontoGeral}
+        <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:bold;margin-top:4px;border-top:1px solid #000;padding-top:4px"><span>TOTAL</span><span>${formatBRL(o.total)}</span></div>
+      </div>
+      ${o.observacoes ? `<div style="margin-top:16px;font-size:11px;color:#666;border-top:1px dashed #ccc;padding-top:8px"><strong>Observações:</strong> ${o.observacoes}</div>` : ""}
+      <div style="margin-top:32px;text-align:center;font-size:10px;color:#999">Documento válido até ${format(new Date(o.validade), "dd/MM/yyyy")}</div>
+    </body></html>`;
+
+    // Use print-to-PDF via hidden iframe
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.left = "-9999px";
+    iframe.style.top = "-9999px";
+    document.body.appendChild(iframe);
+    iframe.contentDocument?.open();
+    iframe.contentDocument?.write(html);
+    iframe.contentDocument?.close();
+    setTimeout(() => {
+      iframe.contentWindow?.print();
+      setTimeout(() => document.body.removeChild(iframe), 1000);
+    }, 300);
+  };
+
+  const handleDuplicate = async (o: Orcamento) => {
+    if (!tenantId) return;
+    const { data: items } = await supabase.from("orcamento_items").select("*").eq("orcamento_id", o.id);
+
+    const payload = {
+      client_id: o.client_id || null,
+      client_name: o.client_name || null,
+      vendedor_id: o.vendedor_id || null,
+      vendedor_name: o.vendedor_name || null,
+      desconto_tipo: o.desconto_tipo,
+      desconto_valor: o.desconto_valor,
+      validade: format(new Date(Date.now() + 30 * 86400000), "yyyy-MM-dd"),
+      observacoes: o.observacoes || "",
+      subtotal: o.subtotal,
+      total: o.total,
+      tenant_id: tenantId,
+      autorizado: false,
+      status: "rascunho",
+    };
+
+    const { data: newOrc } = await supabase.from("orcamentos").insert(payload).select("id, numero").single();
+    if (newOrc && items && items.length > 0) {
+      const itemsPayload = items.map((i: any) => ({
+        orcamento_id: newOrc.id,
+        product_id: i.product_id,
+        product_name: i.product_name,
+        quantity: i.quantity,
+        unit_price: i.unit_price,
+        desconto_tipo: i.desconto_tipo,
+        desconto_valor: i.desconto_valor,
+        total: i.total,
+        tenant_id: tenantId,
+      }));
+      await supabase.from("orcamento_items").insert(itemsPayload);
+    }
+
+    toast.success(`Orçamento duplicado como #${newOrc?.numero}`);
+    loadData();
+  };
+
   const statusBadge = (o: Orcamento) => {
     const s = getEffectiveStatus(o);
     if (s === "autorizado") return <Badge className="bg-green-600 text-white">Autorizado</Badge>;
@@ -266,7 +384,9 @@ export default function Orcamentos() {
                   <TableCell>{statusBadge(o)}</TableCell>
                   <TableCell className="text-right space-x-1">
                     <Button size="icon" variant="ghost" onClick={() => handlePrint(o)} title="Imprimir"><Printer className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => handleEdit(o)}><Edit className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => handleDownloadPDF(o)} title="Baixar PDF"><Download className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => handleDuplicate(o)} title="Duplicar"><Copy className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => handleEdit(o)} title="Editar"><Edit className="h-4 w-4" /></Button>
                     {!o.autorizado && <Button size="icon" variant="ghost" onClick={() => handleAuthorize(o)} title="Autorizar"><CheckCircle className="h-4 w-4 text-green-600" /></Button>}
                   </TableCell>
                 </TableRow>
