@@ -316,29 +316,47 @@ function OrcamentoEditor({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium text-muted-foreground">Cliente</label>
-              <Select value={clientId} onValueChange={(v) => {
-                setClientId(v);
-                const c = clients.find((c: any) => c.id === v);
-                setClientName(c?.nome || "");
+              <Select value={clientId || "__avulso"} onValueChange={(v) => {
+                if (v === "__avulso") {
+                  setClientId("");
+                  setClientName("");
+                } else {
+                  setClientId(v);
+                  const c = clients.find((c: any) => c.id === v);
+                  setClientName(c?.nome || "");
+                }
               }}>
                 <SelectTrigger><SelectValue placeholder="Selecionar cliente" /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="__avulso">— Cliente Avulso —</SelectItem>
                   {clients.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {!clientId && (
+                <Input placeholder="Nome do cliente avulso" value={clientName} onChange={(e) => setClientName(e.target.value)} className="mt-1" />
+              )}
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Vendedor</label>
-              <Select value={vendedorId} onValueChange={(v) => {
-                setVendedorId(v);
-                const vd = vendedores.find((vd) => vd.id === v);
-                setVendedorName(vd?.nome || "");
+              <Select value={vendedorId || "__avulso"} onValueChange={(v) => {
+                if (v === "__avulso") {
+                  setVendedorId("");
+                  setVendedorName("");
+                } else {
+                  setVendedorId(v);
+                  const vd = vendedores.find((vd) => vd.id === v);
+                  setVendedorName(vd?.nome || "");
+                }
               }}>
                 <SelectTrigger><SelectValue placeholder="Selecionar vendedor" /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="__avulso">— Vendedor Avulso —</SelectItem>
                   {vendedores.map((v) => <SelectItem key={v.id} value={v.id}>{v.nome} ({v.comissao}%)</SelectItem>)}
                 </SelectContent>
               </Select>
+              {!vendedorId && (
+                <Input placeholder="Nome do vendedor avulso" value={vendedorName} onChange={(e) => setVendedorName(e.target.value)} className="mt-1" />
+              )}
             </div>
           </div>
 
