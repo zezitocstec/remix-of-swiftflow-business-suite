@@ -439,8 +439,41 @@ export default function Orcamentos() {
           vendedores={vendedores}
           tenantId={tenantId}
           onClose={() => { setShowEditor(false); loadData(); }}
+          logHistory={logHistory}
         />
       )}
+
+      {/* History Dialog */}
+      <Dialog open={!!historyOrcamento} onOpenChange={() => setHistoryOrcamento(null)}>
+        <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5 text-primary" />
+              Histórico — Orçamento #{historyOrcamento?.numero}
+            </DialogTitle>
+          </DialogHeader>
+          {historyLoading ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Carregando...</p>
+          ) : historyEntries.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Nenhum registro de histórico.</p>
+          ) : (
+            <div className="space-y-3">
+              {historyEntries.map((h: any) => (
+                <div key={h.id} className="border border-border rounded-lg p-3">
+                  <div className="flex items-center justify-between">
+                    <Badge variant="outline" className="text-xs capitalize">{h.acao}</Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(h.created_at).toLocaleDateString("pt-BR")} {new Date(h.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                  <p className="text-sm text-foreground mt-1">{h.descricao}</p>
+                  <p className="text-xs text-muted-foreground mt-1">por {h.usuario_email}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
