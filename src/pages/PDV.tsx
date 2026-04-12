@@ -97,6 +97,10 @@ export default function PDV() {
   const [selectedDebtorId, setSelectedDebtorId] = useState<string | null>(null);
   const [debtPayAmount, setDebtPayAmount] = useState("");
   const [debtPayMethod, setDebtPayMethod] = useState("Dinheiro");
+  const [showQuotePicker, setShowQuotePicker] = useState(false);
+  const [authorizedQuotes, setAuthorizedQuotes] = useState<any[]>([]);
+  const [quoteSearch, setQuoteSearch] = useState("");
+  const [debtPayMethod, setDebtPayMethod] = useState("Dinheiro");
 
   // PIN authorization state for cancellations
   const [authDialog, setAuthDialog] = useState<{ type: "cancelarItem" | "cancelarCupom"; itemId?: string } | null>(null);
