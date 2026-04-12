@@ -480,7 +480,7 @@ export default function Orcamentos() {
 
 // ─── Orçamento Editor Dialog ───
 function OrcamentoEditor({
-  orcamento, products, clients, vendedores, tenantId, onClose,
+  orcamento, products, clients, vendedores, tenantId, onClose, logHistory,
 }: {
   orcamento: Orcamento | null;
   products: any[];
@@ -488,6 +488,7 @@ function OrcamentoEditor({
   vendedores: Vendedor[];
   tenantId: string | null;
   onClose: () => void;
+  logHistory: (orcamentoId: string, numero: number, acao: string, descricao: string) => Promise<void>;
 }) {
   const [items, setItems] = useState<OrcamentoItem[]>(orcamento?.items || []);
   const [clientId, setClientId] = useState(orcamento?.client_id || "");
