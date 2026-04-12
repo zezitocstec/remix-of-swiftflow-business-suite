@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { TopBar } from "@/components/TopBar";
 import { useProducts } from "@/contexts/ProductContext";
 import { useTenant } from "@/contexts/TenantContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBRL } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
-  Plus, Search, Trash2, Edit, CheckCircle, FileText, CalendarIcon, Save, X, Printer, Download, Copy,
+  Plus, Search, Trash2, Edit, CheckCircle, FileText, CalendarIcon, Save, X, Printer, Download, Copy, History,
 } from "lucide-react";
 
 interface OrcamentoItem {
@@ -74,6 +75,7 @@ function calcTotals(items: OrcamentoItem[], descontoTipo: "percent" | "value", d
 export default function Orcamentos() {
   const { products, clients } = useProducts();
   const { tenantId, companyName } = useTenant();
+  const { user } = useAuth();
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
   const [search, setSearch] = useState("");
@@ -81,6 +83,21 @@ export default function Orcamentos() {
   const [editing, setEditing] = useState<Orcamento | null>(null);
   const [showEditor, setShowEditor] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [historyOrcamento, setHistoryOrcamento] = useState<Orcamento | null>(null);
+  const [historyEntries, setHistoryEntries] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const logHistory = useCallback(async (orcamentoId: string, numero: number, acao: string, descricao: string) => {
+    if (!tenantId) return;
+    await supabase.from("orcamento_historico").insert({
+      orcamento_id: orcamentoId,
+      orcamento_numero: numero,
+      acao,
+      descricao,
+      usuario_email: user?.email || "desconhecido",
+      tenant_id: tenantId,
+    });
+  }, [tenantId, user]);
 
   // ─── Load orcamentos & vendedores ───
   const loadData = useCallback(async () => {
@@ -129,8 +146,21 @@ export default function Orcamentos() {
 
   const handleAuthorize = async (o: Orcamento) => {
     await supabase.from("orcamentos").update({ autorizado: true, status: "autorizado" }).eq("id", o.id);
+    await logHistory(o.id, o.numero, "autorizado", "Orçamento autorizado");
     toast.success(`Orçamento #${o.numero} autorizado`);
     loadData();
+  };
+
+  const handleShowHistory = async (o: Orcamento) => {
+    setHistoryOrcamento(o);
+    setHistoryLoading(true);
+    const { data } = await supabase
+      .from("orcamento_historico")
+      .select("*")
+      .eq("orcamento_id", o.id)
+      .order("created_at", { ascending: false });
+    setHistoryEntries(data || []);
+    setHistoryLoading(false);
   };
 
   const handlePrint = async (o: Orcamento) => {
@@ -317,6 +347,10 @@ export default function Orcamentos() {
       await supabase.from("orcamento_items").insert(itemsPayload);
     }
 
+    if (newOrc) {
+      await logHistory(newOrc.id, newOrc.numero, "criado", `Duplicado a partir do orçamento #${o.numero}`);
+      await logHistory(o.id, o.numero, "duplicado", `Orçamento duplicado como #${newOrc.numero}`);
+    }
     toast.success(`Orçamento duplicado como #${newOrc?.numero}`);
     loadData();
   };
@@ -386,6 +420,7 @@ export default function Orcamentos() {
                     <Button size="icon" variant="ghost" onClick={() => handlePrint(o)} title="Imprimir"><Printer className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => handleDownloadPDF(o)} title="Baixar PDF"><Download className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => handleDuplicate(o)} title="Duplicar"><Copy className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => handleShowHistory(o)} title="Histórico"><History className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => handleEdit(o)} title="Editar"><Edit className="h-4 w-4" /></Button>
                     {!o.autorizado && <Button size="icon" variant="ghost" onClick={() => handleAuthorize(o)} title="Autorizar"><CheckCircle className="h-4 w-4 text-green-600" /></Button>}
                   </TableCell>
@@ -404,15 +439,48 @@ export default function Orcamentos() {
           vendedores={vendedores}
           tenantId={tenantId}
           onClose={() => { setShowEditor(false); loadData(); }}
+          logHistory={logHistory}
         />
       )}
+
+      {/* History Dialog */}
+      <Dialog open={!!historyOrcamento} onOpenChange={() => setHistoryOrcamento(null)}>
+        <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5 text-primary" />
+              Histórico — Orçamento #{historyOrcamento?.numero}
+            </DialogTitle>
+          </DialogHeader>
+          {historyLoading ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Carregando...</p>
+          ) : historyEntries.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Nenhum registro de histórico.</p>
+          ) : (
+            <div className="space-y-3">
+              {historyEntries.map((h: any) => (
+                <div key={h.id} className="border border-border rounded-lg p-3">
+                  <div className="flex items-center justify-between">
+                    <Badge variant="outline" className="text-xs capitalize">{h.acao}</Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(h.created_at).toLocaleDateString("pt-BR")} {new Date(h.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                  <p className="text-sm text-foreground mt-1">{h.descricao}</p>
+                  <p className="text-xs text-muted-foreground mt-1">por {h.usuario_email}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 // ─── Orçamento Editor Dialog ───
 function OrcamentoEditor({
-  orcamento, products, clients, vendedores, tenantId, onClose,
+  orcamento, products, clients, vendedores, tenantId, onClose, logHistory,
 }: {
   orcamento: Orcamento | null;
   products: any[];
@@ -420,6 +488,7 @@ function OrcamentoEditor({
   vendedores: Vendedor[];
   tenantId: string | null;
   onClose: () => void;
+  logHistory: (orcamentoId: string, numero: number, acao: string, descricao: string) => Promise<void>;
 }) {
   const [items, setItems] = useState<OrcamentoItem[]>(orcamento?.items || []);
   const [clientId, setClientId] = useState(orcamento?.client_id || "");
@@ -489,12 +558,14 @@ function OrcamentoEditor({
       };
 
       let orcId = orcamento?.id;
+      let orcNumero = orcamento?.numero;
       if (orcId) {
         await supabase.from("orcamentos").update(payload).eq("id", orcId);
         await supabase.from("orcamento_items").delete().eq("orcamento_id", orcId);
       } else {
-        const { data } = await supabase.from("orcamentos").insert(payload).select("id").single();
+        const { data } = await supabase.from("orcamentos").insert(payload).select("id, numero").single();
         orcId = data?.id;
+        orcNumero = data?.numero;
       }
 
       if (orcId) {
@@ -510,6 +581,13 @@ function OrcamentoEditor({
           tenant_id: tenantId,
         }));
         await supabase.from("orcamento_items").insert(itemsPayload);
+
+        // Log history
+        const acao = orcamento ? (authorize ? "autorizado" : "editado") : "criado";
+        const descricao = orcamento
+          ? (authorize ? "Orçamento salvo e autorizado" : `Orçamento editado — ${items.length} itens, total ${formatBRL(total)}`)
+          : `Orçamento criado com ${items.length} itens, total ${formatBRL(total)}`;
+        await logHistory(orcId, orcNumero || 0, acao, descricao);
       }
 
       toast.success(orcamento ? "Orçamento atualizado" : "Orçamento salvo");

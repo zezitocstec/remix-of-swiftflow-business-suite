@@ -551,6 +551,39 @@ export type Database = {
           },
         ]
       }
+      orcamento_historico: {
+        Row: {
+          acao: string
+          created_at: string
+          descricao: string
+          id: string
+          orcamento_id: string
+          orcamento_numero: number
+          tenant_id: string | null
+          usuario_email: string | null
+        }
+        Insert: {
+          acao: string
+          created_at?: string
+          descricao?: string
+          id?: string
+          orcamento_id: string
+          orcamento_numero: number
+          tenant_id?: string | null
+          usuario_email?: string | null
+        }
+        Update: {
+          acao?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+          orcamento_id?: string
+          orcamento_numero?: number
+          tenant_id?: string | null
+          usuario_email?: string | null
+        }
+        Relationships: []
+      }
       orcamento_items: {
         Row: {
           desconto_tipo: string
