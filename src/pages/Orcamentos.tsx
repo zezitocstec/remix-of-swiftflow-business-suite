@@ -17,7 +17,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, subMonths, startOfMonth } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { cn } from "@/lib/utils";
 import {
   Plus, Search, Trash2, Edit, CheckCircle, FileText, CalendarIcon, Save, X, Printer, Download, Copy, History,
@@ -408,6 +410,24 @@ export default function Orcamentos() {
     { label: "Expirados", count: statusCounts.counts.expirado, value: statusCounts.totals.expirado, color: "text-destructive" },
   ];
 
+  const chartData = useMemo(() => {
+    const months: { key: string; label: string }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = subMonths(new Date(), i);
+      months.push({ key: format(startOfMonth(d), "yyyy-MM"), label: format(d, "MMM/yy", { locale: ptBR }) });
+    }
+    return months.map(m => {
+      const monthOrcs = orcamentos.filter(o => o.created_at.startsWith(m.key));
+      return {
+        name: m.label,
+        quantidade: monthOrcs.length,
+        valor: Math.round(monthOrcs.reduce((s, o) => s + o.total, 0) * 100) / 100,
+      };
+    });
+  }, [orcamentos]);
+
+  const [showChart, setShowChart] = useState(true);
+
   return (
     <div className="flex flex-col h-screen">
       <TopBar title="Orçamentos" subtitle="Propostas comerciais" />
@@ -424,6 +444,34 @@ export default function Orcamentos() {
             </Card>
           ))}
         </div>
+
+        {/* Monthly Chart */}
+        <Card className="border-border">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium text-foreground">Evolução Mensal (últimos 6 meses)</p>
+              <Button variant="ghost" size="sm" className="text-xs" onClick={() => setShowChart(!showChart)}>
+                {showChart ? "Ocultar" : "Mostrar"}
+              </Button>
+            </div>
+            {showChart && (
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} className="text-muted-foreground" />
+                    <YAxis yAxisId="qty" orientation="left" tick={{ fontSize: 11 }} />
+                    <YAxis yAxisId="val" orientation="right" tick={{ fontSize: 11 }} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip formatter={(value: number, name: string) => [name === "valor" ? formatBRL(value) : value, name === "valor" ? "Valor" : "Quantidade"]} />
+                    <Legend />
+                    <Bar yAxisId="qty" dataKey="quantidade" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Quantidade" />
+                    <Bar yAxisId="val" dataKey="valor" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} name="Valor" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
