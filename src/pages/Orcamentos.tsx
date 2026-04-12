@@ -558,12 +558,14 @@ function OrcamentoEditor({
       };
 
       let orcId = orcamento?.id;
+      let orcNumero = orcamento?.numero;
       if (orcId) {
         await supabase.from("orcamentos").update(payload).eq("id", orcId);
         await supabase.from("orcamento_items").delete().eq("orcamento_id", orcId);
       } else {
-        const { data } = await supabase.from("orcamentos").insert(payload).select("id").single();
+        const { data } = await supabase.from("orcamentos").insert(payload).select("id, numero").single();
         orcId = data?.id;
+        orcNumero = data?.numero;
       }
 
       if (orcId) {
@@ -579,6 +581,13 @@ function OrcamentoEditor({
           tenant_id: tenantId,
         }));
         await supabase.from("orcamento_items").insert(itemsPayload);
+
+        // Log history
+        const acao = orcamento ? (authorize ? "autorizado" : "editado") : "criado";
+        const descricao = orcamento
+          ? (authorize ? "Orçamento salvo e autorizado" : `Orçamento editado — ${items.length} itens, total ${formatBRL(total)}`)
+          : `Orçamento criado com ${items.length} itens, total ${formatBRL(total)}`;
+        await logHistory(orcId, orcNumero || 0, acao, descricao);
       }
 
       toast.success(orcamento ? "Orçamento atualizado" : "Orçamento salvo");
