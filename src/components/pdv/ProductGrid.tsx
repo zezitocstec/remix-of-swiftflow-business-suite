@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { Search, X, RotateCcw, Users, AlertTriangle } from "lucide-react";
+import { Search, X, RotateCcw, Users, AlertTriangle, FileText } from "lucide-react";
 import { formatBRL, type Product } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import type { Client } from "@/contexts/ProductContext";
@@ -17,6 +17,7 @@ interface ProductGridProps {
   onClearClient?: () => void;
   onOpenDebtors?: () => void;
   debtorCount?: number;
+  onOpenQuotes?: () => void;
 }
 
 export default function ProductGrid({
