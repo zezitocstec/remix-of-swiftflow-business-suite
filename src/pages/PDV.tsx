@@ -6,7 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { RotateCcw, Users, CreditCard, Printer, User, Banknote, Lock, Monitor, Fingerprint } from "lucide-react";
+import { RotateCcw, Users, CreditCard, Printer, User, Banknote, Lock, Monitor, Fingerprint, FileText } from "lucide-react";
 import ProductGrid from "@/components/pdv/ProductGrid";
 import CartPanel from "@/components/pdv/CartPanel";
 import type { ParkedSale } from "@/components/pdv/types";
@@ -97,6 +97,9 @@ export default function PDV() {
   const [selectedDebtorId, setSelectedDebtorId] = useState<string | null>(null);
   const [debtPayAmount, setDebtPayAmount] = useState("");
   const [debtPayMethod, setDebtPayMethod] = useState("Dinheiro");
+  const [showQuotePicker, setShowQuotePicker] = useState(false);
+  const [authorizedQuotes, setAuthorizedQuotes] = useState<any[]>([]);
+  const [quoteSearch, setQuoteSearch] = useState("");
 
   // PIN authorization state for cancellations
   const [authDialog, setAuthDialog] = useState<{ type: "cancelarItem" | "cancelarCupom"; itemId?: string } | null>(null);
@@ -308,6 +311,64 @@ export default function PDV() {
     toast({ title: "Venda retomada", description: `${sale.customerName} — ${sale.items.length} itens.` });
   };
 
+  // ─── Load authorized quotes ───
+  const loadAuthorizedQuotes = async () => {
+    const { data } = await supabase
+      .from("orcamentos")
+      .select("*")
+      .eq("autorizado", true)
+      .neq("status", "convertido")
+      .order("created_at", { ascending: false });
+    setAuthorizedQuotes(data || []);
+    setQuoteSearch("");
+    setShowQuotePicker(true);
+  };
+
+  const loadQuoteIntoCart = async (quote: any) => {
+    const { data: items } = await supabase
+      .from("orcamento_items")
+      .select("*")
+      .eq("orcamento_id", quote.id);
+    if (!items || items.length === 0) {
+      toast({ title: "Orçamento vazio", variant: "destructive" });
+      return;
+    }
+    // Map quote items to cart items
+    const cartItems: CartItem[] = [];
+    for (const item of items) {
+      const product = products.find(p => p.id === item.product_id);
+      if (product) {
+        cartItems.push({ product, quantity: item.quantity, discount: 0 });
+      }
+    }
+    if (cartItems.length === 0) {
+      toast({ title: "Produtos não encontrados no cadastro", variant: "destructive" });
+      return;
+    }
+    setCart(cartItems);
+    // Apply general discount from quote
+    if (quote.desconto_valor > 0) {
+      setDiscount({ type: quote.desconto_tipo === "percent" ? "percent" : "value", amount: quote.desconto_valor });
+    }
+    // Set client if exists
+    if (quote.client_id) {
+      const client = clients.find(c => c.id === quote.client_id);
+      if (client) setSelectedClient(client);
+    }
+    // Mark quote as converted
+    await supabase.from("orcamentos").update({ status: "convertido" }).eq("id", quote.id);
+    setShowQuotePicker(false);
+    toast({ title: "Orçamento carregado", description: `#${quote.numero} — ${cartItems.length} itens adicionados ao carrinho.` });
+  };
+
+  const filteredQuotes = useMemo(() => {
+    if (!quoteSearch) return authorizedQuotes;
+    const q = quoteSearch.toLowerCase();
+    return authorizedQuotes.filter(
+      (o: any) => String(o.numero).includes(q) || (o.client_name || "").toLowerCase().includes(q)
+    );
+  }, [quoteSearch, authorizedQuotes]);
+
   const filteredClients = useMemo(() => {
     if (!clientSearch) return clients;
     const q = clientSearch.toLowerCase();
@@ -492,6 +553,7 @@ export default function PDV() {
         selectedClient={selectedClient} onSelectClient={() => setShowClientPicker(true)}
         onClearClient={() => setSelectedClient(null)} onOpenDebtors={() => setShowDebtors(true)}
         debtorCount={debtorClients.length}
+        onOpenQuotes={loadAuthorizedQuotes}
       />
       <CartPanel
         cart={cart} updateQty={updateQty} removeItem={removeItem} clearCart={clearCart}
@@ -592,6 +654,35 @@ export default function PDV() {
         </DialogContent>
       </Dialog>
 
+      {/* Quote Picker Dialog */}
+      <Dialog open={showQuotePicker} onOpenChange={setShowQuotePicker}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Orçamentos Autorizados
+            </DialogTitle>
+            <DialogDescription>Selecione um orçamento para carregar no caixa</DialogDescription>
+          </DialogHeader>
+          <Input placeholder="Buscar por número ou cliente..." value={quoteSearch} onChange={(e) => setQuoteSearch(e.target.value)} className="h-10" autoFocus />
+          <div className="space-y-2 max-h-60 overflow-auto">
+            {filteredQuotes.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nenhum orçamento autorizado disponível.</p>}
+            {filteredQuotes.map((q: any) => (
+              <button key={q.id} onClick={() => loadQuoteIntoCart(q)}
+                className="w-full flex items-center justify-between p-3 rounded-lg border border-border hover:border-primary hover:bg-secondary transition-all touch-manipulation text-left">
+                <div>
+                  <p className="text-sm font-medium text-foreground">#{q.numero} — {q.client_name || "Avulso"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {q.vendedor_name ? `Vendedor: ${q.vendedor_name} • ` : ""}
+                    Validade: {new Date(q.validade).toLocaleDateString("pt-BR")}
+                  </p>
+                </div>
+                <span className="text-sm font-bold tabular-nums text-foreground">{formatBRL(q.total)}</span>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* PIN Authorization Dialog */}
       <Dialog open={!!authDialog} onOpenChange={() => setAuthDialog(null)}>

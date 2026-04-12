@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { Search, X, RotateCcw, Users, AlertTriangle } from "lucide-react";
+import { Search, X, RotateCcw, Users, AlertTriangle, FileText } from "lucide-react";
 import { formatBRL, type Product } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import type { Client } from "@/contexts/ProductContext";
@@ -17,11 +17,12 @@ interface ProductGridProps {
   onClearClient?: () => void;
   onOpenDebtors?: () => void;
   debtorCount?: number;
+  onOpenQuotes?: () => void;
 }
 
 export default function ProductGrid({
   products, search, setSearch, onAddToCart, lastSaleId, onCancelLastSale,
-  selectedClient, onSelectClient, onClearClient, onOpenDebtors, debtorCount,
+  selectedClient, onSelectClient, onClearClient, onOpenDebtors, debtorCount, onOpenQuotes,
 }: ProductGridProps) {
   const [debouncedSearch, setDebouncedSearch] = useState(search);
 
@@ -76,6 +77,11 @@ export default function ProductGrid({
             <AlertTriangle className="h-3.5 w-3.5 mr-1" /> {debtorCount}
           </Button>
         )}
+
+        {/* Load Quote */}
+        <Button variant="ghost" size="sm" onClick={onOpenQuotes} className="text-xs shrink-0 touch-manipulation h-8" title="Carregar Orçamento (F6)">
+          <FileText className="h-3.5 w-3.5 mr-1" /> Orçamento
+        </Button>
 
         {/* Cash Register Controls */}
         <CashRegisterControls />
