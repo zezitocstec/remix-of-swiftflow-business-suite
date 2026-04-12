@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
@@ -389,9 +390,23 @@ export default function Orcamentos() {
 
   const statusCounts = useMemo(() => {
     const counts = { todos: orcamentos.length, rascunho: 0, autorizado: 0, convertido: 0, expirado: 0 };
-    orcamentos.forEach(o => { counts[getEffectiveStatus(o)]++; });
-    return counts;
+    const totals = { rascunho: 0, autorizado: 0, convertido: 0, expirado: 0, geral: 0 };
+    orcamentos.forEach(o => {
+      const s = getEffectiveStatus(o);
+      counts[s]++;
+      totals[s] += o.total;
+      totals.geral += o.total;
+    });
+    return { counts, totals };
   }, [orcamentos]);
+
+  const summaryCards = [
+    { label: "Total Geral", count: statusCounts.counts.todos, value: statusCounts.totals.geral, color: "text-primary" },
+    { label: "Rascunho", count: statusCounts.counts.rascunho, value: statusCounts.totals.rascunho, color: "text-muted-foreground" },
+    { label: "Autorizados", count: statusCounts.counts.autorizado, value: statusCounts.totals.autorizado, color: "text-green-600" },
+    { label: "Convertidos", count: statusCounts.counts.convertido, value: statusCounts.totals.convertido, color: "text-secondary-foreground" },
+    { label: "Expirados", count: statusCounts.counts.expirado, value: statusCounts.totals.expirado, color: "text-destructive" },
+  ];
 
   return (
     <div className="flex flex-col h-screen">
