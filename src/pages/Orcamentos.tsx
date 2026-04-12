@@ -73,10 +73,11 @@ function calcTotals(items: OrcamentoItem[], descontoTipo: "percent" | "value", d
 
 export default function Orcamentos() {
   const { products, clients } = useProducts();
-  const { tenantId } = useTenant();
+  const { tenantId, companyName } = useTenant();
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"todos" | "rascunho" | "autorizado" | "convertido" | "expirado">("todos");
   const [editing, setEditing] = useState<Orcamento | null>(null);
   const [showEditor, setShowEditor] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -96,15 +97,24 @@ export default function Orcamentos() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  const getEffectiveStatus = (o: Orcamento) => {
+    if (o.status === "convertido") return "convertido";
+    if (o.autorizado) return "autorizado";
+    if (new Date(o.validade) < new Date()) return "expirado";
+    return "rascunho";
+  };
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return orcamentos.filter(
-      (o) =>
-        String(o.numero).includes(q) ||
+    return orcamentos.filter((o) => {
+      const matchSearch = String(o.numero).includes(q) ||
         (o.client_name || "").toLowerCase().includes(q) ||
-        (o.vendedor_name || "").toLowerCase().includes(q)
-    );
-  }, [orcamentos, search]);
+        (o.vendedor_name || "").toLowerCase().includes(q);
+      if (!matchSearch) return false;
+      if (statusFilter === "todos") return true;
+      return getEffectiveStatus(o) === statusFilter;
+    });
+  }, [orcamentos, search, statusFilter]);
 
   const handleNew = () => {
     setEditing(null);
