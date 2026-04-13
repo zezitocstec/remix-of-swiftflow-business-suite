@@ -18,6 +18,7 @@ const navItems = [
   { icon: Warehouse, label: "Estoque", path: "/estoque", adminOnly: true },
   { icon: Users, label: "Clientes", path: "/clientes", adminOnly: true },
   { icon: CreditCard, label: "Caixa", path: "/caixa", adminOnly: false },
+  { icon: ClipboardList, label: "Orçamento", path: "/orcamento", adminOnly: false },
   { icon: DollarSign, label: "Financeiro", path: "/financeiro", adminOnly: true },
   { icon: FileText, label: "Contas a Pagar", path: "/contas-pagar", adminOnly: true },
   { icon: ClipboardList, label: "Orçamentos", path: "/orcamentos", adminOnly: true },
