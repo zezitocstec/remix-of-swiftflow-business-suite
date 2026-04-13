@@ -27,6 +27,7 @@ interface Vendedor {
   id: string;
   nome: string;
   comissao: number;
+  meta_mensal: number;
   ativo: boolean;
 }
 
@@ -37,6 +38,7 @@ interface ComissaoRow {
   totalConvertido: number;
   comissaoValor: number;
   qtdOrcamentos: number;
+  metaMensal: number;
 }
 
 export default function ComissoesReport() {
@@ -52,7 +54,7 @@ export default function ComissoesReport() {
     const [orcRes, vendRes] = await Promise.all([
       supabase.from("orcamentos").select("id, numero, vendedor_id, vendedor_name, total, status, created_at")
         .eq("tenant_id", tenantId).eq("status", "convertido").order("created_at", { ascending: false }),
-      supabase.from("vendedores").select("id, nome, comissao, ativo").eq("tenant_id", tenantId),
+      supabase.from("vendedores").select("id, nome, comissao, meta_mensal, ativo").eq("tenant_id", tenantId),
     ]);
     if (orcRes.data) setOrcamentos(orcRes.data);
     if (vendRes.data) setVendedores(vendRes.data);
@@ -94,6 +96,7 @@ export default function ComissoesReport() {
         totalConvertido: 0,
         comissaoValor: 0,
         qtdOrcamentos: 0,
+        metaMensal: vendedor?.meta_mensal ?? 0,
       };
       existing.totalConvertido += o.total;
       existing.comissaoValor += o.total * (pct / 100);
