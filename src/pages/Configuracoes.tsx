@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { TopBar } from "@/components/TopBar";
-import { Building2, Printer, Receipt, Shield, Users, Monitor, ClipboardList, ChevronDown, DatabaseBackup, Lock, UserCheck } from "lucide-react";
+import { Building2, Printer, Receipt, Shield, Users, Monitor, ClipboardList, ChevronDown, DatabaseBackup, Lock, UserCheck, UserCog } from "lucide-react";
 import EmpresaForm from "@/components/config/EmpresaForm";
 import ImpressoraConfig from "@/components/config/ImpressoraConfig";
 import VendaConfig from "@/components/config/VendaConfig";
@@ -10,6 +10,7 @@ import LogsConfig from "@/components/config/LogsConfig";
 import BackupConfig from "@/components/config/BackupConfig";
 import SegurancaConfig from "@/components/config/SegurancaConfig";
 import VendedoresConfig from "@/components/config/VendedoresConfig";
+import UsuariosConfig from "@/components/config/UsuariosConfig";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,7 +22,8 @@ const tabs = [
   { id: "empresa", icon: Building2, label: "Empresa" },
   { id: "impressora", icon: Printer, label: "Impressora" },
   { id: "venda", icon: Receipt, label: "Venda / Fiscal" },
-  { id: "usuarios", icon: Users, label: "Usuários" },
+  { id: "usuarios_sistema", icon: UserCog, label: "Usuários" },
+  { id: "operadores", icon: Users, label: "Operadores" },
   { id: "terminais", icon: Monitor, label: "Terminais" },
   { id: "seguranca", icon: Lock, label: "Segurança" },
   { id: "logs", icon: ClipboardList, label: "Logs" },
