@@ -8,31 +8,33 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import AdminGate from "./AdminGate";
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
-  { icon: ShoppingCart, label: "PDV", path: "/pdv" },
-  { icon: Package, label: "Produtos", path: "/produtos" },
-  { icon: Warehouse, label: "Estoque", path: "/estoque" },
-  { icon: Users, label: "Clientes", path: "/clientes" },
-  { icon: CreditCard, label: "Caixa", path: "/caixa" },
-  { icon: DollarSign, label: "Financeiro", path: "/financeiro" },
-  { icon: FileText, label: "Contas a Pagar", path: "/contas-pagar" },
-  { icon: ClipboardList, label: "Orçamentos", path: "/orcamentos" },
-  { icon: BarChart3, label: "Relatórios", path: "/relatorios" },
-  { icon: Settings, label: "Configurações", path: "/configuracoes" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/", adminOnly: true },
+  { icon: ShoppingCart, label: "PDV", path: "/pdv", adminOnly: false },
+  { icon: Package, label: "Produtos", path: "/produtos", adminOnly: true },
+  { icon: Warehouse, label: "Estoque", path: "/estoque", adminOnly: true },
+  { icon: Users, label: "Clientes", path: "/clientes", adminOnly: true },
+  { icon: CreditCard, label: "Caixa", path: "/caixa", adminOnly: false },
+  { icon: DollarSign, label: "Financeiro", path: "/financeiro", adminOnly: true },
+  { icon: FileText, label: "Contas a Pagar", path: "/contas-pagar", adminOnly: true },
+  { icon: ClipboardList, label: "Orçamentos", path: "/orcamentos", adminOnly: true },
+  { icon: BarChart3, label: "Relatórios", path: "/relatorios", adminOnly: true },
+  { icon: Settings, label: "Configurações", path: "/configuracoes", adminOnly: true },
 ];
 
 function NavContent({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   const location = useLocation();
   const { signOut } = useAuth();
+  const { isAdmin } = useUserRole();
+  const visibleItems = navItems.filter((item) => !item.adminOnly || isAdmin);
 
   return (
     <>
       <nav className="flex-1 py-2 space-y-0.5 px-2 overflow-auto">
-        {navItems.map((item) => {
+        {visibleItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
             <Link key={item.path} to={item.path} onClick={onNavigate}
@@ -68,7 +70,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { companyName } = useTenant();
 
   return (
-    <AdminGate>
+    <>
       <div className="flex min-h-screen bg-background">
         {/* Mobile drawer */}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -106,6 +108,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
-    </AdminGate>
+    </>
   );
 }

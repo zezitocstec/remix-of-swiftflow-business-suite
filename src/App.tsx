@@ -8,6 +8,7 @@ import { TenantProvider } from "@/contexts/TenantContext";
 import { ProductProvider } from "@/contexts/ProductContext";
 import { AppLayout } from "@/components/AppLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import AdminRoute from "@/components/AdminRoute";
 import Auth from "./pages/Auth";
 import Index from "./pages/Index";
 import PDV from "./pages/PDV";
@@ -41,17 +42,17 @@ const App = () => (
               <Routes>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/pdv" element={<ProtectedRoute><PDV /></ProtectedRoute>} />
-                <Route path="/" element={<ProtectedRoute><LayoutPage><Index /></LayoutPage></ProtectedRoute>} />
-                <Route path="/produtos" element={<ProtectedRoute><LayoutPage><Produtos /></LayoutPage></ProtectedRoute>} />
-                <Route path="/estoque" element={<ProtectedRoute><LayoutPage><Estoque /></LayoutPage></ProtectedRoute>} />
-                <Route path="/clientes" element={<ProtectedRoute><LayoutPage><Clientes /></LayoutPage></ProtectedRoute>} />
-                <Route path="/financeiro" element={<ProtectedRoute><LayoutPage><Financeiro /></LayoutPage></ProtectedRoute>} />
+                <Route path="/" element={<ProtectedRoute><AdminRoute><LayoutPage><Index /></LayoutPage></AdminRoute></ProtectedRoute>} />
+                <Route path="/produtos" element={<ProtectedRoute><AdminRoute><LayoutPage><Produtos /></LayoutPage></AdminRoute></ProtectedRoute>} />
+                <Route path="/estoque" element={<ProtectedRoute><AdminRoute><LayoutPage><Estoque /></LayoutPage></AdminRoute></ProtectedRoute>} />
+                <Route path="/clientes" element={<ProtectedRoute><AdminRoute><LayoutPage><Clientes /></LayoutPage></AdminRoute></ProtectedRoute>} />
+                <Route path="/financeiro" element={<ProtectedRoute><AdminRoute><LayoutPage><Financeiro /></LayoutPage></AdminRoute></ProtectedRoute>} />
                 <Route path="/caixa" element={<ProtectedRoute><LayoutPage><Caixa /></LayoutPage></ProtectedRoute>} />
-                <Route path="/relatorios" element={<ProtectedRoute><LayoutPage><Relatorios /></LayoutPage></ProtectedRoute>} />
-                <Route path="/relatorios/estoque" element={<ProtectedRoute><LayoutPage><RelatorioEstoque /></LayoutPage></ProtectedRoute>} />
-                <Route path="/contas-pagar" element={<ProtectedRoute><LayoutPage><ContasPagar /></LayoutPage></ProtectedRoute>} />
-                <Route path="/orcamentos" element={<ProtectedRoute><LayoutPage><Orcamentos /></LayoutPage></ProtectedRoute>} />
-                <Route path="/configuracoes" element={<ProtectedRoute><LayoutPage><Configuracoes /></LayoutPage></ProtectedRoute>} />
+                <Route path="/relatorios" element={<ProtectedRoute><AdminRoute><LayoutPage><Relatorios /></LayoutPage></AdminRoute></ProtectedRoute>} />
+                <Route path="/relatorios/estoque" element={<ProtectedRoute><AdminRoute><LayoutPage><RelatorioEstoque /></LayoutPage></AdminRoute></ProtectedRoute>} />
+                <Route path="/contas-pagar" element={<ProtectedRoute><AdminRoute><LayoutPage><ContasPagar /></LayoutPage></AdminRoute></ProtectedRoute>} />
+                <Route path="/orcamentos" element={<ProtectedRoute><AdminRoute><LayoutPage><Orcamentos /></LayoutPage></AdminRoute></ProtectedRoute>} />
+                <Route path="/configuracoes" element={<ProtectedRoute><AdminRoute><LayoutPage><Configuracoes /></LayoutPage></AdminRoute></ProtectedRoute>} />
                 <Route path="*" element={<LayoutPage><NotFound /></LayoutPage>} />
               </Routes>
             </BrowserRouter>
