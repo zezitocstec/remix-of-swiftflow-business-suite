@@ -8,20 +8,21 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
-  { icon: ShoppingCart, label: "PDV", path: "/pdv" },
-  { icon: Package, label: "Produtos", path: "/produtos" },
-  { icon: Warehouse, label: "Estoque", path: "/estoque" },
-  { icon: Users, label: "Clientes", path: "/clientes" },
-  { icon: CreditCard, label: "Caixa", path: "/caixa" },
-  { icon: DollarSign, label: "Financeiro", path: "/financeiro" },
-  { icon: FileText, label: "Contas a Pagar", path: "/contas-pagar" },
-  { icon: ClipboardList, label: "Orçamentos", path: "/orcamentos" },
-  { icon: BarChart3, label: "Relatórios", path: "/relatorios" },
-  { icon: Settings, label: "Configurações", path: "/configuracoes" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/", adminOnly: true },
+  { icon: ShoppingCart, label: "PDV", path: "/pdv", adminOnly: false },
+  { icon: Package, label: "Produtos", path: "/produtos", adminOnly: true },
+  { icon: Warehouse, label: "Estoque", path: "/estoque", adminOnly: true },
+  { icon: Users, label: "Clientes", path: "/clientes", adminOnly: true },
+  { icon: CreditCard, label: "Caixa", path: "/caixa", adminOnly: false },
+  { icon: DollarSign, label: "Financeiro", path: "/financeiro", adminOnly: true },
+  { icon: FileText, label: "Contas a Pagar", path: "/contas-pagar", adminOnly: true },
+  { icon: ClipboardList, label: "Orçamentos", path: "/orcamentos", adminOnly: true },
+  { icon: BarChart3, label: "Relatórios", path: "/relatorios", adminOnly: true },
+  { icon: Settings, label: "Configurações", path: "/configuracoes", adminOnly: true },
 ];
 
 function NavContent({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
