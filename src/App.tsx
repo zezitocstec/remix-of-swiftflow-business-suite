@@ -8,6 +8,7 @@ import { TenantProvider } from "@/contexts/TenantContext";
 import { ProductProvider } from "@/contexts/ProductContext";
 import { AppLayout } from "@/components/AppLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import AdminRoute from "@/components/AdminRoute";
 import Auth from "./pages/Auth";
 import Index from "./pages/Index";
 import PDV from "./pages/PDV";
