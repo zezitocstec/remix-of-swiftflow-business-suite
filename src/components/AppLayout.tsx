@@ -28,11 +28,13 @@ const navItems = [
 function NavContent({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   const location = useLocation();
   const { signOut } = useAuth();
+  const { isAdmin } = useUserRole();
+  const visibleItems = navItems.filter((item) => !item.adminOnly || isAdmin);
 
   return (
     <>
       <nav className="flex-1 py-2 space-y-0.5 px-2 overflow-auto">
-        {navItems.map((item) => {
+        {visibleItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
             <Link key={item.path} to={item.path} onClick={onNavigate}
@@ -68,7 +70,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { companyName } = useTenant();
 
   return (
-    <AdminGate>
+    <>
       <div className="flex min-h-screen bg-background">
         {/* Mobile drawer */}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -106,6 +108,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
-    </AdminGate>
+    </>
   );
 }
