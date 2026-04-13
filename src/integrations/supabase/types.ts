@@ -1118,6 +1118,7 @@ export type Database = {
           comissao: number
           created_at: string
           id: string
+          meta_mensal: number
           nome: string
           tenant_id: string | null
         }
@@ -1126,6 +1127,7 @@ export type Database = {
           comissao?: number
           created_at?: string
           id?: string
+          meta_mensal?: number
           nome: string
           tenant_id?: string | null
         }
@@ -1134,6 +1136,7 @@ export type Database = {
           comissao?: number
           created_at?: string
           id?: string
+          meta_mensal?: number
           nome?: string
           tenant_id?: string | null
         }
