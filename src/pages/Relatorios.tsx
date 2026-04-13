@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import ComissoesReport from "@/components/reports/ComissoesReport";
+import ConversaoReport from "@/components/reports/ConversaoReport";
 import { TopBar } from "@/components/TopBar";
 import { useProducts } from "@/contexts/ProductContext";
 import { formatBRL } from "@/lib/mock-data";
@@ -18,7 +19,7 @@ import FinanceiroReport from "@/components/reports/FinanceiroReport";
 import DespesasReport from "@/components/reports/DespesasReport";
 import OrcamentosReport from "@/components/reports/OrcamentosReport";
 
-type ReportView = "menu" | "faturamento" | "vendas-terminal" | "estoque" | "financeiro" | "curva-abc" | "despesas" | "orcamentos" | "comissoes";
+type ReportView = "menu" | "faturamento" | "vendas-terminal" | "estoque" | "financeiro" | "curva-abc" | "despesas" | "orcamentos" | "comissoes" | "conversao";
 
 const reports = [
   { id: "faturamento" as ReportView, icon: DollarSign, title: "Faturamento", desc: "Receitas por período, comparativo mensal" },
@@ -29,6 +30,7 @@ const reports = [
   { id: "curva-abc" as ReportView, icon: BarChart3, title: "Curva ABC", desc: "Classificação de produtos por faturamento" },
   { id: "orcamentos" as ReportView, icon: FileText, title: "Orçamentos", desc: "Propostas comerciais, status e valores" },
   { id: "comissoes" as ReportView, icon: Users, title: "Comissões", desc: "Comissões dos vendedores por orçamentos convertidos" },
+  { id: "conversao" as ReportView, icon: TrendingUp, title: "Conversão", desc: "Taxa de conversão de orçamentos por vendedor" },
 ];
 
 const ABC_COLORS = { A: "hsl(var(--primary))", B: "hsl(var(--warning))", C: "hsl(var(--muted-foreground))" };
@@ -668,6 +670,7 @@ export default function Relatorios() {
         {view === "despesas" && <DespesasReport />}
         {view === "orcamentos" && <OrcamentosReport />}
         {view === "comissoes" && <ComissoesReport />}
+        {view === "conversao" && <ConversaoReport />}
       </div>
     </div>
   );

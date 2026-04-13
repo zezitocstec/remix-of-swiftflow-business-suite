@@ -1,0 +1,1 @@
+ALTER TABLE public.vendedores ADD COLUMN meta_mensal numeric NOT NULL DEFAULT 0;

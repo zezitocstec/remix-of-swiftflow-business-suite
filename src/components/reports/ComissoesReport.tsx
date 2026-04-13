@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { exportReportPDF } from "@/lib/export-pdf";
+import { Progress } from "@/components/ui/progress";
 
 interface Orcamento {
   id: string;
@@ -27,6 +28,7 @@ interface Vendedor {
   id: string;
   nome: string;
   comissao: number;
+  meta_mensal: number;
   ativo: boolean;
 }
 
@@ -37,6 +39,7 @@ interface ComissaoRow {
   totalConvertido: number;
   comissaoValor: number;
   qtdOrcamentos: number;
+  metaMensal: number;
 }
 
 export default function ComissoesReport() {
@@ -52,7 +55,7 @@ export default function ComissoesReport() {
     const [orcRes, vendRes] = await Promise.all([
       supabase.from("orcamentos").select("id, numero, vendedor_id, vendedor_name, total, status, created_at")
         .eq("tenant_id", tenantId).eq("status", "convertido").order("created_at", { ascending: false }),
-      supabase.from("vendedores").select("id, nome, comissao, ativo").eq("tenant_id", tenantId),
+      supabase.from("vendedores").select("id, nome, comissao, meta_mensal, ativo").eq("tenant_id", tenantId),
     ]);
     if (orcRes.data) setOrcamentos(orcRes.data);
     if (vendRes.data) setVendedores(vendRes.data);
@@ -94,6 +97,7 @@ export default function ComissoesReport() {
         totalConvertido: 0,
         comissaoValor: 0,
         qtdOrcamentos: 0,
+        metaMensal: vendedor?.meta_mensal ?? 0,
       };
       existing.totalConvertido += o.total;
       existing.comissaoValor += o.total * (pct / 100);
@@ -238,6 +242,27 @@ export default function ComissoesReport() {
         </div>
       )}
 
+      {/* Meta progress */}
+      {comissoes.some(c => c.metaMensal > 0) && (
+        <div className="rounded-md border border-border bg-card p-4">
+          <h4 className="text-sm font-semibold text-foreground mb-4">Progresso da Meta Mensal</h4>
+          <div className="space-y-3">
+            {comissoes.filter(c => c.metaMensal > 0).map(c => {
+              const pct = Math.min((c.comissaoValor / c.metaMensal) * 100, 100);
+              return (
+                <div key={c.vendedorId} className="space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="font-medium text-foreground">{c.vendedorName}</span>
+                    <span className="text-muted-foreground">{formatBRL(c.comissaoValor)} / {formatBRL(c.metaMensal)} ({pct.toFixed(0)}%)</span>
+                  </div>
+                  <Progress value={pct} className="h-2" />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Detail table */}
       {comissoes.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-12">Nenhum orçamento convertido com vendedor vinculado encontrado.</p>
@@ -251,6 +276,7 @@ export default function ComissoesReport() {
                 <TableHead className="text-right">Orçamentos</TableHead>
                 <TableHead className="text-right">Total Convertido</TableHead>
                 <TableHead className="text-right">Comissão (R$)</TableHead>
+                <TableHead className="text-right">Meta</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -261,6 +287,9 @@ export default function ComissoesReport() {
                   <TableCell className="text-right tabular-nums text-foreground">{c.qtdOrcamentos}</TableCell>
                   <TableCell className="text-right tabular-nums text-foreground">{formatBRL(c.totalConvertido)}</TableCell>
                   <TableCell className="text-right tabular-nums font-semibold text-primary">{formatBRL(c.comissaoValor)}</TableCell>
+                  <TableCell className="text-right tabular-nums text-muted-foreground">
+                    {c.metaMensal > 0 ? `${Math.min((c.comissaoValor / c.metaMensal) * 100, 100).toFixed(0)}%` : "—"}
+                  </TableCell>
                 </TableRow>
               ))}
               <TableRow className="bg-secondary font-semibold">
@@ -269,6 +298,7 @@ export default function ComissoesReport() {
                 <TableCell className="text-right tabular-nums text-foreground">{comissoes.reduce((s, c) => s + c.qtdOrcamentos, 0)}</TableCell>
                 <TableCell className="text-right tabular-nums text-foreground">{formatBRL(totalConvertido)}</TableCell>
                 <TableCell className="text-right tabular-nums text-primary">{formatBRL(totalComissoes)}</TableCell>
+                <TableCell />
               </TableRow>
             </TableBody>
           </Table>
