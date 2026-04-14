@@ -43,6 +43,7 @@ const App = () => (
             <BrowserRouter>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/portal/:token" element={<PortalOrcamento />} />
                 <Route path="/pdv" element={<ProtectedRoute><PDV /></ProtectedRoute>} />
                 <Route path="/orcamento" element={<ProtectedRoute><OrcamentoPDV /></ProtectedRoute>} />
                 <Route path="/" element={<ProtectedRoute><AdminRoute><LayoutPage><Index /></LayoutPage></AdminRoute></ProtectedRoute>} />
