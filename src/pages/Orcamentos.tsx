@@ -22,7 +22,7 @@ import { ptBR } from "date-fns/locale";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { cn } from "@/lib/utils";
 import {
-  Plus, Search, Trash2, Edit, CheckCircle, FileText, CalendarIcon, Save, X, Printer, Download, Copy, History,
+  Plus, Search, Trash2, Edit, CheckCircle, FileText, CalendarIcon, Save, X, Printer, Download, Copy, History, Share2,
 } from "lucide-react";
 
 interface OrcamentoItem {
@@ -382,6 +382,34 @@ export default function Orcamentos() {
     loadData();
   };
 
+  const handleShare = async (o: Orcamento) => {
+    // Generate token and password if not present
+    const orc = o as any;
+    let portalToken = orc.portal_token;
+    let portalSenha = orc.portal_senha;
+
+    if (!portalToken) {
+      portalToken = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+      portalSenha = Math.random().toString(36).slice(2, 8).toUpperCase();
+      await supabase.from("orcamentos").update({
+        portal_token: portalToken,
+        portal_senha: portalSenha,
+      } as any).eq("id", o.id);
+      await logHistory(o.id, o.numero, "compartilhado", "Link do portal gerado para o cliente");
+      loadData();
+    }
+
+    const url = `${window.location.origin}/portal/${portalToken}`;
+    const text = `Orçamento #${o.numero}\nLink: ${url}\nSenha: ${portalSenha}`;
+
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Link e senha copiados!");
+    } catch {
+      prompt("Copie o link:", text);
+    }
+  };
+
   const statusBadge = (o: Orcamento) => {
     const s = getEffectiveStatus(o);
     if (s === "autorizado") return <Badge className="bg-green-600 text-white">Autorizado</Badge>;
@@ -547,6 +575,7 @@ export default function Orcamentos() {
                     <Button size="icon" variant="ghost" onClick={() => handlePrint(o)} title="Imprimir"><Printer className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => handleDownloadPDF(o)} title="Baixar PDF"><Download className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => handleDuplicate(o)} title="Duplicar"><Copy className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => handleShare(o)} title="Compartilhar"><Share2 className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => handleShowHistory(o)} title="Histórico"><History className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => handleEdit(o)} title="Editar"><Edit className="h-4 w-4" /></Button>
                     {!o.autorizado && <Button size="icon" variant="ghost" onClick={() => handleAuthorize(o)} title="Autorizar"><CheckCircle className="h-4 w-4 text-green-600" /></Button>}

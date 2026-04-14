@@ -656,6 +656,8 @@ export type Database = {
           id: string
           numero: number
           observacoes: string | null
+          portal_senha: string | null
+          portal_token: string | null
           status: string
           subtotal: number
           tenant_id: string | null
@@ -675,6 +677,8 @@ export type Database = {
           id?: string
           numero?: number
           observacoes?: string | null
+          portal_senha?: string | null
+          portal_token?: string | null
           status?: string
           subtotal?: number
           tenant_id?: string | null
@@ -694,6 +698,8 @@ export type Database = {
           id?: string
           numero?: number
           observacoes?: string | null
+          portal_senha?: string | null
+          portal_token?: string | null
           status?: string
           subtotal?: number
           tenant_id?: string | null
