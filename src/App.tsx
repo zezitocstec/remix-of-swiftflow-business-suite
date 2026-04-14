@@ -23,6 +23,7 @@ import Configuracoes from "./pages/Configuracoes";
 import ContasPagar from "./pages/ContasPagar";
 import Orcamentos from "./pages/Orcamentos";
 import OrcamentoPDV from "./pages/OrcamentoPDV";
+import PortalOrcamento from "./pages/PortalOrcamento";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
