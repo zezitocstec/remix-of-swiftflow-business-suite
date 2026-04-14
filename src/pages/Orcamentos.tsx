@@ -382,7 +382,34 @@ export default function Orcamentos() {
     loadData();
   };
 
-  const statusBadge = (o: Orcamento) => {
+  const handleShare = async (o: Orcamento) => {
+    // Generate token and password if not present
+    const orc = o as any;
+    let portalToken = orc.portal_token;
+    let portalSenha = orc.portal_senha;
+
+    if (!portalToken) {
+      portalToken = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+      portalSenha = Math.random().toString(36).slice(2, 8).toUpperCase();
+      await supabase.from("orcamentos").update({
+        portal_token: portalToken,
+        portal_senha: portalSenha,
+      } as any).eq("id", o.id);
+      await logHistory(o.id, o.numero, "compartilhado", "Link do portal gerado para o cliente");
+      loadData();
+    }
+
+    const url = `${window.location.origin}/portal/${portalToken}`;
+    const text = `Orçamento #${o.numero}\nLink: ${url}\nSenha: ${portalSenha}`;
+
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Link e senha copiados!");
+    } catch {
+      prompt("Copie o link:", text);
+    }
+  };
+
     const s = getEffectiveStatus(o);
     if (s === "autorizado") return <Badge className="bg-green-600 text-white">Autorizado</Badge>;
     if (s === "convertido") return <Badge variant="secondary">Convertido</Badge>;
