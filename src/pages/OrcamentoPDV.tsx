@@ -160,6 +160,8 @@ export default function OrcamentoPDV() {
     setSaving(true);
     try {
       const finalClientName = selectedClient?.nome || clientName || null;
+      const { data: tenantId } = await supabase.rpc("get_my_company_id");
+      
       const { data: orc, error } = await supabase.from("orcamentos").insert({
         client_id: selectedClient?.id || null,
         client_name: finalClientName,
@@ -171,7 +173,7 @@ export default function OrcamentoPDV() {
         total,
         observacoes,
         status: "rascunho",
-        tenant_id: (await supabase.rpc("get_my_company_id")) as any,
+        tenant_id: tenantId,
       } as any).select("id, numero").single();
 
       if (error) throw error;
@@ -186,7 +188,7 @@ export default function OrcamentoPDV() {
         desconto_tipo: "percent" as const,
         desconto_valor: 0,
         total: i.product.price * i.quantity,
-        tenant_id: null, // RLS will handle
+        tenant_id: tenantId,
       }));
 
       await supabase.from("orcamento_items").insert(items as any);
