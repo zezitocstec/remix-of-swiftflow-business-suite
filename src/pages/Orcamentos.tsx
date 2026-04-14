@@ -410,6 +410,7 @@ export default function Orcamentos() {
     }
   };
 
+  const statusBadge = (o: Orcamento) => {
     const s = getEffectiveStatus(o);
     if (s === "autorizado") return <Badge className="bg-green-600 text-white">Autorizado</Badge>;
     if (s === "convertido") return <Badge variant="secondary">Convertido</Badge>;
