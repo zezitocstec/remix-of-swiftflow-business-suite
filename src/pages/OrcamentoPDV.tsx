@@ -284,6 +284,18 @@ export default function OrcamentoPDV() {
                   else { toast({ title: result.error || "PIN incorreto", variant: "destructive" }); setPinInput(""); }
                 }} disabled={!pinInput} className="flex-1 h-14 text-base touch-manipulation">Confirmar</Button>
               </div>
+              {biometricAvailable && (
+                <>
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+                    <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">ou</span></div>
+                  </div>
+                  <Button variant="outline" onClick={handleBiometricLogin} disabled={biometricLoading} className="w-full h-14 text-base gap-2 touch-manipulation">
+                    {biometricLoading ? <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" /> : <Fingerprint className="h-5 w-5" />}
+                    {biometricLoading ? "Verificando..." : "Entrar com Digital"}
+                  </Button>
+                </>
+              )}
             </div>
           )}
         </div>
