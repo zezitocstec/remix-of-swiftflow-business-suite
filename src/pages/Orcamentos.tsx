@@ -22,7 +22,7 @@ import { ptBR } from "date-fns/locale";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { cn } from "@/lib/utils";
 import {
-  Plus, Search, Trash2, Edit, CheckCircle, FileText, CalendarIcon, Save, X, Printer, Download, Copy, History,
+  Plus, Search, Trash2, Edit, CheckCircle, FileText, CalendarIcon, Save, X, Printer, Download, Copy, History, Share2,
 } from "lucide-react";
 
 interface OrcamentoItem {
