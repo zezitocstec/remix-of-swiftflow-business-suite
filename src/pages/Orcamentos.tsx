@@ -575,6 +575,7 @@ export default function Orcamentos() {
                     <Button size="icon" variant="ghost" onClick={() => handlePrint(o)} title="Imprimir"><Printer className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => handleDownloadPDF(o)} title="Baixar PDF"><Download className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => handleDuplicate(o)} title="Duplicar"><Copy className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => handleShare(o)} title="Compartilhar"><Share2 className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => handleShowHistory(o)} title="Histórico"><History className="h-4 w-4" /></Button>
                     <Button size="icon" variant="ghost" onClick={() => handleEdit(o)} title="Editar"><Edit className="h-4 w-4" /></Button>
                     {!o.autorizado && <Button size="icon" variant="ghost" onClick={() => handleAuthorize(o)} title="Autorizar"><CheckCircle className="h-4 w-4 text-green-600" /></Button>}
