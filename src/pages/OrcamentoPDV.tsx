@@ -23,8 +23,9 @@ export default function OrcamentoPDV() {
   // Auth state
   const [authed, setAuthed] = useState(false);
   const [selectedOperator, setSelectedOperator] = useState<Operator | null>(null);
+  const [operatorNameInput, setOperatorNameInput] = useState("");
   const [pinInput, setPinInput] = useState("");
-  const [authStep, setAuthStep] = useState<"operator" | "pin">("operator");
+  const [loginLoading, setLoginLoading] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
 
@@ -85,25 +86,30 @@ export default function OrcamentoPDV() {
     return data as { valid: boolean; error?: string; operator?: any };
   };
 
-  const handleBiometricLogin = async () => {
-    setBiometricLoading(true);
-    try {
-      const result = await authenticateBiometric();
-      if (result.valid && result.operator) {
-        const op = operators.find(o => o.id === result.operator!.id);
-        if (op) {
-          setSelectedOperator(op);
-          setAuthed(true);
-          toast({ title: "Autenticado!", description: `Bem-vindo, ${result.operator.nome}` });
-        }
-      } else {
-        toast({ title: "Falha na biometria", description: result.error, variant: "destructive" });
+  const verifyOperatorByName = async (name: string, pin: string) => {
+    const { data, error } = await supabase.functions.invoke("verify-operator", {
+      body: { operator_name: name, pin },
+    });
+    if (error) return { valid: false, error: "Erro de conexão" };
+    return data as { valid: boolean; error?: string; operator?: any };
+  };
+
+  const handleLoginSubmit = async () => {
+    if (!operatorNameInput.trim() || !pinInput) return;
+    setLoginLoading(true);
+    const result = await verifyOperatorByName(operatorNameInput.trim(), pinInput);
+    if (result.valid && result.operator) {
+      const op = operators.find(o => o.id === result.operator!.id);
+      if (op) {
+        setSelectedOperator(op);
+        setAuthed(true);
+        toast({ title: "Autenticado!", description: `Bem-vindo, ${op.nome}` });
       }
-    } catch {
-      toast({ title: "Erro na biometria", variant: "destructive" });
-    } finally {
-      setBiometricLoading(false);
+    } else {
+      toast({ title: result.error || "Credenciais inválidas", variant: "destructive" });
+      setPinInput("");
     }
+    setLoginLoading(false);
   };
 
   const activeOperators = operators.filter(o => o.ativo);
@@ -228,76 +234,91 @@ export default function OrcamentoPDV() {
         <div className="w-full max-w-sm mx-4 bg-card border border-border rounded-2xl p-6 space-y-6 shadow-lg">
           <div className="text-center space-y-2">
             <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-              {authStep === "operator" ? <ClipboardList className="h-8 w-8 text-primary" /> : <Lock className="h-8 w-8 text-primary" />}
+              <ClipboardList className="h-8 w-8 text-primary" />
             </div>
             <h1 className="text-xl font-bold text-foreground">Orçamentos</h1>
-            <p className="text-sm text-muted-foreground">
-              {authStep === "operator" ? "Selecione o operador" : `Operador: ${selectedOperator?.nome}`}
-            </p>
+            <p className="text-sm text-muted-foreground">Informe suas credenciais para acessar</p>
           </div>
 
-          {authStep === "operator" ? (
-            <div className="space-y-2">
-              {activeOperators.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Nenhum operador cadastrado.</p>
-              ) : activeOperators.map(op => (
-                <button key={op.id} onClick={() => { setSelectedOperator(op); setPinInput(""); setAuthStep("pin"); }}
-                  className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-secondary transition-all touch-manipulation text-left">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <User className="h-5 w-5 text-primary" />
-                  </div>
-                  <p className="text-sm font-medium text-foreground">{op.nome}</p>
-                </button>
-              ))}
-              {biometricAvailable && activeOperators.length > 0 && (
-                <>
-                  <div className="relative my-2">
-                    <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
-                    <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">ou</span></div>
-                  </div>
-                  <Button variant="outline" onClick={handleBiometricLogin} disabled={biometricLoading} className="w-full h-14 text-base gap-2 touch-manipulation">
-                    {biometricLoading ? <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" /> : <Fingerprint className="h-5 w-5" />}
-                    {biometricLoading ? "Verificando..." : "Entrar com Digital"}
-                  </Button>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <Input type="password" inputMode="numeric" maxLength={6} placeholder="Digite o PIN" value={pinInput}
-                onChange={e => setPinInput(e.target.value.replace(/\D/g, ""))}
-                className="h-14 text-2xl text-center tracking-[0.5em]" autoFocus
-                onKeyDown={async e => {
-                  if (e.key === "Enter" && pinInput && selectedOperator) {
-                    const result = await verifyOperatorViaEdge(selectedOperator.id, pinInput);
-                    if (result.valid) setAuthed(true);
-                    else { toast({ title: result.error || "PIN incorreto", variant: "destructive" }); setPinInput(""); }
-                  }
-                }}
-              />
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => { setAuthStep("operator"); setSelectedOperator(null); }} className="h-14 touch-manipulation">Voltar</Button>
-                <Button onClick={async () => {
-                  if (!selectedOperator || !pinInput) return;
-                  const result = await verifyOperatorViaEdge(selectedOperator.id, pinInput);
-                  if (result.valid) setAuthed(true);
-                  else { toast({ title: result.error || "PIN incorreto", variant: "destructive" }); setPinInput(""); }
-                }} disabled={!pinInput} className="flex-1 h-14 text-base touch-manipulation">Confirmar</Button>
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Nome do operador"
+                  value={operatorNameInput}
+                  onChange={(e) => setOperatorNameInput(e.target.value)}
+                  className="h-14 pl-10 text-base"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const pinEl = document.getElementById("orc-pin-input");
+                      pinEl?.focus();
+                    }
+                  }}
+                />
               </div>
-              {biometricAvailable && (
-                <>
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
-                    <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">ou</span></div>
-                  </div>
-                  <Button variant="outline" onClick={handleBiometricLogin} disabled={biometricLoading} className="w-full h-14 text-base gap-2 touch-manipulation">
-                    {biometricLoading ? <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" /> : <Fingerprint className="h-5 w-5" />}
-                    {biometricLoading ? "Verificando..." : "Entrar com Digital"}
-                  </Button>
-                </>
-              )}
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="orc-pin-input"
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="PIN de acesso"
+                  value={pinInput}
+                  onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ""))}
+                  className="h-14 pl-10 text-2xl text-center tracking-[0.5em]"
+                  onKeyDown={(e) => { if (e.key === "Enter") handleLoginSubmit(); }}
+                />
+              </div>
             </div>
-          )}
+            <Button
+              onClick={handleLoginSubmit}
+              disabled={loginLoading || !operatorNameInput.trim() || !pinInput}
+              className="w-full h-14 text-base touch-manipulation"
+            >
+              {loginLoading ? (
+                <div className="animate-spin h-5 w-5 border-2 border-primary-foreground border-t-transparent rounded-full" />
+              ) : "Entrar"}
+            </Button>
+            {biometricAvailable && (
+              <>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+                  <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">ou</span></div>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    setBiometricLoading(true);
+                    try {
+                      const result = await authenticateBiometric();
+                      if (result.valid && result.operator) {
+                        const op = operators.find(o => o.id === result.operator!.id);
+                        if (op) {
+                          setSelectedOperator(op);
+                          setAuthed(true);
+                          toast({ title: "Autenticado!", description: `Bem-vindo, ${result.operator.nome}` });
+                        }
+                      } else {
+                        toast({ title: "Falha na biometria", description: result.error, variant: "destructive" });
+                      }
+                    } catch {
+                      toast({ title: "Erro na biometria", variant: "destructive" });
+                    } finally {
+                      setBiometricLoading(false);
+                    }
+                  }}
+                  disabled={biometricLoading}
+                  className="w-full h-14 text-base gap-2 touch-manipulation"
+                >
+                  {biometricLoading ? <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" /> : <Fingerprint className="h-5 w-5" />}
+                  {biometricLoading ? "Verificando..." : "Entrar com Digital"}
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -311,7 +332,7 @@ export default function OrcamentoPDV() {
         <ClipboardList className="h-5 w-5 text-primary shrink-0" />
         <span className="text-sm font-semibold text-foreground truncate flex-1">Orçamento</span>
         <span className="text-xs text-muted-foreground truncate">{selectedOperator?.nome}</span>
-        <Button variant="ghost" size="sm" onClick={() => { setAuthed(false); setAuthStep("operator"); clearAll(); }} className="text-xs text-muted-foreground">
+        <Button variant="ghost" size="sm" onClick={() => { setAuthed(false); setOperatorNameInput(""); setPinInput(""); clearAll(); }} className="text-xs text-muted-foreground">
           Sair
         </Button>
       </div>

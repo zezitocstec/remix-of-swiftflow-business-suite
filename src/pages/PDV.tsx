@@ -17,26 +17,29 @@ import { isPlatformAuthAvailable, authenticateBiometric } from "@/lib/webauthn";
 export default function PDV() {
   const { products, sellProducts, cancelSale, clients, createDebt, debts, payDebt, sales, cashRegister, openCashRegister, operators, terminals, addActionLog } = useProducts();
 
-  // Setup state — operator selection + PIN + terminal + opening balance
-  const [setupStep, setSetupStep] = useState<"operator" | "pin" | "terminal" | "balance" | null>(null);
+  // Setup state — operator name + PIN + terminal + opening balance
+  const [setupStep, setSetupStep] = useState<"login" | "terminal" | "balance" | null>(null);
   const [selectedOperator, setSelectedOperator] = useState<Operator | null>(null);
   const [selectedTerminal, setSelectedTerminal] = useState<Terminal | null>(null);
+  const [operatorNameInput, setOperatorNameInput] = useState("");
   const [pinInput, setPinInput] = useState("");
   const [setupBalance, setSetupBalance] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
 
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
 
   useEffect(() => {
-    if (!cashRegister) setSetupStep("operator");
+    if (!cashRegister) setSetupStep("login");
     isPlatformAuthAvailable().then(setBiometricAvailable);
   }, []);
 
   useEffect(() => {
     if (!cashRegister && setupStep === null) {
-      setSetupStep("operator");
+      setSetupStep("login");
       setSelectedOperator(null);
       setSelectedTerminal(null);
+      setOperatorNameInput("");
       setPinInput("");
       setSetupBalance("");
     }
@@ -112,6 +115,32 @@ export default function PDV() {
     });
     if (error) return { valid: false, error: "Erro de conexão" };
     return data as { valid: boolean; error?: string; operator?: { id: string; nome: string }; hasPermission?: boolean };
+  };
+
+  const verifyOperatorByName = async (name: string, pin: string, requiredPermission?: string) => {
+    const { data, error } = await supabase.functions.invoke("verify-operator", {
+      body: { operator_name: name, pin, required_permission: requiredPermission },
+    });
+    if (error) return { valid: false, error: "Erro de conexão" };
+    return data as { valid: boolean; error?: string; operator?: { id: string; nome: string }; hasPermission?: boolean };
+  };
+
+  const handleLoginSubmit = async () => {
+    if (!operatorNameInput.trim() || !pinInput) return;
+    setLoginLoading(true);
+    const result = await verifyOperatorByName(operatorNameInput.trim(), pinInput, "abrirCaixa");
+    if (result.valid && result.hasPermission && result.operator) {
+      const op = operators.find(o => o.id === result.operator!.id);
+      if (op) {
+        setSelectedOperator(op);
+        setSetupStep("terminal");
+        toast({ title: "Autenticado!", description: `Bem-vindo, ${op.nome}` });
+      }
+    } else {
+      toast({ title: result.error || "Credenciais inválidas", variant: "destructive" });
+      setPinInput("");
+    }
+    setLoginLoading(false);
   };
 
   const requestAuth = (type: "cancelarItem" | "cancelarCupom", itemId?: string) => {
@@ -424,47 +453,68 @@ export default function PDV() {
     }
   };
 
-  // Mandatory setup screen
-  if (setupStep) {
+   if (setupStep) {
     return (
       <div className="flex items-center justify-center h-[100dvh] bg-pos-bg" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="w-full max-w-sm mx-4 bg-card border border-border rounded-2xl p-6 sm:p-8 space-y-6 shadow-lg">
           <div className="text-center space-y-2">
             <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-              {setupStep === "operator" ? <User className="h-8 w-8 text-primary" /> : setupStep === "pin" ? <Lock className="h-8 w-8 text-primary" /> : setupStep === "terminal" ? <Monitor className="h-8 w-8 text-primary" /> : <Banknote className="h-8 w-8 text-primary" />}
+              {setupStep === "login" ? <Lock className="h-8 w-8 text-primary" /> : setupStep === "terminal" ? <Monitor className="h-8 w-8 text-primary" /> : <Banknote className="h-8 w-8 text-primary" />}
             </div>
             <h1 className="text-xl font-bold text-foreground">
-              {setupStep === "operator" ? "Selecione o Operador" : setupStep === "pin" ? "PIN de Acesso" : setupStep === "terminal" ? "Selecione o Terminal" : "Fundo de Caixa"}
+              {setupStep === "login" ? "Acesso ao PDV" : setupStep === "terminal" ? "Selecione o Terminal" : "Fundo de Caixa"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {setupStep === "operator" ? "Escolha seu operador para iniciar" : setupStep === "pin" ? `Operador: ${selectedOperator?.nome}` : setupStep === "terminal" ? `Operador: ${selectedOperator?.nome}` : `${selectedOperator?.nome} • ${selectedTerminal?.nome}`}
+              {setupStep === "login" ? "Informe suas credenciais para iniciar" : setupStep === "terminal" ? `Operador: ${selectedOperator?.nome}` : `${selectedOperator?.nome} • ${selectedTerminal?.nome}`}
             </p>
           </div>
 
-          {setupStep === "operator" ? (
-            <div className="space-y-2">
-              {activeOperators.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Nenhum operador cadastrado com permissão de caixa. Cadastre em Configurações &gt; Usuários.</p>
-              ) : (
-                activeOperators.map((op) => (
-                  <button key={op.id} onClick={() => { setSelectedOperator(op); setPinInput(""); setSetupStep("pin"); }}
-                    className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-secondary transition-all touch-manipulation text-left">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <User className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{op.nome}</p>
-                      <div className="flex gap-1 mt-0.5">
-                        {op.permissions.cancelarItem && <span className="text-[10px] bg-warning/10 text-warning px-1 py-0.5 rounded">Cancel. Item</span>}
-                        {op.permissions.cancelarCupom && <span className="text-[10px] bg-destructive/10 text-destructive px-1 py-0.5 rounded">Cancel. Cupom</span>}
-                      </div>
-                    </div>
-                  </button>
-                ))
-              )}
-              {biometricAvailable && activeOperators.length > 0 && (
+          {setupStep === "login" ? (
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Nome do operador"
+                    value={operatorNameInput}
+                    onChange={(e) => setOperatorNameInput(e.target.value)}
+                    className="h-14 pl-10 text-base"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const pinEl = document.getElementById("pdv-pin-input");
+                        pinEl?.focus();
+                      }
+                    }}
+                  />
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="pdv-pin-input"
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="PIN de acesso"
+                    value={pinInput}
+                    onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ""))}
+                    className="h-14 pl-10 text-2xl text-center tracking-[0.5em]"
+                    onKeyDown={(e) => { if (e.key === "Enter") handleLoginSubmit(); }}
+                  />
+                </div>
+              </div>
+              <Button
+                onClick={handleLoginSubmit}
+                disabled={loginLoading || !operatorNameInput.trim() || !pinInput}
+                className="w-full h-14 text-base touch-manipulation"
+              >
+                {loginLoading ? (
+                  <div className="animate-spin h-5 w-5 border-2 border-primary-foreground border-t-transparent rounded-full" />
+                ) : "Entrar"}
+              </Button>
+              {biometricAvailable && (
                 <>
-                  <div className="relative my-2">
+                  <div className="relative">
                     <div className="absolute inset-0 flex items-center">
                       <span className="w-full border-t border-border" />
                     </div>
@@ -488,29 +538,6 @@ export default function PDV() {
                 </>
               )}
             </div>
-          ) : setupStep === "pin" ? (
-            <div className="space-y-4">
-              <Input type="password" inputMode="numeric" maxLength={6} placeholder="Digite o PIN" value={pinInput}
-                onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ""))}
-                className="h-14 text-2xl text-center tracking-[0.5em]" autoFocus
-                onKeyDown={async (e) => {
-                  if (e.key === "Enter" && pinInput && selectedOperator) {
-                    const result = await verifyOperatorViaEdge(selectedOperator.id, pinInput, "abrirCaixa");
-                    if (result.valid && result.hasPermission) setSetupStep("terminal");
-                    else { toast({ title: result.error || "PIN incorreto ou sem permissão", variant: "destructive" }); setPinInput(""); }
-                  }
-                }}
-              />
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => { setSetupStep("operator"); setSelectedOperator(null); }} className="h-14 touch-manipulation">Voltar</Button>
-                <Button onClick={async () => {
-                  if (!selectedOperator || !pinInput) return;
-                  const result = await verifyOperatorViaEdge(selectedOperator.id, pinInput, "abrirCaixa");
-                  if (result.valid && result.hasPermission) setSetupStep("terminal");
-                  else { toast({ title: result.error || "PIN incorreto ou sem permissão", variant: "destructive" }); setPinInput(""); }
-                }} disabled={!pinInput} className="flex-1 h-14 text-base touch-manipulation">Confirmar</Button>
-              </div>
-            </div>
           ) : setupStep === "terminal" ? (
             <div className="space-y-2">
               {activeTerminals.length === 0 ? (
@@ -526,7 +553,7 @@ export default function PDV() {
                   </button>
                 ))
               )}
-              <Button variant="outline" onClick={() => setSetupStep("pin")} className="w-full h-12 touch-manipulation mt-2">Voltar</Button>
+              <Button variant="outline" onClick={() => { setSetupStep("login"); setSelectedOperator(null); setOperatorNameInput(""); setPinInput(""); }} className="w-full h-12 touch-manipulation mt-2">Voltar</Button>
             </div>
           ) : (
             <div className="space-y-4">
