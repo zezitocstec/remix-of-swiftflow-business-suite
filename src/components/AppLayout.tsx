@@ -97,7 +97,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 overflow-auto min-w-0">
+        <main className="flex-1 overflow-auto min-w-0 flex flex-col">
           {/* Mobile top bar with hamburger */}
           <div className="md:hidden flex items-center gap-2 px-4 h-14 border-b border-border bg-card sticky top-0 z-20">
             <button onClick={() => setMobileOpen(true)} className="p-2 -ml-2 rounded-md hover:bg-secondary text-muted-foreground transition-colors">
@@ -106,7 +106,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <Store className="h-5 w-5 text-primary shrink-0" />
             <span className="font-semibold text-sm tracking-tight text-foreground truncate">{companyName || "itsega4"}</span>
           </div>
-          {children}
+          <div className="flex-1">{children}</div>
+          <footer className="border-t border-border bg-card px-4 py-3 text-center text-xs text-muted-foreground">
+            Todos os direitos reservados a{" "}
+            <a href="https://it.sega4.com.br/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">it.sega4.com.br</a>
+            {" "}— © 2026 IT.Sega4 — Automatize. Escale. Conquiste.
+          </footer>
         </main>
       </div>
     </>

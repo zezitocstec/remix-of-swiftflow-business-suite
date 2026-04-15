@@ -20,10 +20,14 @@ export default function Caixa() {
   const [selectedOpId, setSelectedOpId] = useState(operators[0]?.id || "");
   const [selectedTermId, setSelectedTermId] = useState(terminals[0]?.id || "");
 
-  const handleOpen = () => {
+  const handleOpen = async () => {
     const balance = parseFloat(openingBalance) || 0;
-    openCashRegister(balance, selectedOpId, selectedTermId);
-    toast({ title: "Caixa aberto", description: `Saldo inicial: ${formatBRL(balance)}` });
+    try {
+      await openCashRegister(balance, selectedOpId, selectedTermId);
+      toast({ title: "Caixa aberto", description: `Saldo inicial: ${formatBRL(balance)}` });
+    } catch (err: any) {
+      toast({ title: "Erro ao abrir caixa", description: err.message, variant: "destructive" });
+    }
     setOpenDialog(false);
     setOpeningBalance("");
   };
