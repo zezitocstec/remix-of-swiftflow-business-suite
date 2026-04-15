@@ -30,15 +30,16 @@ export default function PDV() {
   const [biometricLoading, setBiometricLoading] = useState(false);
 
   useEffect(() => {
-    if (!cashRegister) setSetupStep("operator");
+    if (!cashRegister) setSetupStep("login");
     isPlatformAuthAvailable().then(setBiometricAvailable);
   }, []);
 
   useEffect(() => {
     if (!cashRegister && setupStep === null) {
-      setSetupStep("operator");
+      setSetupStep("login");
       setSelectedOperator(null);
       setSelectedTerminal(null);
+      setOperatorNameInput("");
       setPinInput("");
       setSetupBalance("");
     }
