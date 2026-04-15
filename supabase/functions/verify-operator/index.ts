@@ -48,10 +48,11 @@ Deno.serve(async (req) => {
 
     // Parse body
     const body = await req.json();
-    const { operator_id, pin, required_permission } = body;
+    const { operator_id, operator_name, pin, required_permission } = body;
 
-    if (!operator_id || typeof operator_id !== "string") {
-      return new Response(JSON.stringify({ error: "operator_id is required" }), {
+    // Support lookup by name OR id
+    if (!operator_id && !operator_name) {
+      return new Response(JSON.stringify({ error: "operator_id or operator_name is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
