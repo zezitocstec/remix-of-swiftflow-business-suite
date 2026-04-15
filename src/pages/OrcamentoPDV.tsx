@@ -86,25 +86,30 @@ export default function OrcamentoPDV() {
     return data as { valid: boolean; error?: string; operator?: any };
   };
 
-  const handleBiometricLogin = async () => {
-    setBiometricLoading(true);
-    try {
-      const result = await authenticateBiometric();
-      if (result.valid && result.operator) {
-        const op = operators.find(o => o.id === result.operator!.id);
-        if (op) {
-          setSelectedOperator(op);
-          setAuthed(true);
-          toast({ title: "Autenticado!", description: `Bem-vindo, ${result.operator.nome}` });
-        }
-      } else {
-        toast({ title: "Falha na biometria", description: result.error, variant: "destructive" });
+  const verifyOperatorByName = async (name: string, pin: string) => {
+    const { data, error } = await supabase.functions.invoke("verify-operator", {
+      body: { operator_name: name, pin },
+    });
+    if (error) return { valid: false, error: "Erro de conexão" };
+    return data as { valid: boolean; error?: string; operator?: any };
+  };
+
+  const handleLoginSubmit = async () => {
+    if (!operatorNameInput.trim() || !pinInput) return;
+    setLoginLoading(true);
+    const result = await verifyOperatorByName(operatorNameInput.trim(), pinInput);
+    if (result.valid && result.operator) {
+      const op = operators.find(o => o.id === result.operator!.id);
+      if (op) {
+        setSelectedOperator(op);
+        setAuthed(true);
+        toast({ title: "Autenticado!", description: `Bem-vindo, ${op.nome}` });
       }
-    } catch {
-      toast({ title: "Erro na biometria", variant: "destructive" });
-    } finally {
-      setBiometricLoading(false);
+    } else {
+      toast({ title: result.error || "Credenciais inválidas", variant: "destructive" });
+      setPinInput("");
     }
+    setLoginLoading(false);
   };
 
   const activeOperators = operators.filter(o => o.ativo);
