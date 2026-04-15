@@ -332,7 +332,7 @@ export default function OrcamentoPDV() {
         <ClipboardList className="h-5 w-5 text-primary shrink-0" />
         <span className="text-sm font-semibold text-foreground truncate flex-1">Orçamento</span>
         <span className="text-xs text-muted-foreground truncate">{selectedOperator?.nome}</span>
-        <Button variant="ghost" size="sm" onClick={() => { setAuthed(false); setAuthStep("operator"); clearAll(); }} className="text-xs text-muted-foreground">
+        <Button variant="ghost" size="sm" onClick={() => { setAuthed(false); setOperatorNameInput(""); setPinInput(""); clearAll(); }} className="text-xs text-muted-foreground">
           Sair
         </Button>
       </div>
