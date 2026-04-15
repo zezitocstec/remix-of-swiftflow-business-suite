@@ -17,12 +17,14 @@ import { isPlatformAuthAvailable, authenticateBiometric } from "@/lib/webauthn";
 export default function PDV() {
   const { products, sellProducts, cancelSale, clients, createDebt, debts, payDebt, sales, cashRegister, openCashRegister, operators, terminals, addActionLog } = useProducts();
 
-  // Setup state — operator selection + PIN + terminal + opening balance
-  const [setupStep, setSetupStep] = useState<"operator" | "pin" | "terminal" | "balance" | null>(null);
+  // Setup state — operator name + PIN + terminal + opening balance
+  const [setupStep, setSetupStep] = useState<"login" | "terminal" | "balance" | null>(null);
   const [selectedOperator, setSelectedOperator] = useState<Operator | null>(null);
   const [selectedTerminal, setSelectedTerminal] = useState<Terminal | null>(null);
+  const [operatorNameInput, setOperatorNameInput] = useState("");
   const [pinInput, setPinInput] = useState("");
   const [setupBalance, setSetupBalance] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
 
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
