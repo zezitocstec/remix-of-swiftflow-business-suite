@@ -85,15 +85,38 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Resolve operator: by id or by name
+    let resolvedOperatorId = operator_id;
+
+    if (!resolvedOperatorId && operator_name) {
+      // Find operator by name (case-insensitive) in tenant
+      const { data: opByName } = await supabaseAdmin
+        .from("operators")
+        .select("id")
+        .eq("tenant_id", membership.company_id)
+        .ilike("nome", operator_name.trim())
+        .eq("ativo", true)
+        .limit(1)
+        .maybeSingle();
+
+      if (!opByName) {
+        return new Response(
+          JSON.stringify({ valid: false, error: "Operador não encontrado" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      resolvedOperatorId = opByName.id;
+    }
+
     // Verify PIN server-side using the existing RPC
     const { data: pinValid } = await supabaseAdmin.rpc("verify_operator_pin", {
-      p_operator_id: operator_id,
+      p_operator_id: resolvedOperatorId,
       p_pin: pin,
     });
 
     if (!pinValid) {
       return new Response(
-        JSON.stringify({ valid: false, error: "Invalid PIN" }),
+        JSON.stringify({ valid: false, error: "PIN incorreto" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -102,13 +125,13 @@ Deno.serve(async (req) => {
     const { data: operator, error: opErr } = await supabaseAdmin
       .from("operators")
       .select("id, nome, ativo, perm_abrir_caixa, perm_cancelar_item, perm_cancelar_cupom, tenant_id")
-      .eq("id", operator_id)
+      .eq("id", resolvedOperatorId)
       .eq("tenant_id", membership.company_id)
       .single();
 
     if (opErr || !operator) {
       return new Response(
-        JSON.stringify({ valid: false, error: "Operator not found in your tenant" }),
+        JSON.stringify({ valid: false, error: "Operador não encontrado" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
