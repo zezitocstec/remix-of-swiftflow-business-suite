@@ -399,7 +399,8 @@ export default function Orcamentos() {
     }
 
     const url = `${window.location.origin}/portal/${portalToken}`;
-    const text = `Orçamento #${o.numero}\nLink: ${url}\nSenha: ${portalSenha}`;
+    const empresa = companyName || "Nossa empresa";
+    const text = `*${empresa}*\n\nOlá! Segue seu orçamento:\n\n📋 Orçamento #${o.numero}\n💰 Total: ${o.total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}\n${o.client_name ? `👤 Cliente: ${o.client_name}\n` : ""}\n🔗 Link: ${url}\n🔑 Senha: ${portalSenha}`;
     const waText = encodeURIComponent(text);
     const waUrl = `https://wa.me/?text=${waText}`;
 
