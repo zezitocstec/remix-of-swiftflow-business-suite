@@ -383,7 +383,6 @@ export default function Orcamentos() {
   };
 
   const handleShare = async (o: Orcamento) => {
-    // Generate token and password if not present
     const orc = o as any;
     let portalToken = orc.portal_token;
     let portalSenha = orc.portal_senha;
@@ -401,13 +400,16 @@ export default function Orcamentos() {
 
     const url = `${window.location.origin}/portal/${portalToken}`;
     const text = `Orçamento #${o.numero}\nLink: ${url}\nSenha: ${portalSenha}`;
+    const waText = encodeURIComponent(text);
+    const waUrl = `https://wa.me/?text=${waText}`;
 
+    // Copy to clipboard and open WhatsApp
     try {
       await navigator.clipboard.writeText(text);
-      toast.success("Link e senha copiados!");
-    } catch {
-      prompt("Copie o link:", text);
-    }
+    } catch { /* ignore */ }
+
+    window.open(waUrl, "_blank");
+    toast.success("WhatsApp aberto com o link do orçamento!");
   };
 
   const statusBadge = (o: Orcamento) => {

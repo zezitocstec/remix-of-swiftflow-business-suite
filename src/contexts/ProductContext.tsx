@@ -623,6 +623,20 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   // ─── Cash Register ───
   const openCashRegister = useCallback(async (openingBalance: number, operatorId: string, terminalId: string) => {
     if (!tenantId) return;
+
+    // Check if there is already an open register for this tenant (by any operator)
+    const { data: openRegs } = await supabase
+      .from("cash_registers")
+      .select("id, operator_name")
+      .eq("tenant_id", tenantId)
+      .is("closed_at", null)
+      .limit(1);
+
+    if (openRegs && openRegs.length > 0) {
+      const existingOp = openRegs[0].operator_name;
+      throw new Error(`Já existe um caixa aberto pelo operador "${existingOp}". Feche-o antes de abrir outro.`);
+    }
+
     const op = operators.find(o => o.id === operatorId);
     const term = terminals.find(t => t.id === terminalId);
     const { data } = await supabase.from("cash_registers").insert({
