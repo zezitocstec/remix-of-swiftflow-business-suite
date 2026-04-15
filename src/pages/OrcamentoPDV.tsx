@@ -23,8 +23,9 @@ export default function OrcamentoPDV() {
   // Auth state
   const [authed, setAuthed] = useState(false);
   const [selectedOperator, setSelectedOperator] = useState<Operator | null>(null);
+  const [operatorNameInput, setOperatorNameInput] = useState("");
   const [pinInput, setPinInput] = useState("");
-  const [authStep, setAuthStep] = useState<"operator" | "pin">("operator");
+  const [loginLoading, setLoginLoading] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
 
