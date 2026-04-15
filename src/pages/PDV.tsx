@@ -117,6 +117,32 @@ export default function PDV() {
     return data as { valid: boolean; error?: string; operator?: { id: string; nome: string }; hasPermission?: boolean };
   };
 
+  const verifyOperatorByName = async (name: string, pin: string, requiredPermission?: string) => {
+    const { data, error } = await supabase.functions.invoke("verify-operator", {
+      body: { operator_name: name, pin, required_permission: requiredPermission },
+    });
+    if (error) return { valid: false, error: "Erro de conexão" };
+    return data as { valid: boolean; error?: string; operator?: { id: string; nome: string }; hasPermission?: boolean };
+  };
+
+  const handleLoginSubmit = async () => {
+    if (!operatorNameInput.trim() || !pinInput) return;
+    setLoginLoading(true);
+    const result = await verifyOperatorByName(operatorNameInput.trim(), pinInput, "abrirCaixa");
+    if (result.valid && result.hasPermission && result.operator) {
+      const op = operators.find(o => o.id === result.operator!.id);
+      if (op) {
+        setSelectedOperator(op);
+        setSetupStep("terminal");
+        toast({ title: "Autenticado!", description: `Bem-vindo, ${op.nome}` });
+      }
+    } else {
+      toast({ title: result.error || "Credenciais inválidas", variant: "destructive" });
+      setPinInput("");
+    }
+    setLoginLoading(false);
+  };
+
   const requestAuth = (type: "cancelarItem" | "cancelarCupom", itemId?: string) => {
     // For current operator, verify permission server-side
     if (currentOperator) {
