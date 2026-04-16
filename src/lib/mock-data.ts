@@ -8,6 +8,7 @@ export interface Product {
   category: string;
   barcode: string;
   imageUrl?: string;
+  unidade?: string;
 }
 
 export interface CartItem {

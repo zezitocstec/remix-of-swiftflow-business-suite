@@ -13,6 +13,7 @@ import type { ParkedSale } from "@/components/pdv/types";
 import { usePDVShortcuts } from "@/hooks/usePDVShortcuts";
 import { printReceipt } from "@/components/pdv/ReceiptPrint";
 import { isPlatformAuthAvailable, authenticateBiometric } from "@/lib/webauthn";
+import WeightCaptureDialog from "@/components/pdv/WeightCaptureDialog";
 
 export default function PDV() {
   const { products, sellProducts, cancelSale, clients, createDebt, debts, payDebt, sales, cashRegister, openCashRegister, operators, terminals, addActionLog } = useProducts();
@@ -103,6 +104,7 @@ export default function PDV() {
   const [showQuotePicker, setShowQuotePicker] = useState(false);
   const [authorizedQuotes, setAuthorizedQuotes] = useState<any[]>([]);
   const [quoteSearch, setQuoteSearch] = useState("");
+  const [weightProduct, setWeightProduct] = useState<Product | null>(null);
 
   // PIN authorization state for cancellations
   const [authDialog, setAuthDialog] = useState<{ type: "cancelarItem" | "cancelarCupom"; itemId?: string } | null>(null);
@@ -189,18 +191,30 @@ export default function PDV() {
       toast({ title: "Sem estoque", description: `${product.name} está sem estoque (0 un).`, variant: "destructive" });
       return;
     }
+    // If product is sold by weight (KG), show weight capture dialog
+    if (product.unidade?.toUpperCase() === "KG") {
+      setWeightProduct(product);
+      return;
+    }
+    addToCartWithQty(product, 1);
+  }, []);
+
+  const addToCartWithQty = useCallback((product: Product, qty: number) => {
     setCart((prev) => {
       const existing = prev.find((i) => i.product.id === product.id);
       if (existing) {
-        if (existing.quantity >= product.stock) {
-          toast({ title: "Estoque insuficiente", description: `${product.name}: limite de ${product.stock} unidades.`, variant: "destructive" });
-          return prev;
-        }
-        return prev.map((i) => i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
+        const newQty = product.unidade?.toUpperCase() === "KG" ? existing.quantity + qty : existing.quantity + qty;
+        return prev.map((i) => i.product.id === product.id ? { ...i, quantity: newQty } : i);
       }
-      return [...prev, { product, quantity: 1, discount: 0 }];
+      return [...prev, { product, quantity: qty, discount: 0 }];
     });
   }, []);
+
+  const handleWeightConfirm = useCallback((product: Product, weightKg: number) => {
+    addToCartWithQty(product, weightKg);
+    setWeightProduct(null);
+    toast({ title: "Produto pesado adicionado", description: `${product.name}: ${weightKg.toFixed(3)} kg — ${formatBRL(weightKg * product.price)}` });
+  }, [addToCartWithQty]);
 
   const updateQty = useCallback((id: string, delta: number) => {
     setCart((prev) => {
@@ -776,6 +790,14 @@ export default function PDV() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Weight Capture Dialog */}
+      <WeightCaptureDialog
+        open={!!weightProduct}
+        product={weightProduct}
+        onConfirm={handleWeightConfirm}
+        onCancel={() => setWeightProduct(null)}
+      />
     </div>
   );
 }
