@@ -113,13 +113,13 @@ export default function ProductGrid({
                 <span className="text-xs text-muted-foreground mt-1">{product.sku}</span>
                 <div className="flex items-baseline justify-between mt-auto pt-2">
                   <span className="text-sm font-semibold tabular-nums text-foreground">
-                    {formatBRL(product.price)}
+                    {formatBRL(product.price)}{(product as any).unidade?.toUpperCase() === "KG" ? <span className="text-xs font-normal text-muted-foreground">/kg</span> : ""}
                   </span>
                   <span className={`text-xs tabular-nums flex items-center gap-0.5 ${
                     product.stock <= 0 ? "text-destructive font-medium" : isLowStock ? "text-warning font-medium" : "text-muted-foreground"
                   }`}>
                     {isLowStock && <AlertTriangle className="h-3 w-3" />}
-                    {product.stock} un
+                    {product.stock} {(product as any).unidade?.toUpperCase() === "KG" ? "kg" : "un"}
                   </span>
                 </div>
               </button>
