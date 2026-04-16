@@ -790,6 +790,14 @@ export default function PDV() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Weight Capture Dialog */}
+      <WeightCaptureDialog
+        open={!!weightProduct}
+        product={weightProduct}
+        onConfirm={handleWeightConfirm}
+        onCancel={() => setWeightProduct(null)}
+      />
     </div>
   );
 }
