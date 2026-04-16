@@ -222,6 +222,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         id: r.id, name: r.name, sku: r.sku || "", barcode: r.barcode || "",
         price: Number(r.price), stock: r.stock, minStock: r.min_stock ?? undefined,
         category: r.category || "Outros", imageUrl: r.image_url ?? undefined,
+        unidade: r.unidade || "UN",
       })));
 
       setClients((clientRes.data || []).map(r => ({
