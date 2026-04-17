@@ -211,10 +211,14 @@ function PDVInner() {
     });
   }, []);
 
-  const handleWeightConfirm = useCallback((product: Product, weightKg: number) => {
-    addToCartWithQty(product, weightKg);
+  const handleWeightConfirm = useCallback((product: Product, value: number, isUnit?: boolean) => {
+    addToCartWithQty(product, value);
     setWeightProduct(null);
-    toast({ title: "Produto pesado adicionado", description: `${product.name}: ${weightKg.toFixed(3)} kg — ${formatBRL(weightKg * product.price)}` });
+    if (isUnit) {
+      toast({ title: "Produto adicionado", description: `${product.name}: ${value} un — ${formatBRL(value * product.price)}` });
+    } else {
+      toast({ title: "Produto pesado adicionado", description: `${product.name}: ${value.toFixed(3)} kg — ${formatBRL(value * product.price)}` });
+    }
   }, [addToCartWithQty]);
 
   const updateQty = useCallback((id: string, delta: number) => {
