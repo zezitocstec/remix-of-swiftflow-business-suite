@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 
 /**
  * Protocolos suportados para leitura de balanças via Web Serial API.
@@ -54,10 +54,8 @@ export function useScaleReader(): UseScaleReaderReturn {
 
   const isSerialSupported = typeof navigator !== "undefined" && "serial" in navigator;
 
-  const connectScale = useCallback(async (): Promise<boolean> => {
-    if (!isSerialSupported) return false;
+  const openPort = useCallback(async (port: any): Promise<boolean> => {
     try {
-      const port = await (navigator as any).serial.requestPort();
       await port.open({
         baudRate: 9600,
         dataBits: 8,
@@ -68,10 +66,66 @@ export function useScaleReader(): UseScaleReaderReturn {
       setIsConnected(true);
       return true;
     } catch {
+      // Port may already be open — still keep ref
+      try {
+        if (port.readable) {
+          portRef.current = port;
+          setIsConnected(true);
+          return true;
+        }
+      } catch { /* ignore */ }
+      return false;
+    }
+  }, []);
+
+  const connectScale = useCallback(async (): Promise<boolean> => {
+    if (!isSerialSupported) return false;
+    try {
+      const port = await (navigator as any).serial.requestPort();
+      return await openPort(port);
+    } catch {
       setIsConnected(false);
       return false;
     }
-  }, [isSerialSupported]);
+  }, [isSerialSupported, openPort]);
+
+  // Auto-reconnect to previously authorized ports
+  useEffect(() => {
+    if (!isSerialSupported) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const ports = await (navigator as any).serial.getPorts();
+        if (cancelled || !ports || ports.length === 0) return;
+        // Try the first authorized port
+        await openPort(ports[0]);
+      } catch {
+        // ignore
+      }
+    })();
+
+    // Listen for connect/disconnect hardware events
+    const serial = (navigator as any).serial;
+    const handleConnect = (e: any) => {
+      if (!portRef.current && e.target) openPort(e.target);
+    };
+    const handleDisconnect = (e: any) => {
+      if (portRef.current === e.target) {
+        portRef.current = null;
+        readerRef.current = null;
+        setIsConnected(false);
+      }
+    };
+    serial.addEventListener?.("connect", handleConnect);
+    serial.addEventListener?.("disconnect", handleDisconnect);
+
+    return () => {
+      cancelled = true;
+      serial.removeEventListener?.("connect", handleConnect);
+      serial.removeEventListener?.("disconnect", handleDisconnect);
+    };
+  }, [isSerialSupported, openPort]);
 
   const readWeight = useCallback(async (): Promise<ScaleReading | null> => {
     if (!portRef.current) return null;
