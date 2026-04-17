@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatBRL, type Product } from "@/lib/mock-data";
-import { useScaleReader } from "@/hooks/useScaleReader";
+import { useScale } from "@/contexts/ScaleContext";
 
 interface WeightCaptureDialogProps {
   open: boolean;
@@ -14,7 +14,7 @@ interface WeightCaptureDialogProps {
 }
 
 export default function WeightCaptureDialog({ open, product, onConfirm, onCancel }: WeightCaptureDialogProps) {
-  const { isSerialSupported, isConnected, isReading, connectScale, readWeight, disconnect } = useScaleReader();
+  const { isSerialSupported, isConnected, isReading, connectScale, readWeight } = useScale();
   const [manualWeight, setManualWeight] = useState("");
   const [capturedWeight, setCapturedWeight] = useState<number | null>(null);
   const [mode, setMode] = useState<"auto" | "manual">("auto");
