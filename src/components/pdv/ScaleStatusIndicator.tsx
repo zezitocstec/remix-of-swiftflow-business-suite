@@ -38,22 +38,21 @@ export default function ScaleStatusIndicator() {
   let label = "Sem balança";
   let Icon = Scale;
   let title = "Balança não conectada — clique para conectar";
+  let iconSpin = false;
 
   if (!isSerialSupported) {
     dotClass = "bg-destructive";
     label = "N/D";
     Icon = AlertCircle;
     title = "Web Serial API não suportada neste navegador";
-  } else if (isReading) {
-    dotClass = "bg-warning animate-pulse";
-    label = "Lendo...";
-    Icon = Loader2;
-    title = "Lendo peso da balança...";
   } else if (isConnected) {
+    const hasWeight = lastWeight != null;
     dotClass = "bg-success animate-pulse";
-    label = lastWeight != null ? `${lastWeight.toFixed(3)} kg` : "Conectada";
+    label = hasWeight ? `${lastWeight!.toFixed(3)} kg` : (isReading ? "Aguardando..." : "Conectada");
     Icon = Scale;
-    title = "Balança conectada — clique para desconectar";
+    title = hasWeight
+      ? `Peso ao vivo: ${lastWeight!.toFixed(3)} kg — clique para desconectar`
+      : "Balança conectada, aguardando dados — clique para desconectar";
   } else {
     Icon = Plug;
   }
@@ -69,7 +68,7 @@ export default function ScaleStatusIndicator() {
             className="h-8 px-2 text-xs shrink-0 touch-manipulation gap-1.5"
           >
             <span className={`h-1.5 w-1.5 rounded-full ${dotClass}`} />
-            <Icon className={`h-3.5 w-3.5 ${isReading ? "animate-spin" : ""}`} />
+            <Icon className={`h-3.5 w-3.5 ${iconSpin ? "animate-spin" : ""}`} />
             <span className="hidden md:inline tabular-nums">{label}</span>
           </Button>
         </TooltipTrigger>
