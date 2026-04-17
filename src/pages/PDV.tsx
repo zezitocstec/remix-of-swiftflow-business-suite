@@ -14,8 +14,9 @@ import { usePDVShortcuts } from "@/hooks/usePDVShortcuts";
 import { printReceipt } from "@/components/pdv/ReceiptPrint";
 import { isPlatformAuthAvailable, authenticateBiometric } from "@/lib/webauthn";
 import WeightCaptureDialog from "@/components/pdv/WeightCaptureDialog";
+import { ScaleProvider } from "@/contexts/ScaleContext";
 
-export default function PDV() {
+function PDVInner() {
   const { products, sellProducts, cancelSale, clients, createDebt, debts, payDebt, sales, cashRegister, openCashRegister, operators, terminals, addActionLog } = useProducts();
 
   // Setup state — operator name + PIN + terminal + opening balance
@@ -799,5 +800,13 @@ export default function PDV() {
         onCancel={() => setWeightProduct(null)}
       />
     </div>
+  );
+}
+
+export default function PDV() {
+  return (
+    <ScaleProvider>
+      <PDVInner />
+    </ScaleProvider>
   );
 }

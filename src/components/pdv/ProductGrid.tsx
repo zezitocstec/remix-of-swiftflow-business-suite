@@ -4,6 +4,7 @@ import { formatBRL, type Product } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import type { Client } from "@/contexts/ProductContext";
 import CashRegisterControls from "./CashRegisterControls";
+import ScaleStatusIndicator from "./ScaleStatusIndicator";
 
 interface ProductGridProps {
   products: Product[];
@@ -82,6 +83,9 @@ export default function ProductGrid({
         <Button variant="ghost" size="sm" onClick={onOpenQuotes} className="text-xs shrink-0 touch-manipulation h-8" title="Carregar Orçamento (F6)">
           <FileText className="h-3.5 w-3.5 mr-1" /> Orçamento
         </Button>
+
+        {/* Scale Status */}
+        <ScaleStatusIndicator />
 
         {/* Cash Register Controls */}
         <CashRegisterControls />
