@@ -15,6 +15,8 @@ export interface CartItem {
   product: Product;
   quantity: number;
   discount: number;
+  /** Quando true, item KG está sendo vendido como unidade (não como peso) */
+  soldAsUnit?: boolean;
 }
 
 export const mockProducts: Product[] = [

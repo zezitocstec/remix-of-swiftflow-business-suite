@@ -200,19 +200,19 @@ function PDVInner() {
     addToCartWithQty(product, 1);
   }, []);
 
-  const addToCartWithQty = useCallback((product: Product, qty: number) => {
+  const addToCartWithQty = useCallback((product: Product, qty: number, soldAsUnit?: boolean) => {
     setCart((prev) => {
-      const existing = prev.find((i) => i.product.id === product.id);
+      // Itens KG vendidos como peso e como unidade são tratados como linhas distintas
+      const existing = prev.find((i) => i.product.id === product.id && !!i.soldAsUnit === !!soldAsUnit);
       if (existing) {
-        const newQty = product.unidade?.toUpperCase() === "KG" ? existing.quantity + qty : existing.quantity + qty;
-        return prev.map((i) => i.product.id === product.id ? { ...i, quantity: newQty } : i);
+        return prev.map((i) => i === existing ? { ...i, quantity: i.quantity + qty } : i);
       }
-      return [...prev, { product, quantity: qty, discount: 0 }];
+      return [...prev, { product, quantity: qty, discount: 0, soldAsUnit }];
     });
   }, []);
 
   const handleWeightConfirm = useCallback((product: Product, value: number, isUnit?: boolean) => {
-    addToCartWithQty(product, value);
+    addToCartWithQty(product, value, isUnit);
     setWeightProduct(null);
     if (isUnit) {
       toast({ title: "Produto adicionado", description: `${product.name}: ${value} un — ${formatBRL(value * product.price)}` });
