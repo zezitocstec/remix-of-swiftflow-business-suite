@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { isPlatformAuthAvailable, authenticateBiometric } from "@/lib/webauthn";
 import { AnimatePresence, motion } from "framer-motion";
+import OperatorAutocomplete from "@/components/pdv/OperatorAutocomplete";
 
 export default function OrcamentoPDV() {
   const { products, operators, clients } = useProducts();

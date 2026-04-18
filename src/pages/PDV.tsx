@@ -15,6 +15,7 @@ import { printReceipt } from "@/components/pdv/ReceiptPrint";
 import { isPlatformAuthAvailable, authenticateBiometric } from "@/lib/webauthn";
 import WeightCaptureDialog from "@/components/pdv/WeightCaptureDialog";
 import { ScaleProvider } from "@/contexts/ScaleContext";
+import OperatorAutocomplete from "@/components/pdv/OperatorAutocomplete";
 
 function PDVInner() {
   const { products, sellProducts, cancelSale, clients, createDebt, debts, payDebt, sales, cashRegister, openCashRegister, operators, terminals, addActionLog } = useProducts();
