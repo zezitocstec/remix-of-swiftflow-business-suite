@@ -11,6 +11,9 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
+
+// Cast supabase client to any until generated types include restaurant_tables
+const sb = supabase as any;
 import { toast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Users, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -37,7 +40,7 @@ const STATUS_CONFIG: Record<TableStatus, { label: string; bg: string; text: stri
 const STATUS_ORDER: TableStatus[] = ["livre", "ocupada", "reservada", "aguardando_pagamento"];
 
 export default function Restaurante() {
-  const { companyId } = useTenant();
+  const { tenantId: companyId } = useTenant();
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<RestaurantTable | null>(null);
@@ -46,14 +49,14 @@ export default function Restaurante() {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await sb
       .from("restaurant_tables")
       .select("*")
       .order("numero", { ascending: true });
     if (error) {
       toast({ title: "Erro ao carregar mesas", description: error.message, variant: "destructive" });
     } else {
-      setTables((data || []) as RestaurantTable[]);
+      setTables(((data || []) as unknown) as RestaurantTable[]);
     }
     setLoading(false);
   };
@@ -75,7 +78,7 @@ export default function Restaurante() {
   }, [tables]);
 
   const handleStatusChange = async (table: RestaurantTable, newStatus: TableStatus) => {
-    const { error } = await supabase
+    const { error } = await sb
       .from("restaurant_tables")
       .update({ status: newStatus })
       .eq("id", table.id);
@@ -89,7 +92,7 @@ export default function Restaurante() {
 
   const handleDelete = async (table: RestaurantTable) => {
     if (!confirm(`Excluir a mesa ${table.numero}?`)) return;
-    const { error } = await supabase.from("restaurant_tables").delete().eq("id", table.id);
+    const { error } = await sb.from("restaurant_tables").delete().eq("id", table.id);
     if (error) {
       toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
     } else {
@@ -100,15 +103,7 @@ export default function Restaurante() {
 
   return (
     <div className="flex flex-col h-screen">
-      <TopBar
-        title="Restaurante"
-        subtitle="Salão e gestão de mesas"
-        actions={
-          <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }}>
-            <Plus className="h-4 w-4" /> Nova mesa
-          </Button>
-        }
-      />
+      <TopBar title="Restaurante" subtitle="Salão e gestão de mesas" />
 
       <div className="flex-1 overflow-auto p-3 sm:p-6 space-y-4">
         {/* Resumo */}
@@ -276,7 +271,7 @@ function TableFormDialog({
     };
 
     if (editing) {
-      const { data, error } = await supabase
+      const { data, error } = await sb
         .from("restaurant_tables")
         .update(payload)
         .eq("id", editing.id)
@@ -285,12 +280,12 @@ function TableFormDialog({
       if (error) {
         toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
       } else {
-        onSaved(data as RestaurantTable, false);
+        onSaved((data as unknown) as RestaurantTable, false);
         toast({ title: "Mesa atualizada" });
         onOpenChange(false);
       }
     } else {
-      const { data, error } = await supabase
+      const { data, error } = await sb
         .from("restaurant_tables")
         .insert(payload)
         .select()
@@ -298,7 +293,7 @@ function TableFormDialog({
       if (error) {
         toast({ title: "Erro ao criar", description: error.message, variant: "destructive" });
       } else {
-        onSaved(data as RestaurantTable, true);
+        onSaved((data as unknown) as RestaurantTable, true);
         toast({ title: "Mesa criada" });
         onOpenChange(false);
       }
