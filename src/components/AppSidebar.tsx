@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ShoppingCart, Package, Warehouse, Users,
   DollarSign, BarChart3, Settings, ChevronLeft, ChevronRight, Store,
-  CreditCard, FileText, LogOut, Menu, X, ClipboardList,
+  CreditCard, FileText, LogOut, Menu, X, ClipboardList, UtensilsCrossed,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +14,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/", adminOnly: true },
   { icon: ShoppingCart, label: "PDV", path: "/pdv", adminOnly: false },
+  { icon: UtensilsCrossed, label: "Restaurante", path: "/restaurante", adminOnly: false },
   { icon: Package, label: "Produtos", path: "/produtos", adminOnly: true },
   { icon: Warehouse, label: "Estoque", path: "/estoque", adminOnly: true },
   { icon: Users, label: "Clientes", path: "/clientes", adminOnly: true },
