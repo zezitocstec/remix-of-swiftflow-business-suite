@@ -242,22 +242,14 @@ export default function OrcamentoPDV() {
 
           <div className="space-y-4">
             <div className="space-y-3">
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Nome do operador"
-                  value={operatorNameInput}
-                  onChange={(e) => setOperatorNameInput(e.target.value)}
-                  className="h-14 pl-10 text-base"
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      const pinEl = document.getElementById("orc-pin-input");
-                      pinEl?.focus();
-                    }
-                  }}
-                />
-              </div>
+              <OperatorAutocomplete
+                value={operatorNameInput}
+                onChange={setOperatorNameInput}
+                operators={activeOperators}
+                autoFocus
+                onEnterAdvance={() => document.getElementById("orc-pin-input")?.focus()}
+                onSelect={() => document.getElementById("orc-pin-input")?.focus()}
+              />
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input

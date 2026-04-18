@@ -491,22 +491,14 @@ function PDVInner() {
           {setupStep === "login" ? (
             <div className="space-y-4">
               <div className="space-y-3">
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Nome do operador"
-                    value={operatorNameInput}
-                    onChange={(e) => setOperatorNameInput(e.target.value)}
-                    className="h-14 pl-10 text-base"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        const pinEl = document.getElementById("pdv-pin-input");
-                        pinEl?.focus();
-                      }
-                    }}
-                  />
-                </div>
+                <OperatorAutocomplete
+                  value={operatorNameInput}
+                  onChange={setOperatorNameInput}
+                  operators={operators.filter((o) => o.ativo)}
+                  autoFocus
+                  onEnterAdvance={() => document.getElementById("pdv-pin-input")?.focus()}
+                  onSelect={() => document.getElementById("pdv-pin-input")?.focus()}
+                />
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
