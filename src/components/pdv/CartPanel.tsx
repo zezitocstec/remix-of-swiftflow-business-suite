@@ -94,7 +94,8 @@ export default function CartPanel({
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{item.product.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {formatBRL(item.product.price)}{item.product.unidade?.toUpperCase() === "KG" ? "/kg" : ""}
+                      {formatBRL(item.product.price)}{item.product.unidade?.toUpperCase() === "KG" && !item.soldAsUnit ? "/kg" : ""}
+                      {item.product.unidade?.toUpperCase() === "KG" && item.soldAsUnit ? " · vendido por unidade" : ""}
                     </p>
                   </div>
                   <button onClick={() => removeItem(item.product.id)} className="text-muted-foreground hover:text-destructive p-2 -mr-2 touch-manipulation">
@@ -106,8 +107,8 @@ export default function CartPanel({
                     <button onClick={() => updateQty(item.product.id, -1)} className="h-10 w-10 rounded-lg border border-border flex items-center justify-center hover:bg-secondary transition-colors touch-manipulation active:scale-95">
                       <Minus className="h-4 w-4" />
                     </button>
-                    <span className="w-10 text-center text-sm tabular-nums font-medium text-foreground">
-                      {item.product.unidade?.toUpperCase() === "KG" ? `${item.quantity.toFixed(3)}` : item.quantity}
+                    <span className="w-12 text-center text-sm tabular-nums font-medium text-foreground">
+                      {item.product.unidade?.toUpperCase() === "KG" && !item.soldAsUnit ? `${item.quantity.toFixed(3)}` : item.quantity}
                     </span>
                     <button onClick={() => updateQty(item.product.id, 1)} className="h-10 w-10 rounded-lg border border-border flex items-center justify-center hover:bg-secondary transition-colors touch-manipulation active:scale-95">
                       <Plus className="h-4 w-4" />
