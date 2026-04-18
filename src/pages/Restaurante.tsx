@@ -106,6 +106,14 @@ export default function Restaurante() {
       <TopBar title="Restaurante" subtitle="Salão e gestão de mesas" />
 
       <div className="flex-1 overflow-auto p-3 sm:p-6 space-y-4">
+        {/* Header com ação */}
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-foreground">Salão</h2>
+          <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }}>
+            <Plus className="h-4 w-4" /> Nova mesa
+          </Button>
+        </div>
+
         {/* Resumo */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           {STATUS_ORDER.map((s) => {
