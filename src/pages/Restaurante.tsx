@@ -278,10 +278,91 @@ export default function Restaurante() {
     if (error) toast({ title: "Erro ao salvar posição", description: error.message, variant: "destructive" });
   }, [tables]);
 
-  // ---- UI ----
+  // ─── Auth screen ───
+  if (!authed) {
+    return (
+      <div className="flex items-center justify-center h-[100dvh] bg-background" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="w-full max-w-sm mx-4 bg-card border border-border rounded-2xl p-6 space-y-6 shadow-lg">
+          <div className="text-center space-y-2">
+            <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+              <UtensilsCrossed className="h-8 w-8 text-primary" />
+            </div>
+            <h1 className="text-xl font-bold text-foreground">Restaurante</h1>
+            <p className="text-sm text-muted-foreground">Informe suas credenciais para acessar</p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <OperatorAutocomplete
+                value={operatorNameInput}
+                onChange={setOperatorNameInput}
+                operators={activeOperators}
+                autoFocus
+                onEnterAdvance={() => document.getElementById("rest-pin-input")?.focus()}
+                onSelect={() => document.getElementById("rest-pin-input")?.focus()}
+              />
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="rest-pin-input"
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="PIN de acesso"
+                  value={pinInput}
+                  onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ""))}
+                  className="h-14 pl-10 text-2xl text-center tracking-[0.5em]"
+                  onKeyDown={(e) => { if (e.key === "Enter") handleLoginSubmit(); }}
+                />
+              </div>
+            </div>
+            <Button
+              onClick={handleLoginSubmit}
+              disabled={loginLoading || !operatorNameInput.trim() || !pinInput}
+              className="w-full h-14 text-base touch-manipulation"
+            >
+              {loginLoading ? (
+                <div className="animate-spin h-5 w-5 border-2 border-primary-foreground border-t-transparent rounded-full" />
+              ) : "Entrar"}
+            </Button>
+            {biometricAvailable && (
+              <>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+                  <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">ou</span></div>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleBiometricLogin}
+                  disabled={biometricLoading}
+                  className="w-full h-14 text-base gap-2 touch-manipulation"
+                >
+                  {biometricLoading ? <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" /> : <Fingerprint className="h-5 w-5" />}
+                  {biometricLoading ? "Verificando..." : "Entrar com Digital"}
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Main UI ───
   return (
-    <div className="flex flex-col h-screen">
-      <TopBar title="Restaurante" subtitle="Salão e gestão de mesas" />
+    <div className="flex flex-col h-[100dvh] bg-background" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      {/* Top bar */}
+      <div className="flex items-center gap-2 px-3 h-12 bg-card border-b border-border shrink-0">
+        <UtensilsCrossed className="h-5 w-5 text-primary shrink-0" />
+        <div className="flex flex-col leading-tight flex-1 min-w-0">
+          <span className="text-sm font-semibold text-foreground truncate">Restaurante</span>
+          <span className="text-[10px] text-muted-foreground truncate">Salão e gestão de mesas</span>
+        </div>
+        <span className="text-xs text-muted-foreground truncate hidden sm:inline">{selectedOperator?.nome}</span>
+        <Button variant="ghost" size="sm" onClick={() => { setAuthed(false); setOperatorNameInput(""); setPinInput(""); setSelectedOperator(null); }} className="text-xs text-muted-foreground">
+          Sair
+        </Button>
+      </div>
 
       <div className="flex-1 overflow-auto p-3 sm:p-6 space-y-4">
         {/* Ambientes */}
