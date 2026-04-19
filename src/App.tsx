@@ -58,7 +58,7 @@ const App = () => (
                 <Route path="/contas-pagar" element={<ProtectedRoute><AdminRoute><LayoutPage><ContasPagar /></LayoutPage></AdminRoute></ProtectedRoute>} />
                 <Route path="/orcamentos" element={<ProtectedRoute><AdminRoute><LayoutPage><Orcamentos /></LayoutPage></AdminRoute></ProtectedRoute>} />
                 <Route path="/configuracoes" element={<ProtectedRoute><AdminRoute><LayoutPage><Configuracoes /></LayoutPage></AdminRoute></ProtectedRoute>} />
-                <Route path="/restaurante" element={<ProtectedRoute><LayoutPage><Restaurante /></LayoutPage></ProtectedRoute>} />
+                <Route path="/restaurante" element={<ProtectedRoute><Restaurante /></ProtectedRoute>} />
                 <Route path="*" element={<LayoutPage><NotFound /></LayoutPage>} />
               </Routes>
             </BrowserRouter>
