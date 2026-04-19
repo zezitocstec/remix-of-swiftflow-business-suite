@@ -64,6 +64,7 @@ const GROUP_COLORS = [
 
 export default function Restaurante() {
   const { tenantId: companyId } = useTenant();
+  const { operators } = useProducts();
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [areas, setAreas] = useState<RestaurantArea[]>([]);
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
@@ -75,6 +76,76 @@ export default function Restaurante() {
   const [transferFrom, setTransferFrom] = useState<RestaurantTable | null>(null);
   const [groupMode, setGroupMode] = useState(false);
   const [groupSelection, setGroupSelection] = useState<Set<string>>(new Set());
+
+  // ─── Auth state ───
+  const [authed, setAuthed] = useState(false);
+  const [selectedOperator, setSelectedOperator] = useState<Operator | null>(null);
+  const [operatorNameInput, setOperatorNameInput] = useState("");
+  const [pinInput, setPinInput] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(false);
+
+  useEffect(() => { isPlatformAuthAvailable().then(setBiometricAvailable); }, []);
+
+  // Dark mode follow system (consistent with /pdv and /orcamento standalone screens)
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = (dark: boolean) => document.documentElement.classList.toggle("dark", dark);
+    apply(mq.matches);
+    const handler = (e: MediaQueryListEvent) => apply(e.matches);
+    mq.addEventListener("change", handler);
+    return () => { mq.removeEventListener("change", handler); document.documentElement.classList.remove("dark"); };
+  }, []);
+
+  const verifyOperatorByName = async (name: string, pin: string) => {
+    const { data, error } = await supabase.functions.invoke("verify-operator", {
+      body: { operator_name: name, pin },
+    });
+    if (error) return { valid: false, error: "Erro de conexão" };
+    return data as { valid: boolean; error?: string; operator?: any };
+  };
+
+  const handleLoginSubmit = async () => {
+    if (!operatorNameInput.trim() || !pinInput) return;
+    setLoginLoading(true);
+    const result = await verifyOperatorByName(operatorNameInput.trim(), pinInput);
+    if (result.valid && result.operator) {
+      const op = operators.find((o) => o.id === result.operator!.id);
+      if (op) {
+        setSelectedOperator(op);
+        setAuthed(true);
+        toast({ title: "Autenticado!", description: `Bem-vindo, ${op.nome}` });
+      }
+    } else {
+      toast({ title: result.error || "Credenciais inválidas", variant: "destructive" });
+      setPinInput("");
+    }
+    setLoginLoading(false);
+  };
+
+  const handleBiometricLogin = async () => {
+    setBiometricLoading(true);
+    try {
+      const result = await authenticateBiometric();
+      if (result.valid && result.operator) {
+        const op = operators.find((o) => o.id === result.operator!.id);
+        if (op) {
+          setSelectedOperator(op);
+          setAuthed(true);
+          toast({ title: "Autenticado!", description: `Bem-vindo, ${result.operator.nome}` });
+        }
+      } else {
+        toast({ title: "Falha na biometria", description: result.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Erro na biometria", variant: "destructive" });
+    } finally {
+      setBiometricLoading(false);
+    }
+  };
+
+  const activeOperators = operators.filter((o) => o.ativo);
 
   const load = async () => {
     setLoading(true);
