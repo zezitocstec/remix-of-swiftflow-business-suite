@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { TopBar } from "@/components/TopBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,16 +9,28 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
-
-// Cast supabase client to any until generated types include restaurant_tables
-const sb = supabase as any;
 import { toast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Users, Loader2 } from "lucide-react";
+import {
+  Plus, Pencil, Trash2, Users, Loader2, Move, ArrowRightLeft, Link2, Link2Off, MapPin,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  DndContext, useDraggable, type DragEndEvent, PointerSensor, useSensor, useSensors,
+} from "@dnd-kit/core";
+
+const sb = supabase as any;
 
 type TableStatus = "livre" | "ocupada" | "reservada" | "aguardando_pagamento";
+
+interface RestaurantArea {
+  id: string;
+  nome: string;
+  ordem: number;
+}
 
 interface RestaurantTable {
   id: string;
@@ -26,190 +38,291 @@ interface RestaurantTable {
   nome: string | null;
   capacidade: number;
   status: TableStatus;
-  posicao: number;
   observacao: string | null;
+  area_id: string | null;
+  pos_x: number;
+  pos_y: number;
+  group_id: string | null;
 }
 
-const STATUS_CONFIG: Record<TableStatus, { label: string; bg: string; text: string; ring: string }> = {
-  livre:                { label: "Livre",               bg: "bg-emerald-500/10",  text: "text-emerald-600 dark:text-emerald-400",  ring: "ring-emerald-500/30" },
-  ocupada:              { label: "Ocupada",             bg: "bg-red-500/10",      text: "text-red-600 dark:text-red-400",          ring: "ring-red-500/30" },
-  reservada:            { label: "Reservada",           bg: "bg-blue-500/10",     text: "text-blue-600 dark:text-blue-400",        ring: "ring-blue-500/30" },
-  aguardando_pagamento: { label: "Aguardando pagamento",bg: "bg-amber-500/10",    text: "text-amber-600 dark:text-amber-400",      ring: "ring-amber-500/30" },
+const STATUS_CONFIG: Record<TableStatus, { label: string; bg: string; text: string; ring: string; border: string }> = {
+  livre:                { label: "Livre",                bg: "bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400", ring: "ring-emerald-500/30", border: "border-emerald-500/40" },
+  ocupada:              { label: "Ocupada",              bg: "bg-red-500/10",     text: "text-red-600 dark:text-red-400",         ring: "ring-red-500/30",     border: "border-red-500/40" },
+  reservada:            { label: "Reservada",            bg: "bg-blue-500/10",    text: "text-blue-600 dark:text-blue-400",       ring: "ring-blue-500/30",    border: "border-blue-500/40" },
+  aguardando_pagamento: { label: "Aguardando pagamento", bg: "bg-amber-500/10",   text: "text-amber-600 dark:text-amber-400",     ring: "ring-amber-500/30",   border: "border-amber-500/40" },
 };
 
 const STATUS_ORDER: TableStatus[] = ["livre", "ocupada", "reservada", "aguardando_pagamento"];
 
+const GROUP_COLORS = [
+  "border-fuchsia-500", "border-cyan-500", "border-orange-500",
+  "border-violet-500", "border-lime-500", "border-pink-500",
+];
+
 export default function Restaurante() {
   const { tenantId: companyId } = useTenant();
   const [tables, setTables] = useState<RestaurantTable[]>([]);
+  const [areas, setAreas] = useState<RestaurantArea[]>([]);
+  const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<RestaurantTable | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [filter, setFilter] = useState<TableStatus | "todas">("todas");
+  const [areaDialogOpen, setAreaDialogOpen] = useState(false);
+  const [editLayout, setEditLayout] = useState(false);
+  const [transferFrom, setTransferFrom] = useState<RestaurantTable | null>(null);
+  const [groupMode, setGroupMode] = useState(false);
+  const [groupSelection, setGroupSelection] = useState<Set<string>>(new Set());
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await sb
-      .from("restaurant_tables")
-      .select("*")
-      .order("numero", { ascending: true });
-    if (error) {
-      toast({ title: "Erro ao carregar mesas", description: error.message, variant: "destructive" });
-    } else {
-      setTables(((data || []) as unknown) as RestaurantTable[]);
-    }
+    const [areasRes, tablesRes] = await Promise.all([
+      sb.from("restaurant_areas").select("*").order("ordem", { ascending: true }),
+      sb.from("restaurant_tables").select("*").order("numero", { ascending: true }),
+    ]);
+    if (areasRes.error) toast({ title: "Erro ao carregar ambientes", description: areasRes.error.message, variant: "destructive" });
+    if (tablesRes.error) toast({ title: "Erro ao carregar mesas", description: tablesRes.error.message, variant: "destructive" });
+
+    const loadedAreas = (areasRes.data || []) as RestaurantArea[];
+    setAreas(loadedAreas);
+    setTables((tablesRes.data || []) as RestaurantTable[]);
+    if (!activeAreaId && loadedAreas.length > 0) setActiveAreaId(loadedAreas[0].id);
     setLoading(false);
   };
 
-  useEffect(() => {
-    if (!companyId) return;
-    load();
-  }, [companyId]);
+  useEffect(() => { if (companyId) load(); }, [companyId]);
 
-  const filtered = useMemo(
-    () => filter === "todas" ? tables : tables.filter((t) => t.status === filter),
-    [tables, filter]
+  const tablesInArea = useMemo(
+    () => tables.filter((t) => (t.area_id || null) === (activeAreaId || null)),
+    [tables, activeAreaId]
   );
 
   const counts = useMemo(() => {
     const c: Record<TableStatus, number> = { livre: 0, ocupada: 0, reservada: 0, aguardando_pagamento: 0 };
-    tables.forEach((t) => { c[t.status]++; });
+    tablesInArea.forEach((t) => { c[t.status]++; });
     return c;
-  }, [tables]);
+  }, [tablesInArea]);
+
+  // Group color map
+  const groupColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    let i = 0;
+    tablesInArea.forEach((t) => {
+      if (t.group_id && !map.has(t.group_id)) {
+        map.set(t.group_id, GROUP_COLORS[i % GROUP_COLORS.length]);
+        i++;
+      }
+    });
+    return map;
+  }, [tablesInArea]);
 
   const handleStatusChange = async (table: RestaurantTable, newStatus: TableStatus) => {
-    const { error } = await sb
-      .from("restaurant_tables")
-      .update({ status: newStatus })
-      .eq("id", table.id);
-    if (error) {
-      toast({ title: "Erro ao atualizar status", description: error.message, variant: "destructive" });
-    } else {
-      setTables((prev) => prev.map((t) => t.id === table.id ? { ...t, status: newStatus } : t));
-      toast({ title: "Status atualizado", description: `Mesa ${table.numero}: ${STATUS_CONFIG[newStatus].label}` });
-    }
+    const { error } = await sb.from("restaurant_tables").update({ status: newStatus }).eq("id", table.id);
+    if (error) return toast({ title: "Erro ao atualizar status", description: error.message, variant: "destructive" });
+    setTables((prev) => prev.map((t) => t.id === table.id ? { ...t, status: newStatus } : t));
   };
 
   const handleDelete = async (table: RestaurantTable) => {
     if (!confirm(`Excluir a mesa ${table.numero}?`)) return;
     const { error } = await sb.from("restaurant_tables").delete().eq("id", table.id);
-    if (error) {
-      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
-    } else {
-      setTables((prev) => prev.filter((t) => t.id !== table.id));
-      toast({ title: "Mesa excluída" });
-    }
+    if (error) return toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+    setTables((prev) => prev.filter((t) => t.id !== table.id));
+    toast({ title: "Mesa excluída" });
   };
 
+  // ---- Transferir status ----
+  const handleTransfer = async (target: RestaurantTable) => {
+    if (!transferFrom) return;
+    if (target.id === transferFrom.id) return;
+    if (target.status !== "livre") {
+      return toast({ title: "Mesa de destino precisa estar livre", variant: "destructive" });
+    }
+    // mover status, nome (cliente), observação para alvo; origem volta a livre
+    const updates = await Promise.all([
+      sb.from("restaurant_tables").update({
+        status: transferFrom.status,
+        observacao: transferFrom.observacao,
+      }).eq("id", target.id),
+      sb.from("restaurant_tables").update({
+        status: "livre",
+        observacao: null,
+      }).eq("id", transferFrom.id),
+    ]);
+    const err = updates.find((r) => r.error)?.error;
+    if (err) return toast({ title: "Erro ao transferir", description: err.message, variant: "destructive" });
+    setTables((prev) => prev.map((t) => {
+      if (t.id === target.id) return { ...t, status: transferFrom.status, observacao: transferFrom.observacao };
+      if (t.id === transferFrom.id) return { ...t, status: "livre" as TableStatus, observacao: null };
+      return t;
+    }));
+    toast({ title: "Mesa transferida", description: `Mesa ${transferFrom.numero} → Mesa ${target.numero}` });
+    setTransferFrom(null);
+  };
+
+  // ---- Juntar mesas ----
+  const toggleGroupSelect = (id: string) => {
+    setGroupSelection((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const confirmJoin = async () => {
+    if (groupSelection.size < 2) {
+      return toast({ title: "Selecione 2 ou mais mesas", variant: "destructive" });
+    }
+    const newGroupId = crypto.randomUUID();
+    const ids = Array.from(groupSelection);
+    const { error } = await sb.from("restaurant_tables").update({ group_id: newGroupId }).in("id", ids);
+    if (error) return toast({ title: "Erro ao juntar", description: error.message, variant: "destructive" });
+    setTables((prev) => prev.map((t) => ids.includes(t.id) ? { ...t, group_id: newGroupId } : t));
+    toast({ title: "Mesas agrupadas", description: `${ids.length} mesas juntadas` });
+    setGroupSelection(new Set());
+    setGroupMode(false);
+  };
+
+  const ungroup = async (groupId: string) => {
+    const { error } = await sb.from("restaurant_tables").update({ group_id: null }).eq("group_id", groupId);
+    if (error) return toast({ title: "Erro ao desagrupar", description: error.message, variant: "destructive" });
+    setTables((prev) => prev.map((t) => t.group_id === groupId ? { ...t, group_id: null } : t));
+    toast({ title: "Grupo desfeito" });
+  };
+
+  // ---- Drag & drop ----
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+
+  const handleDragEnd = useCallback(async (e: DragEndEvent) => {
+    const id = String(e.active.id);
+    const table = tables.find((t) => t.id === id);
+    if (!table) return;
+    const newX = Math.max(0, table.pos_x + e.delta.x);
+    const newY = Math.max(0, table.pos_y + e.delta.y);
+    setTables((prev) => prev.map((t) => t.id === id ? { ...t, pos_x: newX, pos_y: newY } : t));
+    const { error } = await sb.from("restaurant_tables")
+      .update({ pos_x: Math.round(newX), pos_y: Math.round(newY) })
+      .eq("id", id);
+    if (error) toast({ title: "Erro ao salvar posição", description: error.message, variant: "destructive" });
+  }, [tables]);
+
+  // ---- UI ----
   return (
     <div className="flex flex-col h-screen">
       <TopBar title="Restaurante" subtitle="Salão e gestão de mesas" />
 
       <div className="flex-1 overflow-auto p-3 sm:p-6 space-y-4">
-        {/* Header com ação */}
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">Salão</h2>
-          <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }}>
-            <Plus className="h-4 w-4" /> Nova mesa
-          </Button>
+        {/* Ambientes */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            {areas.length > 0 ? (
+              <Tabs value={activeAreaId || ""} onValueChange={setActiveAreaId}>
+                <TabsList>
+                  {areas.map((a) => (
+                    <TabsTrigger key={a.id} value={a.id}>{a.nome}</TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            ) : (
+              <span className="text-sm text-muted-foreground">Nenhum ambiente cadastrado</span>
+            )}
+            <Button variant="outline" size="sm" onClick={() => setAreaDialogOpen(true)}>
+              <MapPin className="h-4 w-4" /> Ambientes
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              variant={editLayout ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setEditLayout((v) => !v); setGroupMode(false); setTransferFrom(null); }}
+              disabled={!activeAreaId}
+            >
+              <Move className="h-4 w-4" /> {editLayout ? "Concluir layout" : "Editar layout"}
+            </Button>
+            <Button
+              variant={groupMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setGroupMode((v) => !v); setEditLayout(false); setTransferFrom(null); setGroupSelection(new Set()); }}
+              disabled={!activeAreaId}
+            >
+              <Link2 className="h-4 w-4" /> {groupMode ? "Cancelar" : "Juntar mesas"}
+            </Button>
+            <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }} disabled={!activeAreaId}>
+              <Plus className="h-4 w-4" /> Nova mesa
+            </Button>
+          </div>
         </div>
+
+        {/* Banner de modo */}
+        {transferFrom && (
+          <div className="rounded-md border border-blue-500/40 bg-blue-500/10 p-3 text-sm flex items-center justify-between">
+            <span>Selecione a <b>mesa de destino livre</b> para transferir a Mesa {transferFrom.numero}.</span>
+            <Button variant="ghost" size="sm" onClick={() => setTransferFrom(null)}>Cancelar</Button>
+          </div>
+        )}
+        {groupMode && (
+          <div className="rounded-md border border-fuchsia-500/40 bg-fuchsia-500/10 p-3 text-sm flex items-center justify-between gap-2">
+            <span>Toque nas mesas para selecionar ({groupSelection.size} selecionadas). Mín. 2.</span>
+            <Button size="sm" onClick={confirmJoin} disabled={groupSelection.size < 2}>Confirmar grupo</Button>
+          </div>
+        )}
+        {editLayout && (
+          <div className="rounded-md border border-primary/40 bg-primary/10 p-3 text-sm">
+            Arraste as mesas para reposicionar. As coordenadas são salvas automaticamente.
+          </div>
+        )}
 
         {/* Resumo */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           {STATUS_ORDER.map((s) => {
             const cfg = STATUS_CONFIG[s];
-            const active = filter === s;
             return (
-              <button
-                key={s}
-                onClick={() => setFilter(active ? "todas" : s)}
-                className={cn(
-                  "rounded-md border border-border p-3 text-left transition-all",
-                  active ? "ring-2 " + cfg.ring : "hover:border-foreground/20"
-                )}
-              >
+              <div key={s} className="rounded-md border border-border p-3">
                 <p className="text-xs text-muted-foreground">{cfg.label}</p>
                 <p className={cn("text-2xl font-semibold tabular-nums", cfg.text)}>{counts[s]}</p>
-              </button>
+              </div>
             );
           })}
         </div>
 
-        {/* Grid de mesas */}
+        {/* Plano de salão */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="rounded-md border border-dashed border-border p-12 text-center">
-            <p className="text-sm text-muted-foreground mb-3">
-              {tables.length === 0 ? "Nenhuma mesa cadastrada ainda." : "Nenhuma mesa nesse filtro."}
-            </p>
-            {tables.length === 0 && (
-              <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
-                <Plus className="h-4 w-4" /> Cadastrar primeira mesa
-              </Button>
-            )}
-          </div>
+        ) : !activeAreaId ? (
+          <EmptyState
+            text="Crie um ambiente para começar (ex: Salão, Varanda)."
+            cta={<Button onClick={() => setAreaDialogOpen(true)}><MapPin className="h-4 w-4" /> Criar ambiente</Button>}
+          />
+        ) : tablesInArea.length === 0 ? (
+          <EmptyState
+            text="Nenhuma mesa neste ambiente."
+            cta={<Button onClick={() => { setEditing(null); setDialogOpen(true); }}><Plus className="h-4 w-4" /> Cadastrar mesa</Button>}
+          />
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {filtered.map((t) => {
-              const cfg = STATUS_CONFIG[t.status];
-              return (
-                <div
+          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+            <div className="relative w-full min-h-[500px] rounded-md border border-dashed border-border bg-muted/20 overflow-hidden">
+              {tablesInArea.map((t) => (
+                <DraggableTable
                   key={t.id}
-                  className={cn(
-                    "rounded-md border border-border p-3 flex flex-col gap-2 transition-all",
-                    cfg.bg
-                  )}
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Mesa</p>
-                      <p className="text-2xl font-bold tabular-nums text-foreground">{t.numero}</p>
-                    </div>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => { setEditing(t); setDialogOpen(true); }}
-                        className="p-1 rounded hover:bg-background/60 text-muted-foreground hover:text-foreground"
-                        aria-label="Editar"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(t)}
-                        className="p-1 rounded hover:bg-background/60 text-muted-foreground hover:text-destructive"
-                        aria-label="Excluir"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {t.nome && <p className="text-xs text-foreground truncate">{t.nome}</p>}
-
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Users className="h-3 w-3" />
-                    <span>{t.capacidade} lugares</span>
-                  </div>
-
-                  <Select
-                    value={t.status}
-                    onValueChange={(v) => handleStatusChange(t, v as TableStatus)}
-                  >
-                    <SelectTrigger className={cn("h-8 text-xs", cfg.text)}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STATUS_ORDER.map((s) => (
-                        <SelectItem key={s} value={s}>{STATUS_CONFIG[s].label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              );
-            })}
-          </div>
+                  table={t}
+                  draggable={editLayout}
+                  groupColor={t.group_id ? groupColorMap.get(t.group_id) : undefined}
+                  selected={groupSelection.has(t.id)}
+                  onClick={() => {
+                    if (groupMode) return toggleGroupSelect(t.id);
+                    if (transferFrom) return handleTransfer(t);
+                  }}
+                  onEdit={() => { setEditing(t); setDialogOpen(true); }}
+                  onDelete={() => handleDelete(t)}
+                  onStatusChange={(s) => handleStatusChange(t, s)}
+                  onTransfer={() => setTransferFrom(t)}
+                  onUngroup={t.group_id ? () => ungroup(t.group_id!) : undefined}
+                  isTransferSource={transferFrom?.id === t.id}
+                />
+              ))}
+            </div>
+          </DndContext>
         )}
       </div>
 
@@ -218,23 +331,160 @@ export default function Restaurante() {
         onOpenChange={setDialogOpen}
         editing={editing}
         companyId={companyId}
+        areaId={activeAreaId}
         existingNumeros={tables.map((t) => t.numero)}
         onSaved={(saved, isNew) => {
           setTables((prev) => isNew ? [...prev, saved].sort((a, b) => a.numero - b.numero)
                                     : prev.map((t) => t.id === saved.id ? saved : t));
         }}
       />
+
+      <AreasDialog
+        open={areaDialogOpen}
+        onOpenChange={setAreaDialogOpen}
+        companyId={companyId}
+        areas={areas}
+        onChanged={(next) => {
+          setAreas(next);
+          if (!activeAreaId && next.length > 0) setActiveAreaId(next[0].id);
+          if (activeAreaId && !next.find((a) => a.id === activeAreaId)) {
+            setActiveAreaId(next[0]?.id || null);
+          }
+        }}
+      />
     </div>
   );
 }
 
+function EmptyState({ text, cta }: { text: string; cta?: React.ReactNode }) {
+  return (
+    <div className="rounded-md border border-dashed border-border p-12 text-center">
+      <p className="text-sm text-muted-foreground mb-3">{text}</p>
+      {cta}
+    </div>
+  );
+}
+
+// ---------- Draggable Table Card ----------
+function DraggableTable({
+  table, draggable, groupColor, selected, onClick, onEdit, onDelete, onStatusChange, onTransfer, onUngroup, isTransferSource,
+}: {
+  table: RestaurantTable;
+  draggable: boolean;
+  groupColor?: string;
+  selected: boolean;
+  onClick: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onStatusChange: (s: TableStatus) => void;
+  onTransfer: () => void;
+  onUngroup?: () => void;
+  isTransferSource: boolean;
+}) {
+  const cfg = STATUS_CONFIG[table.status];
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: table.id, disabled: !draggable,
+  });
+
+  const style: React.CSSProperties = {
+    position: "absolute",
+    left: table.pos_x,
+    top: table.pos_y,
+    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+    width: 160,
+    zIndex: isDragging ? 50 : 1,
+    touchAction: draggable ? "none" : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      onClick={(e) => { if (!draggable) { e.stopPropagation(); onClick(); } }}
+      className={cn(
+        "rounded-md border-2 p-3 flex flex-col gap-2 transition-shadow shadow-sm",
+        cfg.bg,
+        groupColor || cfg.border,
+        selected && "ring-2 ring-fuchsia-500 ring-offset-2 ring-offset-background",
+        isTransferSource && "ring-2 ring-blue-500 ring-offset-2 ring-offset-background",
+        draggable && "cursor-grab active:cursor-grabbing",
+        !draggable && "cursor-pointer hover:shadow-md",
+      )}
+      {...(draggable ? attributes : {})}
+      {...(draggable ? listeners : {})}
+    >
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-[10px] text-muted-foreground uppercase">Mesa</p>
+          <p className="text-2xl font-bold tabular-nums text-foreground leading-none">{table.numero}</p>
+        </div>
+        {!draggable && (
+          <div className="flex gap-0.5">
+            <button onClick={(e) => { e.stopPropagation(); onEdit(); }}
+              className="p-1 rounded hover:bg-background/60 text-muted-foreground hover:text-foreground" aria-label="Editar">
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="p-1 rounded hover:bg-background/60 text-muted-foreground hover:text-destructive" aria-label="Excluir">
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {table.nome && <p className="text-xs text-foreground truncate">{table.nome}</p>}
+
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span className="flex items-center gap-1"><Users className="h-3 w-3" />{table.capacidade}</span>
+        {table.group_id && <Badge variant="outline" className="text-[10px] h-5">Grupo</Badge>}
+      </div>
+
+      {!draggable && (
+        <div className="flex flex-col gap-1.5">
+          <Select value={table.status} onValueChange={(v) => onStatusChange(v as TableStatus)}>
+            <SelectTrigger className={cn("h-7 text-xs", cfg.text)} onClick={(e) => e.stopPropagation()}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_ORDER.map((s) => (
+                <SelectItem key={s} value={s}>{STATUS_CONFIG[s].label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <div className="flex gap-1">
+            {table.status !== "livre" && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onTransfer(); }}
+                className="flex-1 text-[10px] py-1 rounded border border-border hover:bg-background/60 flex items-center justify-center gap-1"
+              >
+                <ArrowRightLeft className="h-3 w-3" /> Transferir
+              </button>
+            )}
+            {onUngroup && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onUngroup(); }}
+                className="flex-1 text-[10px] py-1 rounded border border-border hover:bg-background/60 flex items-center justify-center gap-1"
+              >
+                <Link2Off className="h-3 w-3" /> Desagrupar
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------- Table Form Dialog ----------
 function TableFormDialog({
-  open, onOpenChange, editing, companyId, existingNumeros, onSaved,
+  open, onOpenChange, editing, companyId, areaId, existingNumeros, onSaved,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   editing: RestaurantTable | null;
   companyId: string | null;
+  areaId: string | null;
   existingNumeros: number[];
   onSaved: (t: RestaurantTable, isNew: boolean) => void;
 }) {
@@ -256,55 +506,31 @@ function TableFormDialog({
   const handleSave = async () => {
     const num = parseInt(numero, 10);
     const cap = parseInt(capacidade, 10);
-    if (!num || num < 1) {
-      toast({ title: "Número inválido", variant: "destructive" });
-      return;
-    }
-    if (!cap || cap < 1) {
-      toast({ title: "Capacidade inválida", variant: "destructive" });
-      return;
-    }
-    if (!companyId) {
-      toast({ title: "Empresa não identificada", variant: "destructive" });
-      return;
-    }
+    if (!num || num < 1) return toast({ title: "Número inválido", variant: "destructive" });
+    if (!cap || cap < 1) return toast({ title: "Capacidade inválida", variant: "destructive" });
+    if (!companyId) return toast({ title: "Empresa não identificada", variant: "destructive" });
 
     setSaving(true);
-    const payload = {
+    const payload: any = {
       numero: num,
       nome: nome.trim() || null,
       capacidade: cap,
       observacao: observacao.trim() || null,
       tenant_id: companyId,
+      area_id: areaId,
     };
 
-    if (editing) {
-      const { data, error } = await sb
-        .from("restaurant_tables")
-        .update(payload)
-        .eq("id", editing.id)
-        .select()
-        .single();
-      if (error) {
-        toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
-      } else {
-        onSaved((data as unknown) as RestaurantTable, false);
-        toast({ title: "Mesa atualizada" });
-        onOpenChange(false);
-      }
+    const op = editing
+      ? sb.from("restaurant_tables").update(payload).eq("id", editing.id).select().single()
+      : sb.from("restaurant_tables").insert(payload).select().single();
+
+    const { data, error } = await op;
+    if (error) {
+      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
     } else {
-      const { data, error } = await sb
-        .from("restaurant_tables")
-        .insert(payload)
-        .select()
-        .single();
-      if (error) {
-        toast({ title: "Erro ao criar", description: error.message, variant: "destructive" });
-      } else {
-        onSaved((data as unknown) as RestaurantTable, true);
-        toast({ title: "Mesa criada" });
-        onOpenChange(false);
-      }
+      onSaved(data as RestaurantTable, !editing);
+      toast({ title: editing ? "Mesa atualizada" : "Mesa criada" });
+      onOpenChange(false);
     }
     setSaving(false);
   };
@@ -314,11 +540,8 @@ function TableFormDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{editing ? `Editar mesa ${editing.numero}` : "Nova mesa"}</DialogTitle>
-          <DialogDescription>
-            Cadastre o número, nome (opcional) e capacidade da mesa.
-          </DialogDescription>
+          <DialogDescription>Cadastre o número, nome (opcional) e capacidade da mesa.</DialogDescription>
         </DialogHeader>
-
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -339,13 +562,94 @@ function TableFormDialog({
             <Input id="obs" placeholder="Ex: próxima da janela" value={observacao} onChange={(e) => setObservacao(e.target.value)} />
           </div>
         </div>
-
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
           <Button onClick={handleSave} disabled={saving}>
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             {editing ? "Salvar" : "Criar mesa"}
           </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---------- Areas Dialog ----------
+function AreasDialog({
+  open, onOpenChange, companyId, areas, onChanged,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  companyId: string | null;
+  areas: RestaurantArea[];
+  onChanged: (next: RestaurantArea[]) => void;
+}) {
+  const [novoNome, setNovoNome] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const add = async () => {
+    const nome = novoNome.trim();
+    if (!nome) return;
+    if (!companyId) return toast({ title: "Empresa não identificada", variant: "destructive" });
+    setSaving(true);
+    const { data, error } = await sb.from("restaurant_areas")
+      .insert({ tenant_id: companyId, nome, ordem: areas.length })
+      .select().single();
+    setSaving(false);
+    if (error) return toast({ title: "Erro ao criar", description: error.message, variant: "destructive" });
+    onChanged([...areas, data as RestaurantArea]);
+    setNovoNome("");
+    toast({ title: "Ambiente criado" });
+  };
+
+  const rename = async (a: RestaurantArea, novo: string) => {
+    if (!novo.trim() || novo.trim() === a.nome) return;
+    const { error } = await sb.from("restaurant_areas").update({ nome: novo.trim() }).eq("id", a.id);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    onChanged(areas.map((x) => x.id === a.id ? { ...x, nome: novo.trim() } : x));
+  };
+
+  const remove = async (a: RestaurantArea) => {
+    if (!confirm(`Excluir o ambiente "${a.nome}"? As mesas ficarão sem ambiente.`)) return;
+    const { error } = await sb.from("restaurant_areas").delete().eq("id", a.id);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    onChanged(areas.filter((x) => x.id !== a.id));
+    toast({ title: "Ambiente excluído" });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Ambientes do salão</DialogTitle>
+          <DialogDescription>Crie áreas como Salão, Varanda, Mezanino. Cada uma tem seu próprio plano de mesas.</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <Input placeholder="Nome do ambiente" value={novoNome} onChange={(e) => setNovoNome(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && add()} />
+            <Button onClick={add} disabled={saving || !novoNome.trim()}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Criar
+            </Button>
+          </div>
+
+          <div className="space-y-2 max-h-80 overflow-auto">
+            {areas.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">Nenhum ambiente cadastrado.</p>
+            ) : areas.map((a) => (
+              <div key={a.id} className="flex items-center gap-2 border border-border rounded-md p-2">
+                <Input defaultValue={a.nome} onBlur={(e) => rename(a, e.target.value)} className="h-8" />
+                <Button variant="ghost" size="sm" onClick={() => remove(a)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
