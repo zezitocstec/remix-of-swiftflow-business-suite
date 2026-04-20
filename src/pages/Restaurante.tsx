@@ -24,6 +24,7 @@ import {
 } from "@dnd-kit/core";
 import OperatorAutocomplete from "@/components/pdv/OperatorAutocomplete";
 import { isPlatformAuthAvailable, authenticateBiometric } from "@/lib/webauthn";
+import ComandaDialog, { type ComandaTable } from "@/components/restaurante/ComandaDialog";
 
 const sb = supabase as any;
 
@@ -76,6 +77,7 @@ export default function Restaurante() {
   const [transferFrom, setTransferFrom] = useState<RestaurantTable | null>(null);
   const [groupMode, setGroupMode] = useState(false);
   const [groupSelection, setGroupSelection] = useState<Set<string>>(new Set());
+  const [comandaTable, setComandaTable] = useState<ComandaTable | null>(null);
 
   // ─── Auth state ───
   const [authed, setAuthed] = useState(false);
@@ -467,6 +469,7 @@ export default function Restaurante() {
                   onClick={() => {
                     if (groupMode) return toggleGroupSelect(t.id);
                     if (transferFrom) return handleTransfer(t);
+                    setComandaTable({ id: t.id, numero: t.numero, nome: t.nome, status: t.status });
                   }}
                   onEdit={() => { setEditing(t); setDialogOpen(true); }}
                   onDelete={() => handleDelete(t)}
@@ -505,6 +508,17 @@ export default function Restaurante() {
           if (activeAreaId && !next.find((a) => a.id === activeAreaId)) {
             setActiveAreaId(next[0]?.id || null);
           }
+        }}
+      />
+
+      <ComandaDialog
+        open={!!comandaTable}
+        onOpenChange={(v) => { if (!v) setComandaTable(null); }}
+        table={comandaTable}
+        operatorId={selectedOperator?.id}
+        onTableStatusChange={(tableId, status) => {
+          setTables((prev) => prev.map((t) => t.id === tableId ? { ...t, status } : t));
+          setComandaTable((prev) => prev && prev.id === tableId ? { ...prev, status } : prev);
         }}
       />
     </div>
