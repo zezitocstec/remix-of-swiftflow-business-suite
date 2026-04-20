@@ -1,0 +1,565 @@
+import { useEffect, useMemo, useState, useCallback } from "react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Search, Plus, Minus, Trash2, Loader2, Receipt, Clock, CheckCircle2,
+  Banknote, QrCode, CreditCard, Smartphone, MessageSquarePlus, ChevronLeft,
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useProducts, type Product } from "@/contexts/ProductContext";
+import { useTenant } from "@/contexts/TenantContext";
+import { toast } from "@/hooks/use-toast";
+import { formatBRL } from "@/lib/mock-data";
+import { cn } from "@/lib/utils";
+
+const sb = supabase as any;
+
+export interface ComandaTable {
+  id: string;
+  numero: number;
+  nome: string | null;
+  status: "livre" | "ocupada" | "reservada" | "aguardando_pagamento";
+}
+
+interface OrderItem {
+  id: string;
+  product_id: string;
+  product_name: string;
+  price: number;
+  quantity: number;
+  observacao: string | null;
+}
+
+interface Order {
+  id: string;
+  table_id: string;
+  status: "aberta" | "aguardando_pagamento" | "fechada";
+  created_at: string;
+}
+
+const PAY_METHODS = [
+  { key: "Dinheiro", icon: Banknote },
+  { key: "PIX", icon: QrCode },
+  { key: "Crédito", icon: CreditCard },
+  { key: "Débito", icon: Smartphone },
+];
+
+interface Props {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  table: ComandaTable | null;
+  operatorId?: string;
+  onTableStatusChange: (
+    tableId: string,
+    status: "livre" | "ocupada" | "aguardando_pagamento"
+  ) => void;
+}
+
+export default function ComandaDialog({
+  open, onOpenChange, table, operatorId, onTableStatusChange,
+}: Props) {
+  const { tenantId } = useTenant();
+  const { products, sellProducts } = useProducts();
+
+  const [order, setOrder] = useState<Order | null>(null);
+  const [items, setItems] = useState<OrderItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [obsEditing, setObsEditing] = useState<string | null>(null);
+  const [obsDraft, setObsDraft] = useState("");
+  const [view, setView] = useState<"comanda" | "pagamento">("comanda");
+  const [payments, setPayments] = useState<{ id: string; method: string; amount: number }[]>([]);
+  const [partial, setPartial] = useState("");
+  const [closing, setClosing] = useState(false);
+
+  const total = useMemo(
+    () => items.reduce((s, i) => s + i.price * i.quantity, 0),
+    [items]
+  );
+  const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
+  const remaining = Math.max(0, total - totalPaid);
+
+  // Load or create the order when dialog opens
+  const loadOrCreateOrder = useCallback(async () => {
+    if (!table || !tenantId) return;
+    setLoading(true);
+    // Try to find existing open order
+    const { data: existing, error: e1 } = await sb
+      .from("restaurant_orders")
+      .select("*")
+      .eq("table_id", table.id)
+      .in("status", ["aberta", "aguardando_pagamento"])
+      .maybeSingle();
+    if (e1) {
+      toast({ title: "Erro ao carregar comanda", description: e1.message, variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+
+    let ord: Order | null = existing as Order | null;
+    if (!ord) {
+      const { data: created, error: e2 } = await sb
+        .from("restaurant_orders")
+        .insert({ table_id: table.id, tenant_id: tenantId, status: "aberta", operator_id: operatorId ?? null })
+        .select()
+        .single();
+      if (e2) {
+        toast({ title: "Erro ao abrir comanda", description: e2.message, variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+      ord = created as Order;
+      // mark table as occupied
+      onTableStatusChange(table.id, "ocupada");
+    }
+    setOrder(ord);
+
+    // Load items
+    const { data: itemsData, error: e3 } = await sb
+      .from("restaurant_order_items")
+      .select("*")
+      .eq("order_id", ord!.id)
+      .order("created_at", { ascending: true });
+    if (e3) {
+      toast({ title: "Erro ao carregar itens", description: e3.message, variant: "destructive" });
+    } else {
+      setItems((itemsData || []) as OrderItem[]);
+    }
+    setLoading(false);
+  }, [table, tenantId, operatorId, onTableStatusChange]);
+
+  useEffect(() => {
+    if (open && table) {
+      setView("comanda");
+      setSearch("");
+      setObsEditing(null);
+      setObsDraft("");
+      setPayments([]);
+      setPartial("");
+      loadOrCreateOrder();
+    } else {
+      setOrder(null);
+      setItems([]);
+    }
+  }, [open, table, loadOrCreateOrder]);
+
+  const filteredProducts = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return products.slice(0, 30);
+    return products
+      .filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.sku || "").toLowerCase().includes(q) ||
+          (p.barcode || "").toLowerCase().includes(q)
+      )
+      .slice(0, 50);
+  }, [products, search]);
+
+  const addProduct = async (p: Product) => {
+    if (!order || !tenantId) return;
+    // If product already in order, increment quantity
+    const existing = items.find((i) => i.product_id === p.id && !i.observacao);
+    if (existing) {
+      return updateQty(existing, existing.quantity + 1);
+    }
+    const { data, error } = await sb
+      .from("restaurant_order_items")
+      .insert({
+        order_id: order.id,
+        tenant_id: tenantId,
+        product_id: p.id,
+        product_name: p.name,
+        price: p.price,
+        quantity: 1,
+        observacao: null,
+      })
+      .select()
+      .single();
+    if (error) return toast({ title: "Erro ao adicionar", description: error.message, variant: "destructive" });
+    setItems((prev) => [...prev, data as OrderItem]);
+  };
+
+  const updateQty = async (item: OrderItem, qty: number) => {
+    if (qty < 1) return removeItem(item);
+    const { error } = await sb
+      .from("restaurant_order_items")
+      .update({ quantity: qty })
+      .eq("id", item.id);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, quantity: qty } : i)));
+  };
+
+  const removeItem = async (item: OrderItem) => {
+    const { error } = await sb.from("restaurant_order_items").delete().eq("id", item.id);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    setItems((prev) => prev.filter((i) => i.id !== item.id));
+  };
+
+  const saveObs = async (item: OrderItem) => {
+    const obs = obsDraft.trim() || null;
+    const { error } = await sb
+      .from("restaurant_order_items")
+      .update({ observacao: obs })
+      .eq("id", item.id);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, observacao: obs } : i)));
+    setObsEditing(null);
+    setObsDraft("");
+  };
+
+  const markAwaitingPayment = async () => {
+    if (!order || !table) return;
+    const { error } = await sb
+      .from("restaurant_orders")
+      .update({ status: "aguardando_pagamento" })
+      .eq("id", order.id);
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    onTableStatusChange(table.id, "aguardando_pagamento");
+    toast({ title: "Mesa marcada como aguardando pagamento" });
+    onOpenChange(false);
+  };
+
+  // ─── Pagamento ───
+  const addPayment = (method: string, amount: number) => {
+    if (amount <= 0) return;
+    setPayments((prev) => [...prev, { id: crypto.randomUUID(), method, amount }]);
+    setPartial("");
+  };
+  const removePayment = (id: string) => setPayments((prev) => prev.filter((p) => p.id !== id));
+  const fillRemaining = (method: string) => addPayment(method, remaining);
+
+  const finalize = async () => {
+    if (!order || !table || items.length === 0) return;
+    if (totalPaid + 0.001 < total) {
+      return toast({ title: "Pagamento incompleto", description: "O valor pago é menor que o total.", variant: "destructive" });
+    }
+    setClosing(true);
+    try {
+      // Adjust last payment so totalPaid never exceeds total (handles dinheiro com troco)
+      const adjusted = [...payments];
+      const overpay = totalPaid - total;
+      if (overpay > 0.001) {
+        // reduce last payment by overpay (it's the change)
+        const last = adjusted[adjusted.length - 1];
+        adjusted[adjusted.length - 1] = { ...last, amount: last.amount - overpay };
+      }
+
+      // Register sale via PDV path (creates sale + sale_items + sale_payments + stock movement)
+      const saleId = await sellProducts(
+        items.map((i) => ({ productId: i.product_id, quantity: i.quantity })),
+        adjusted.map((p) => ({ method: p.method, amount: p.amount })),
+        undefined,
+        undefined,
+        operatorId
+      );
+
+      // Close the order, link to sale
+      const { error: e1 } = await sb
+        .from("restaurant_orders")
+        .update({ status: "fechada", sale_id: saleId || null, closed_at: new Date().toISOString() })
+        .eq("id", order.id);
+      if (e1) throw e1;
+
+      // Free the table (and break group if any)
+      const { error: e2 } = await sb
+        .from("restaurant_tables")
+        .update({ status: "livre", observacao: null })
+        .eq("id", table.id);
+      if (e2) throw e2;
+
+      onTableStatusChange(table.id, "livre");
+      toast({ title: "Comanda fechada", description: `Mesa ${table.numero} liberada` });
+      onOpenChange(false);
+    } catch (err: any) {
+      toast({ title: "Erro ao fechar", description: err?.message ?? "Falha", variant: "destructive" });
+    } finally {
+      setClosing(false);
+    }
+  };
+
+  if (!table) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl w-[95vw] h-[90vh] p-0 flex flex-col gap-0">
+        <DialogHeader className="p-4 border-b border-border shrink-0">
+          <DialogTitle className="flex items-center gap-2">
+            <Receipt className="h-5 w-5 text-primary" />
+            Mesa {table.numero}
+            {table.nome && <span className="text-sm text-muted-foreground font-normal">— {table.nome}</span>}
+            {order?.status === "aguardando_pagamento" && (
+              <Badge variant="outline" className="text-amber-600 border-amber-500/40">Aguardando pagamento</Badge>
+            )}
+          </DialogTitle>
+          <DialogDescription>
+            {view === "comanda" ? "Adicione produtos e gerencie a comanda." : "Selecione as formas de pagamento."}
+          </DialogDescription>
+        </DialogHeader>
+
+        {loading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : view === "comanda" ? (
+          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 min-h-0">
+            {/* ─── Produtos ─── */}
+            <div className="border-r border-border flex flex-col min-h-0">
+              <div className="p-3 border-b border-border">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar produto (nome, SKU, código)"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9"
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <ScrollArea className="flex-1">
+                <div className="p-2 space-y-1">
+                  {filteredProducts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">Nenhum produto encontrado.</p>
+                  ) : (
+                    filteredProducts.map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => addProduct(p)}
+                        className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-accent text-left transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{p.name}</p>
+                          <p className="text-xs text-muted-foreground">{formatBRL(p.price)}</p>
+                        </div>
+                        <Plus className="h-4 w-4 text-primary shrink-0" />
+                      </button>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+
+            {/* ─── Itens da comanda ─── */}
+            <div className="flex flex-col min-h-0">
+              <div className="p-3 border-b border-border flex items-center justify-between">
+                <span className="text-sm font-medium text-foreground">Itens ({items.length})</span>
+                <span className="text-xs text-muted-foreground">{table.status === "ocupada" ? "Em aberto" : ""}</span>
+              </div>
+              <ScrollArea className="flex-1">
+                <div className="p-2 space-y-2">
+                  {items.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                      Nenhum item. Adicione produtos pela busca ao lado.
+                    </p>
+                  ) : (
+                    items.map((i) => (
+                      <div key={i.id} className="border border-border rounded-md p-2 space-y-1.5">
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{i.product_name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatBRL(i.price)} × {i.quantity} = <span className="text-foreground font-medium">{formatBRL(i.price * i.quantity)}</span>
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => removeItem(i)}
+                            className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                            aria-label="Remover"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => updateQty(i, i.quantity - 1)}>
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="w-8 text-center text-sm tabular-nums">{i.quantity}</span>
+                          <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => updateQty(i, i.quantity + 1)}>
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="ml-auto h-7 text-xs gap-1"
+                            onClick={() => {
+                              setObsEditing(i.id);
+                              setObsDraft(i.observacao || "");
+                            }}
+                          >
+                            <MessageSquarePlus className="h-3 w-3" />
+                            {i.observacao ? "Editar obs" : "Obs"}
+                          </Button>
+                        </div>
+
+                        {obsEditing === i.id ? (
+                          <div className="flex flex-col gap-1.5">
+                            <Textarea
+                              placeholder="Ex: sem cebola, ponto da carne, etc."
+                              value={obsDraft}
+                              onChange={(e) => setObsDraft(e.target.value)}
+                              className="text-sm min-h-[60px]"
+                              autoFocus
+                            />
+                            <div className="flex gap-1 justify-end">
+                              <Button size="sm" variant="ghost" onClick={() => { setObsEditing(null); setObsDraft(""); }}>
+                                Cancelar
+                              </Button>
+                              <Button size="sm" onClick={() => saveObs(i)}>Salvar</Button>
+                            </div>
+                          </div>
+                        ) : i.observacao ? (
+                          <p className="text-xs italic text-muted-foreground border-l-2 border-primary/40 pl-2">
+                            {i.observacao}
+                          </p>
+                        ) : null}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+
+              <div className="p-3 border-t border-border bg-muted/30 shrink-0 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Total</span>
+                  <span className="text-2xl font-bold tabular-nums text-foreground">{formatBRL(total)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          // ─── Tela de pagamento ───
+          <div className="flex-1 flex flex-col min-h-0 p-4 gap-4 overflow-auto">
+            <div className="rounded-md border border-border p-4 bg-muted/30 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Total da comanda</span>
+                <span className="text-xl font-bold tabular-nums text-foreground">{formatBRL(total)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Pago</span>
+                <span className="text-base font-medium tabular-nums text-emerald-600 dark:text-emerald-400">{formatBRL(totalPaid)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Restante</span>
+                <span className={cn("text-base font-medium tabular-nums", remaining > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400")}>
+                  {formatBRL(remaining)}
+                </span>
+              </div>
+              {totalPaid > total && (
+                <div className="flex items-center justify-between border-t border-border pt-2">
+                  <span className="text-sm text-muted-foreground">Troco</span>
+                  <span className="text-base font-medium tabular-nums text-foreground">{formatBRL(totalPaid - total)}</span>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <p className="text-sm font-medium text-foreground mb-2">Adicionar pagamento</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                {PAY_METHODS.map((m) => (
+                  <Button
+                    key={m.key}
+                    variant="outline"
+                    className="h-16 flex-col gap-1"
+                    onClick={() => fillRemaining(m.key)}
+                    disabled={remaining <= 0}
+                  >
+                    <m.icon className="h-5 w-5" />
+                    <span className="text-xs">{m.key}</span>
+                  </Button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="Valor parcial"
+                  value={partial}
+                  onChange={(e) => setPartial(e.target.value)}
+                  className="flex-1"
+                />
+                {PAY_METHODS.map((m) => (
+                  <Button
+                    key={m.key}
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => addPayment(m.key, parseFloat(partial) || 0)}
+                    disabled={!partial || parseFloat(partial) <= 0}
+                  >
+                    {m.key}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {payments.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Pagamentos adicionados</p>
+                {payments.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between border border-border rounded-md p-2">
+                    <span className="text-sm text-foreground">{p.method}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm tabular-nums">{formatBRL(p.amount)}</span>
+                      <button onClick={() => removePayment(p.id)} className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── Footer ─── */}
+        <DialogFooter className="p-3 border-t border-border shrink-0 flex-row flex-wrap gap-2 sm:justify-between">
+          {view === "comanda" ? (
+            <>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Voltar
+              </Button>
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  onClick={markAwaitingPayment}
+                  disabled={!order || items.length === 0}
+                  className="gap-1"
+                >
+                  <Clock className="h-4 w-4" /> Aguardando pagamento
+                </Button>
+                <Button
+                  onClick={() => setView("pagamento")}
+                  disabled={!order || items.length === 0}
+                  className="gap-1"
+                >
+                  <CheckCircle2 className="h-4 w-4" /> Fechar mesa
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => setView("comanda")} className="gap-1">
+                <ChevronLeft className="h-4 w-4" /> Voltar à comanda
+              </Button>
+              <Button
+                onClick={finalize}
+                disabled={closing || totalPaid + 0.001 < total}
+                className="gap-1"
+              >
+                {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                Finalizar e liberar mesa
+              </Button>
+            </>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
