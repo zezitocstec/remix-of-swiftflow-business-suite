@@ -624,6 +624,14 @@ export default function ComandaDialog({
               <div className="flex gap-2 flex-wrap">
                 <Button
                   variant="outline"
+                  onClick={() => printNow()}
+                  disabled={items.length === 0}
+                  className="gap-1"
+                >
+                  <Printer className="h-4 w-4" /> Pré-conta
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={markAwaitingPayment}
                   disabled={!order || items.length === 0}
                   className="gap-1"
