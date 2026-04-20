@@ -199,6 +199,8 @@ export default function ComandaDialog({
       setPayments([]);
       setPartial("");
       setSplitCount(1);
+      setSplitMode("equal");
+      setSplitAssignments({});
       loadOrCreateOrder();
     } else {
       setOrder(null);
@@ -271,12 +273,14 @@ export default function ComandaDialog({
     setObsDraft("");
   };
 
-  const printNow = (split?: number) => {
+  const printNow = (overrideMode?: "none" | "equal" | "custom") => {
     if (!table || items.length === 0) return;
+    const mode = overrideMode ?? (splitCount > 1 ? splitMode : "none");
     printPreConta({
       tableNumero: table.numero,
       tableNome: table.nome,
       items: items.map((i) => ({
+        id: i.id,
         product_name: i.product_name,
         price: i.price,
         quantity: i.quantity,
@@ -284,7 +288,9 @@ export default function ComandaDialog({
       })),
       total,
       operatorName,
-      splitCount: split && split > 1 ? split : undefined,
+      mode,
+      splitCount: mode !== "none" ? splitCount : undefined,
+      assignments: mode === "custom" ? splitAssignments : undefined,
     });
   };
 
