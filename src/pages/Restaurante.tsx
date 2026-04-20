@@ -77,6 +77,7 @@ export default function Restaurante() {
   const [transferFrom, setTransferFrom] = useState<RestaurantTable | null>(null);
   const [groupMode, setGroupMode] = useState(false);
   const [groupSelection, setGroupSelection] = useState<Set<string>>(new Set());
+  const [comandaTable, setComandaTable] = useState<ComandaTable | null>(null);
 
   // ─── Auth state ───
   const [authed, setAuthed] = useState(false);
