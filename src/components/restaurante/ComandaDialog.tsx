@@ -220,6 +220,23 @@ export default function ComandaDialog({
     setObsDraft("");
   };
 
+  const printNow = (split?: number) => {
+    if (!table || items.length === 0) return;
+    printPreConta({
+      tableNumero: table.numero,
+      tableNome: table.nome,
+      items: items.map((i) => ({
+        product_name: i.product_name,
+        price: i.price,
+        quantity: i.quantity,
+        observacao: i.observacao,
+      })),
+      total,
+      operatorName,
+      splitCount: split && split > 1 ? split : undefined,
+    });
+  };
+
   const markAwaitingPayment = async () => {
     if (!order || !table) return;
     const { error } = await sb
@@ -228,7 +245,9 @@ export default function ComandaDialog({
       .eq("id", order.id);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
     onTableStatusChange(table.id, "aguardando_pagamento");
-    toast({ title: "Mesa marcada como aguardando pagamento" });
+    // Imprime pré-conta automaticamente
+    printNow();
+    toast({ title: "Mesa marcada como aguardando pagamento", description: "Pré-conta enviada para impressão." });
     onOpenChange(false);
   };
 
