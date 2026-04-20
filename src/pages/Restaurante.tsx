@@ -510,6 +510,17 @@ export default function Restaurante() {
           }
         }}
       />
+
+      <ComandaDialog
+        open={!!comandaTable}
+        onOpenChange={(v) => { if (!v) setComandaTable(null); }}
+        table={comandaTable}
+        operatorId={selectedOperator?.id}
+        onTableStatusChange={(tableId, status) => {
+          setTables((prev) => prev.map((t) => t.id === tableId ? { ...t, status } : t));
+          setComandaTable((prev) => prev && prev.id === tableId ? { ...prev, status } : prev);
+        }}
+      />
     </div>
   );
 }
