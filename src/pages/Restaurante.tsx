@@ -516,6 +516,7 @@ export default function Restaurante() {
         onOpenChange={(v) => { if (!v) setComandaTable(null); }}
         table={comandaTable}
         operatorId={selectedOperator?.id}
+        operatorName={selectedOperator?.nome}
         onTableStatusChange={(tableId, status) => {
           setTables((prev) => prev.map((t) => t.id === tableId ? { ...t, status } : t));
           setComandaTable((prev) => prev && prev.id === tableId ? { ...prev, status } : prev);
