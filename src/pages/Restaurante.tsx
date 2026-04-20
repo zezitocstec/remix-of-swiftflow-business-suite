@@ -469,6 +469,7 @@ export default function Restaurante() {
                   onClick={() => {
                     if (groupMode) return toggleGroupSelect(t.id);
                     if (transferFrom) return handleTransfer(t);
+                    setComandaTable({ id: t.id, numero: t.numero, nome: t.nome, status: t.status });
                   }}
                   onEdit={() => { setEditing(t); setDialogOpen(true); }}
                   onDelete={() => handleDelete(t)}
