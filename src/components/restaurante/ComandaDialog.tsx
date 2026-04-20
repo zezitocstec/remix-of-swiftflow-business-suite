@@ -147,6 +147,7 @@ export default function ComandaDialog({
       setObsDraft("");
       setPayments([]);
       setPartial("");
+      setSplitCount(1);
       loadOrCreateOrder();
     } else {
       setOrder(null);
