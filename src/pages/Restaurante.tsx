@@ -24,6 +24,7 @@ import {
 } from "@dnd-kit/core";
 import OperatorAutocomplete from "@/components/pdv/OperatorAutocomplete";
 import { isPlatformAuthAvailable, authenticateBiometric } from "@/lib/webauthn";
+import ComandaDialog, { type ComandaTable } from "@/components/restaurante/ComandaDialog";
 
 const sb = supabase as any;
 
