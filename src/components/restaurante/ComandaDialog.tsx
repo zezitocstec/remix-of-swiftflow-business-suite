@@ -485,6 +485,77 @@ export default function ComandaDialog({
               )}
             </div>
 
+            {/* ─── Dividir conta ─── */}
+            <div className="rounded-md border border-border p-4 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium text-foreground">Dividir conta</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setSplitCount((n) => Math.max(1, n - 1))}
+                    disabled={splitCount <= 1}
+                    aria-label="Diminuir pessoas"
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </Button>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={splitCount}
+                    onChange={(e) => {
+                      const n = parseInt(e.target.value, 10);
+                      if (!isNaN(n) && n >= 1 && n <= 50) setSplitCount(n);
+                    }}
+                    className="w-16 h-8 text-center tabular-nums"
+                  />
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => setSplitCount((n) => Math.min(50, n + 1))}
+                    disabled={splitCount >= 50}
+                    aria-label="Aumentar pessoas"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                  <span className="text-xs text-muted-foreground ml-1">pessoa{splitCount > 1 ? "s" : ""}</span>
+                </div>
+              </div>
+
+              {splitCount > 1 && (
+                <>
+                  <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-md px-3 py-2">
+                    <span className="text-sm text-muted-foreground">Valor por pessoa</span>
+                    <span className="text-xl font-bold tabular-nums text-primary">{formatBRL(perPerson)}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PAY_METHODS.map((m) => (
+                      <Button
+                        key={m.key}
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 text-xs gap-1"
+                        onClick={() => addPayment(m.key, perPerson)}
+                        disabled={remaining <= 0}
+                      >
+                        <m.icon className="h-3.5 w-3.5" />
+                        +1 pessoa ({m.key})
+                      </Button>
+                    ))}
+                  </div>
+                  <Button size="sm" variant="outline" className="gap-1" onClick={() => printNow(splitCount)}>
+                    <Printer className="h-3.5 w-3.5" /> Imprimir pré-conta dividida
+                  </Button>
+                </>
+              )}
+            </div>
+
             <div>
               <p className="text-sm font-medium text-foreground mb-2">Adicionar pagamento</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
