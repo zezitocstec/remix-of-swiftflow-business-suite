@@ -80,7 +80,9 @@ export default function ComandaDialog({
   const [payments, setPayments] = useState<{ id: string; method: string; amount: number }[]>([]);
   const [partial, setPartial] = useState("");
   const [closing, setClosing] = useState(false);
+  const [splitMode, setSplitMode] = useState<"equal" | "custom">("equal");
   const [splitCount, setSplitCount] = useState(1);
+  const [splitAssignments, setSplitAssignments] = useState<Record<string, Record<number, number>>>({});
 
   const total = useMemo(
     () => items.reduce((s, i) => s + i.price * i.quantity, 0),
@@ -89,6 +91,55 @@ export default function ComandaDialog({
   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
   const remaining = Math.max(0, total - totalPaid);
   const perPerson = splitCount > 1 ? total / splitCount : total;
+
+  // Subtotals per person for "custom" mode (assigned items + share of unassigned)
+  const customPerPerson = useMemo(() => {
+    if (splitMode !== "custom" || splitCount <= 1) return [];
+    const totals = Array.from({ length: splitCount }, () => 0);
+    let sharedTotal = 0;
+    items.forEach((it) => {
+      const a = splitAssignments[it.id] || {};
+      let assigned = 0;
+      for (let p = 0; p < splitCount; p++) {
+        const q = Math.max(0, Math.floor(a[p] || 0));
+        if (q > 0) {
+          totals[p] += q * it.price;
+          assigned += q;
+        }
+      }
+      const remainQty = Math.max(0, it.quantity - assigned);
+      if (remainQty > 0) sharedTotal += remainQty * it.price;
+    });
+    if (sharedTotal > 0) {
+      const share = sharedTotal / splitCount;
+      for (let p = 0; p < splitCount; p++) totals[p] += share;
+    }
+    return totals;
+  }, [splitMode, splitCount, items, splitAssignments]);
+
+  const assignedQty = (itemId: string) =>
+    Object.values(splitAssignments[itemId] || {}).reduce(
+      (s, q) => s + Math.max(0, Math.floor(q || 0)),
+      0
+    );
+
+  const setAssignment = (itemId: string, person: number, qty: number) => {
+    setSplitAssignments((prev) => {
+      const item = items.find((i) => i.id === itemId);
+      if (!item) return prev;
+      const cur = { ...(prev[itemId] || {}) };
+      const others = Object.entries(cur).reduce(
+        (s, [k, v]) => (parseInt(k, 10) === person ? s : s + Math.max(0, Math.floor(v || 0))),
+        0
+      );
+      const maxForThis = Math.max(0, item.quantity - others);
+      const next = Math.max(0, Math.min(maxForThis, Math.floor(qty)));
+      const newCur = { ...cur };
+      if (next === 0) delete newCur[person];
+      else newCur[person] = next;
+      return { ...prev, [itemId]: newCur };
+    });
+  };
 
   // Load or create the order when dialog opens
   const loadOrCreateOrder = useCallback(async () => {
