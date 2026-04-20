@@ -10,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Search, Plus, Minus, Trash2, Loader2, Receipt, Clock, CheckCircle2,
   Banknote, QrCode, CreditCard, Smartphone, MessageSquarePlus, ChevronLeft,
+  Users, Printer,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts, type Product } from "@/contexts/ProductContext";
@@ -17,6 +18,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { toast } from "@/hooks/use-toast";
 import { formatBRL } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import { printPreConta } from "./PreContaPrint";
 
 const sb = supabase as any;
 
@@ -55,6 +57,7 @@ interface Props {
   onOpenChange: (v: boolean) => void;
   table: ComandaTable | null;
   operatorId?: string;
+  operatorName?: string;
   onTableStatusChange: (
     tableId: string,
     status: "livre" | "ocupada" | "aguardando_pagamento"
@@ -62,7 +65,7 @@ interface Props {
 }
 
 export default function ComandaDialog({
-  open, onOpenChange, table, operatorId, onTableStatusChange,
+  open, onOpenChange, table, operatorId, operatorName, onTableStatusChange,
 }: Props) {
   const { tenantId } = useTenant();
   const { products, sellProducts } = useProducts();
@@ -77,6 +80,7 @@ export default function ComandaDialog({
   const [payments, setPayments] = useState<{ id: string; method: string; amount: number }[]>([]);
   const [partial, setPartial] = useState("");
   const [closing, setClosing] = useState(false);
+  const [splitCount, setSplitCount] = useState(1);
 
   const total = useMemo(
     () => items.reduce((s, i) => s + i.price * i.quantity, 0),
@@ -84,6 +88,7 @@ export default function ComandaDialog({
   );
   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
   const remaining = Math.max(0, total - totalPaid);
+  const perPerson = splitCount > 1 ? total / splitCount : total;
 
   // Load or create the order when dialog opens
   const loadOrCreateOrder = useCallback(async () => {
