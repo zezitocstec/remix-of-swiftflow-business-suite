@@ -587,27 +587,153 @@ export default function ComandaDialog({
 
               {splitCount > 1 && (
                 <>
-                  <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-md px-3 py-2">
-                    <span className="text-sm text-muted-foreground">Valor por pessoa</span>
-                    <span className="text-xl font-bold tabular-nums text-primary">{formatBRL(perPerson)}</span>
+                  {/* Toggle modo */}
+                  <div className="flex gap-1 bg-muted rounded-md p-1">
+                    <button
+                      type="button"
+                      onClick={() => setSplitMode("equal")}
+                      className={cn(
+                        "flex-1 text-xs py-1.5 rounded transition-colors",
+                        splitMode === "equal" ? "bg-background shadow-sm text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Igualitária
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSplitMode("custom")}
+                      className={cn(
+                        "flex-1 text-xs py-1.5 rounded transition-colors",
+                        splitMode === "custom" ? "bg-background shadow-sm text-foreground font-medium" : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Por itens
+                    </button>
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {PAY_METHODS.map((m) => (
-                      <Button
-                        key={m.key}
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 text-xs gap-1"
-                        onClick={() => addPayment(m.key, perPerson)}
-                        disabled={remaining <= 0}
-                      >
-                        <m.icon className="h-3.5 w-3.5" />
-                        +1 pessoa ({m.key})
-                      </Button>
-                    ))}
-                  </div>
-                  <Button size="sm" variant="outline" className="gap-1" onClick={() => printNow(splitCount)}>
-                    <Printer className="h-3.5 w-3.5" /> Imprimir pré-conta dividida
+
+                  {splitMode === "equal" ? (
+                    <>
+                      <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-md px-3 py-2">
+                        <span className="text-sm text-muted-foreground">Valor por pessoa</span>
+                        <span className="text-xl font-bold tabular-nums text-primary">{formatBRL(perPerson)}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {PAY_METHODS.map((m) => (
+                          <Button
+                            key={m.key}
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 text-xs gap-1"
+                            onClick={() => addPayment(m.key, perPerson)}
+                            disabled={remaining <= 0}
+                          >
+                            <m.icon className="h-3.5 w-3.5" />
+                            +1 pessoa ({m.key})
+                          </Button>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs text-muted-foreground">
+                        Atribua a quantidade de cada item para cada pessoa. Itens não atribuídos viram <b>parte compartilhada</b> (divididos igualmente).
+                      </p>
+
+                      <div className="border border-border rounded-md overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead className="bg-muted/50">
+                            <tr>
+                              <th className="text-left p-2 font-medium text-muted-foreground sticky left-0 bg-muted/50">Item</th>
+                              {Array.from({ length: splitCount }, (_, p) => (
+                                <th key={p} className="p-2 font-medium text-muted-foreground text-center min-w-[88px]">
+                                  P{p + 1}
+                                </th>
+                              ))}
+                              <th className="text-right p-2 font-medium text-muted-foreground">Restante</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {items.map((it) => {
+                              const used = assignedQty(it.id);
+                              const left = it.quantity - used;
+                              return (
+                                <tr key={it.id} className="border-t border-border">
+                                  <td className="p-2 sticky left-0 bg-background">
+                                    <div className="font-medium text-foreground truncate max-w-[140px]">{it.product_name}</div>
+                                    <div className="text-[10px] text-muted-foreground">
+                                      {it.quantity}× {formatBRL(it.price)}
+                                    </div>
+                                  </td>
+                                  {Array.from({ length: splitCount }, (_, p) => {
+                                    const v = (splitAssignments[it.id] || {})[p] || 0;
+                                    const canInc = left > 0;
+                                    return (
+                                      <td key={p} className="p-1">
+                                        <div className="flex items-center justify-center gap-0.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => setAssignment(it.id, p, v - 1)}
+                                            disabled={v <= 0}
+                                            className="h-6 w-6 rounded border border-border hover:bg-accent disabled:opacity-30 flex items-center justify-center"
+                                          >
+                                            <Minus className="h-3 w-3" />
+                                          </button>
+                                          <span className="w-6 text-center tabular-nums text-foreground">{v}</span>
+                                          <button
+                                            type="button"
+                                            onClick={() => setAssignment(it.id, p, v + 1)}
+                                            disabled={!canInc}
+                                            className="h-6 w-6 rounded border border-border hover:bg-accent disabled:opacity-30 flex items-center justify-center"
+                                          >
+                                            <Plus className="h-3 w-3" />
+                                          </button>
+                                        </div>
+                                      </td>
+                                    );
+                                  })}
+                                  <td className={cn(
+                                    "p-2 text-right tabular-nums",
+                                    left === 0 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
+                                  )}>
+                                    {left}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {customPerPerson.map((subtotal, p) => (
+                          <div key={p} className="border border-border rounded-md p-2 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-medium text-foreground">Pessoa {p + 1}</span>
+                              <span className="text-sm font-bold tabular-nums text-primary">{formatBRL(subtotal)}</span>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {PAY_METHODS.map((m) => (
+                                <Button
+                                  key={m.key}
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 text-[11px] gap-1 px-2"
+                                  onClick={() => addPayment(m.key, subtotal)}
+                                  disabled={subtotal <= 0 || remaining <= 0}
+                                >
+                                  <m.icon className="h-3 w-3" />
+                                  {m.key}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  <Button size="sm" variant="outline" className="gap-1 w-full" onClick={() => printNow()}>
+                    <Printer className="h-3.5 w-3.5" /> Imprimir pré-conta dividida ({splitCount} vias)
                   </Button>
                 </>
               )}
