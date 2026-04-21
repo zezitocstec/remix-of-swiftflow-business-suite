@@ -1101,6 +1101,31 @@ export default function ComandaDialog({
           )}
         </DialogFooter>
       </DialogContent>
+
+      {/* Confirmação ao fechar com itens não atribuídos no modo "Por itens" */}
+      <AlertDialog open={confirmCloseOpen} onOpenChange={setConfirmCloseOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Itens não atribuídos
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Há <b>{unassignedTotalQty}</b> {unassignedTotalQty === 1 ? "unidade" : "unidades"} de itens
+              que não foram atribuídas a nenhuma pessoa. Esses itens serão tratados como
+              <b> compartilhados</b> e divididos igualmente entre as {splitCount} pessoas.
+              <br /><br />
+              Deseja realmente fechar a mesa assim?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar e revisar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConfirmCloseOpen(false); doFinalize(); }}>
+              Sim, dividir como compartilhado
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
