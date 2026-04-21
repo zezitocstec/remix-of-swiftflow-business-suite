@@ -21,6 +21,7 @@ interface PrintOpts {
   tableNumero: number;
   tableNome?: string | null;
   items: PreContaItem[];
+  /** Subtotal (sum of items, before service fee). */
   total: number;
   operatorName?: string;
   mode?: SplitMode;
@@ -28,6 +29,8 @@ interface PrintOpts {
   assignments?: SplitAssignments;
   /** Optional names per person index, e.g. ["Ana", "João"]. Defaults to "Pessoa N". */
   personNames?: string[];
+  /** Service fee percentage (e.g. 10 for 10%). 0 or undefined disables it. */
+  serviceFeePct?: number;
 }
 
 export function printPreConta(opts: PrintOpts) {
@@ -40,6 +43,13 @@ export function printPreConta(opts: PrintOpts) {
 
   const mode = opts.mode ?? "none";
   const splitCount = Math.max(1, opts.splitCount ?? 1);
+  const feePct = Math.max(0, opts.serviceFeePct ?? 0);
+  const subtotal = opts.total;
+  const feeAmount = subtotal * (feePct / 100);
+  const grandTotal = subtotal + feeAmount;
+
+  const personNameAt = (idx: number) =>
+    (opts.personNames?.[idx]?.trim() || `Pessoa ${idx + 1}`);
 
   const header = `
     <div style="text-align:center;margin-bottom:12px">
@@ -59,39 +69,68 @@ export function printPreConta(opts: PrintOpts) {
     </div>
   `;
 
+  // Helper to render the totals block (Subtotal / Taxa / Total) when fee>0,
+  // otherwise just a TOTAL line.
+  const totalsBlock = (sub: number) => {
+    const fee = sub * (feePct / 100);
+    const grand = sub + fee;
+    if (feePct <= 0) {
+      return `
+        <div style="border-top:1px dashed #000;margin-top:8px;padding-top:8px">
+          <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:bold">
+            <span>TOTAL</span><span>${formatBRL(grand)}</span>
+          </div>
+        </div>
+      `;
+    }
+    return `
+      <div style="border-top:1px dashed #000;margin-top:8px;padding-top:8px">
+        <div style="display:flex;justify-content:space-between;font-size:11px">
+          <span>Subtotal</span><span>${formatBRL(sub)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px">
+          <span>Taxa de serviço (${feePct}%)</span><span>${formatBRL(fee)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:bold;margin-top:4px">
+          <span>TOTAL</span><span>${formatBRL(grand)}</span>
+        </div>
+      </div>
+    `;
+  };
+
   let body = "";
 
   if (mode === "custom" && splitCount > 1) {
     // One slip per person + a "shared" recap if anything remains
     const perPerson = computePerPerson(opts.items, opts.assignments || {}, splitCount);
-    const personNames = opts.personNames || [];
 
     perPerson.forEach((p, idx) => {
-      const name = personNames[idx]?.trim() || `Pessoa ${idx + 1}`;
+      const name = personNameAt(idx);
       body += slipPage({
         header,
         footer,
         title: name,
         subtitle: `Via ${idx + 1} de ${splitCount}`,
         rows: p.lines,
-        total: p.total,
+        totalsHtml: totalsBlock(p.total),
         notice: p.lines.length === 0 ? "Nenhum item atribuído individualmente." : undefined,
       });
     });
 
-    // Recap page (totals overview)
+    // Recap page (totals overview) — uses person totals incl. service fee
+    const recapRows = perPerson.map((p, i) => ({
+      label: personNameAt(i),
+      qty: "",
+      unit: "",
+      total: formatBRL(p.total * (1 + feePct / 100)),
+    }));
     body += slipPage({
       header,
       footer,
       title: "RESUMO DA DIVISÃO",
-      subtitle: `${splitCount} pessoas`,
-      rows: perPerson.map((p, i) => ({
-        label: personNames[i]?.trim() || `Pessoa ${i + 1}`,
-        qty: "",
-        unit: "",
-        total: formatBRL(p.total),
-      })),
-      total: opts.total,
+      subtitle: `${splitCount} pessoas${feePct > 0 ? ` • taxa ${feePct}%` : ""}`,
+      rows: recapRows,
+      totalsHtml: totalsBlock(subtotal),
       noTable: true,
     });
   } else {
@@ -109,7 +148,7 @@ export function printPreConta(opts: PrintOpts) {
             <span>Dividido por</span><span>${splitCount} pessoas</span>
           </div>
           <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:bold">
-            <span>VALOR / PESSOA</span><span>${formatBRL(opts.total / splitCount)}</span>
+            <span>VALOR / PESSOA</span><span>${formatBRL(grandTotal / splitCount)}</span>
           </div>
         </div>
       `
@@ -119,21 +158,28 @@ export function printPreConta(opts: PrintOpts) {
       footer,
       title: null,
       rows,
-      total: opts.total,
+      totalsHtml: totalsBlock(subtotal),
       extraAfterTotal: equalSplit,
     });
 
     // If equal split, also print one slip per person
     if (mode === "equal" && splitCount > 1) {
-      const share = opts.total / splitCount;
+      const share = grandTotal / splitCount;
       for (let i = 0; i < splitCount; i++) {
+        const name = personNameAt(i);
         body += slipPage({
           header,
           footer,
-          title: `Pessoa ${i + 1}`,
-          subtitle: `Via ${i + 1} de ${splitCount} — divisão igualitária`,
+          title: name,
+          subtitle: `Via ${i + 1} de ${splitCount} — divisão igualitária${feePct > 0 ? ` • taxa ${feePct}%` : ""}`,
           rows: [{ label: "Parte da conta", qty: "", unit: "", total: formatBRL(share) }],
-          total: share,
+          totalsHtml: `
+            <div style="border-top:1px dashed #000;margin-top:8px;padding-top:8px">
+              <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:bold">
+                <span>TOTAL</span><span>${formatBRL(share)}</span>
+              </div>
+            </div>
+          `,
           noTable: true,
         });
       }
@@ -169,7 +215,8 @@ function slipPage(opts: {
   title: string | null;
   subtitle?: string;
   rows: SlipRow[];
-  total: number;
+  /** Pre-rendered HTML for the totals block (subtotal / fee / total). */
+  totalsHtml: string;
   notice?: string;
   extraAfterTotal?: string;
   noTable?: boolean;
@@ -214,11 +261,7 @@ function slipPage(opts: {
       ${titleHtml}
       ${opts.notice ? `<div style="font-size:11px;color:#666;text-align:center;margin:8px 0">${escapeHtml(opts.notice)}</div>` : ""}
       ${tableHtml}
-      <div style="border-top:1px dashed #000;margin-top:8px;padding-top:8px">
-        <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:bold">
-          <span>TOTAL</span><span>${formatBRL(opts.total)}</span>
-        </div>
-      </div>
+      ${opts.totalsHtml}
       ${opts.extraAfterTotal || ""}
       ${opts.footer}
     </div>
@@ -226,6 +269,7 @@ function slipPage(opts: {
 }
 
 interface PerPersonResult {
+  /** Subtotal (without service fee). */
   total: number;
   lines: SlipRow[];
 }

@@ -10,8 +10,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Search, Plus, Minus, Trash2, Loader2, Receipt, Clock, CheckCircle2,
   Banknote, QrCode, CreditCard, Smartphone, MessageSquarePlus, ChevronLeft,
-  Users, Printer,
+  Users, Printer, Percent,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts, type Product } from "@/contexts/ProductContext";
 import { useTenant } from "@/contexts/TenantContext";
@@ -83,39 +85,57 @@ export default function ComandaDialog({
   const [splitMode, setSplitMode] = useState<"equal" | "custom">("equal");
   const [splitCount, setSplitCount] = useState(1);
   const [splitAssignments, setSplitAssignments] = useState<Record<string, Record<number, number>>>({});
+  const [personNames, setPersonNames] = useState<string[]>([]);
+  const [serviceFeeEnabled, setServiceFeeEnabled] = useState(false);
+  const [serviceFeePct, setServiceFeePct] = useState(10);
 
-  const total = useMemo(
+  const subtotal = useMemo(
     () => items.reduce((s, i) => s + i.price * i.quantity, 0),
     [items]
   );
+  const feePct = serviceFeeEnabled ? Math.max(0, serviceFeePct) : 0;
+  const feeAmount = subtotal * (feePct / 100);
+  const total = subtotal + feeAmount;
   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
   const remaining = Math.max(0, total - totalPaid);
   const perPerson = splitCount > 1 ? total / splitCount : total;
+  const personNameAt = (idx: number) =>
+    (personNames[idx]?.trim() || `Pessoa ${idx + 1}`);
+  const setPersonNameAt = (idx: number, name: string) =>
+    setPersonNames((prev) => {
+      const next = [...prev];
+      while (next.length <= idx) next.push("");
+      next[idx] = name;
+      return next;
+    });
 
   // Subtotals per person for "custom" mode (assigned items + share of unassigned)
+  // Returned values INCLUDE the service fee, distributed proportionally to each
+  // person's share of the subtotal.
   const customPerPerson = useMemo(() => {
     if (splitMode !== "custom" || splitCount <= 1) return [];
-    const totals = Array.from({ length: splitCount }, () => 0);
-    let sharedTotal = 0;
+    const subtotals = Array.from({ length: splitCount }, () => 0);
+    let sharedSub = 0;
     items.forEach((it) => {
       const a = splitAssignments[it.id] || {};
       let assigned = 0;
       for (let p = 0; p < splitCount; p++) {
         const q = Math.max(0, Math.floor(a[p] || 0));
         if (q > 0) {
-          totals[p] += q * it.price;
+          subtotals[p] += q * it.price;
           assigned += q;
         }
       }
       const remainQty = Math.max(0, it.quantity - assigned);
-      if (remainQty > 0) sharedTotal += remainQty * it.price;
+      if (remainQty > 0) sharedSub += remainQty * it.price;
     });
-    if (sharedTotal > 0) {
-      const share = sharedTotal / splitCount;
-      for (let p = 0; p < splitCount; p++) totals[p] += share;
+    if (sharedSub > 0) {
+      const share = sharedSub / splitCount;
+      for (let p = 0; p < splitCount; p++) subtotals[p] += share;
     }
-    return totals;
-  }, [splitMode, splitCount, items, splitAssignments]);
+    // Apply service fee proportionally (same % for everyone since fee is on subtotal)
+    return subtotals.map((s) => s * (1 + feePct / 100));
+  }, [splitMode, splitCount, items, splitAssignments, feePct]);
 
   const assignedQty = (itemId: string) =>
     Object.values(splitAssignments[itemId] || {}).reduce(
@@ -201,6 +221,9 @@ export default function ComandaDialog({
       setSplitCount(1);
       setSplitMode("equal");
       setSplitAssignments({});
+      setPersonNames([]);
+      setServiceFeeEnabled(false);
+      setServiceFeePct(10);
       loadOrCreateOrder();
     } else {
       setOrder(null);
@@ -286,11 +309,13 @@ export default function ComandaDialog({
         quantity: i.quantity,
         observacao: i.observacao,
       })),
-      total,
+      total: subtotal,
       operatorName,
       mode,
       splitCount: mode !== "none" ? splitCount : undefined,
       assignments: mode === "custom" ? splitAssignments : undefined,
+      personNames: mode !== "none" ? personNames : undefined,
+      serviceFeePct: feePct,
     });
   };
 
@@ -333,14 +358,33 @@ export default function ComandaDialog({
         adjusted[adjusted.length - 1] = { ...last, amount: last.amount - overpay };
       }
 
+      // Sale total = subtotal of items. Service fee is recorded as a separate
+      // payment line, so payments sum > sale total by exactly feeAmount.
+      // Scale payment methods proportionally down to subtotal.
+      let methodsForSale = adjusted.map((p) => ({ method: p.method, amount: p.amount }));
+      if (feeAmount > 0.001 && total > 0.001) {
+        const scale = subtotal / total;
+        methodsForSale = methodsForSale.map((p) => ({ method: p.method, amount: p.amount * scale }));
+      }
+
       // Register sale via PDV path (creates sale + sale_items + sale_payments + stock movement)
       const saleId = await sellProducts(
         items.map((i) => ({ productId: i.product_id, quantity: i.quantity })),
-        adjusted.map((p) => ({ method: p.method, amount: p.amount })),
+        methodsForSale,
         undefined,
         undefined,
         operatorId
       );
+
+      // Add the service fee as an extra payment line (label includes the %).
+      if (feeAmount > 0.001 && saleId && tenantId) {
+        await sb.from("sale_payments").insert({
+          sale_id: saleId,
+          method: `Taxa de serviço (${feePct}%)`,
+          amount: feeAmount,
+          tenant_id: tenantId,
+        });
+      }
 
       // Close the order, link to sale
       const { error: e1 } = await sb
@@ -508,7 +552,19 @@ export default function ComandaDialog({
                 </div>
               </ScrollArea>
 
-              <div className="p-3 border-t border-border bg-muted/30 shrink-0 space-y-2">
+              <div className="p-3 border-t border-border bg-muted/30 shrink-0 space-y-1">
+                {feePct > 0 && (
+                  <>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Subtotal</span>
+                      <span className="tabular-nums">{formatBRL(subtotal)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Taxa de serviço ({feePct}%)</span>
+                      <span className="tabular-nums">{formatBRL(feeAmount)}</span>
+                    </div>
+                  </>
+                )}
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Total</span>
                   <span className="text-2xl font-bold tabular-nums text-foreground">{formatBRL(total)}</span>
@@ -520,6 +576,18 @@ export default function ComandaDialog({
           // ─── Tela de pagamento ───
           <div className="flex-1 flex flex-col min-h-0 p-4 gap-4 overflow-auto">
             <div className="rounded-md border border-border p-4 bg-muted/30 space-y-2">
+              {feePct > 0 && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Subtotal</span>
+                    <span className="text-base tabular-nums text-foreground">{formatBRL(subtotal)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Taxa de serviço ({feePct}%)</span>
+                    <span className="text-base tabular-nums text-foreground">{formatBRL(feeAmount)}</span>
+                  </div>
+                </>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Total da comanda</span>
                 <span className="text-xl font-bold tabular-nums text-foreground">{formatBRL(total)}</span>
@@ -538,6 +606,51 @@ export default function ComandaDialog({
                 <div className="flex items-center justify-between border-t border-border pt-2">
                   <span className="text-sm text-muted-foreground">Troco</span>
                   <span className="text-base font-medium tabular-nums text-foreground">{formatBRL(totalPaid - total)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* ─── Taxa de serviço ─── */}
+            <div className="rounded-md border border-border p-4 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-2">
+                  <Percent className="h-4 w-4 text-primary" />
+                  <Label htmlFor="service-fee-toggle" className="text-sm font-medium text-foreground cursor-pointer">
+                    Taxa de serviço (garçom)
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="service-fee-toggle"
+                    checked={serviceFeeEnabled}
+                    onCheckedChange={setServiceFeeEnabled}
+                  />
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="0.5"
+                      value={serviceFeePct}
+                      onChange={(e) => {
+                        const n = parseFloat(e.target.value);
+                        if (!isNaN(n) && n >= 0 && n <= 100) setServiceFeePct(n);
+                      }}
+                      disabled={!serviceFeeEnabled}
+                      className="w-16 h-8 text-center tabular-nums"
+                    />
+                    <span className="text-xs text-muted-foreground">%</span>
+                  </div>
+                </div>
+              </div>
+              {serviceFeeEnabled && (
+                <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-md px-3 py-2">
+                  <span className="text-xs text-muted-foreground">
+                    Acrescido ao total e dividido proporcionalmente
+                  </span>
+                  <span className="text-sm font-bold tabular-nums text-primary">
+                    + {formatBRL(feeAmount)}
+                  </span>
                 </div>
               )}
             </div>
@@ -587,6 +700,23 @@ export default function ComandaDialog({
 
               {splitCount > 1 && (
                 <>
+                  {/* Nomes das pessoas */}
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-muted-foreground">Nome de cada pessoa (opcional)</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                      {Array.from({ length: splitCount }, (_, idx) => (
+                        <Input
+                          key={idx}
+                          value={personNames[idx] ?? ""}
+                          onChange={(e) => setPersonNameAt(idx, e.target.value)}
+                          placeholder={`Pessoa ${idx + 1}`}
+                          className="h-8 text-xs"
+                          maxLength={30}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Toggle modo */}
                   <div className="flex gap-1 bg-muted rounded-md p-1">
                     <button
@@ -644,11 +774,15 @@ export default function ComandaDialog({
                           <thead className="bg-muted/50">
                             <tr>
                               <th className="text-left p-2 font-medium text-muted-foreground sticky left-0 bg-muted/50">Item</th>
-                              {Array.from({ length: splitCount }, (_, p) => (
-                                <th key={p} className="p-2 font-medium text-muted-foreground text-center min-w-[88px]">
-                                  P{p + 1}
-                                </th>
-                              ))}
+                              {Array.from({ length: splitCount }, (_, p) => {
+                                const nm = personNameAt(p);
+                                const short = nm.length > 8 ? nm.slice(0, 7) + "…" : nm;
+                                return (
+                                  <th key={p} className="p-2 font-medium text-muted-foreground text-center min-w-[88px]" title={nm}>
+                                    {short}
+                                  </th>
+                                );
+                              })}
                               <th className="text-right p-2 font-medium text-muted-foreground">Restante</th>
                             </tr>
                           </thead>
@@ -705,11 +839,13 @@ export default function ComandaDialog({
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {customPerPerson.map((subtotal, p) => (
+                        {customPerPerson.map((personTotal, p) => (
                           <div key={p} className="border border-border rounded-md p-2 space-y-1.5">
                             <div className="flex items-center justify-between">
-                              <span className="text-xs font-medium text-foreground">Pessoa {p + 1}</span>
-                              <span className="text-sm font-bold tabular-nums text-primary">{formatBRL(subtotal)}</span>
+                              <span className="text-xs font-medium text-foreground truncate" title={personNameAt(p)}>
+                                {personNameAt(p)}
+                              </span>
+                              <span className="text-sm font-bold tabular-nums text-primary">{formatBRL(personTotal)}</span>
                             </div>
                             <div className="flex flex-wrap gap-1">
                               {PAY_METHODS.map((m) => (
@@ -718,8 +854,8 @@ export default function ComandaDialog({
                                   size="sm"
                                   variant="ghost"
                                   className="h-7 text-[11px] gap-1 px-2"
-                                  onClick={() => addPayment(m.key, subtotal)}
-                                  disabled={subtotal <= 0 || remaining <= 0}
+                                  onClick={() => addPayment(m.key, personTotal)}
+                                  disabled={personTotal <= 0 || remaining <= 0}
                                 >
                                   <m.icon className="h-3 w-3" />
                                   {m.key}
