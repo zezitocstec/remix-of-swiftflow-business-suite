@@ -835,11 +835,13 @@ export default function ComandaDialog({
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {customPerPerson.map((subtotal, p) => (
+                        {customPerPerson.map((personTotal, p) => (
                           <div key={p} className="border border-border rounded-md p-2 space-y-1.5">
                             <div className="flex items-center justify-between">
-                              <span className="text-xs font-medium text-foreground">Pessoa {p + 1}</span>
-                              <span className="text-sm font-bold tabular-nums text-primary">{formatBRL(subtotal)}</span>
+                              <span className="text-xs font-medium text-foreground truncate" title={personNameAt(p)}>
+                                {personNameAt(p)}
+                              </span>
+                              <span className="text-sm font-bold tabular-nums text-primary">{formatBRL(personTotal)}</span>
                             </div>
                             <div className="flex flex-wrap gap-1">
                               {PAY_METHODS.map((m) => (
@@ -848,8 +850,8 @@ export default function ComandaDialog({
                                   size="sm"
                                   variant="ghost"
                                   className="h-7 text-[11px] gap-1 px-2"
-                                  onClick={() => addPayment(m.key, subtotal)}
-                                  disabled={subtotal <= 0 || remaining <= 0}
+                                  onClick={() => addPayment(m.key, personTotal)}
+                                  disabled={personTotal <= 0 || remaining <= 0}
                                 >
                                   <m.icon className="h-3 w-3" />
                                   {m.key}
