@@ -85,14 +85,29 @@ export default function ComandaDialog({
   const [splitMode, setSplitMode] = useState<"equal" | "custom">("equal");
   const [splitCount, setSplitCount] = useState(1);
   const [splitAssignments, setSplitAssignments] = useState<Record<string, Record<number, number>>>({});
+  const [personNames, setPersonNames] = useState<string[]>([]);
+  const [serviceFeeEnabled, setServiceFeeEnabled] = useState(false);
+  const [serviceFeePct, setServiceFeePct] = useState(10);
 
-  const total = useMemo(
+  const subtotal = useMemo(
     () => items.reduce((s, i) => s + i.price * i.quantity, 0),
     [items]
   );
+  const feePct = serviceFeeEnabled ? Math.max(0, serviceFeePct) : 0;
+  const feeAmount = subtotal * (feePct / 100);
+  const total = subtotal + feeAmount;
   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
   const remaining = Math.max(0, total - totalPaid);
   const perPerson = splitCount > 1 ? total / splitCount : total;
+  const personNameAt = (idx: number) =>
+    (personNames[idx]?.trim() || `Pessoa ${idx + 1}`);
+  const setPersonNameAt = (idx: number, name: string) =>
+    setPersonNames((prev) => {
+      const next = [...prev];
+      while (next.length <= idx) next.push("");
+      next[idx] = name;
+      return next;
+    });
 
   // Subtotals per person for "custom" mode (assigned items + share of unassigned)
   const customPerPerson = useMemo(() => {
