@@ -729,6 +729,50 @@ export default function ComandaDialog({
               )}
             </div>
 
+            {/* ─── Couvert ─── */}
+            <div className="rounded-md border border-border p-4 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-2">
+                  <Coins className="h-4 w-4 text-primary" />
+                  <Label htmlFor="couvert-toggle" className="text-sm font-medium text-foreground cursor-pointer">
+                    Couvert (por pessoa)
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="couvert-toggle"
+                    checked={couvertEnabled}
+                    onCheckedChange={setCouvertEnabled}
+                  />
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground">R$</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={couvertAmount}
+                      onChange={(e) => {
+                        const n = parseFloat(e.target.value);
+                        if (!isNaN(n) && n >= 0) setCouvertAmount(n);
+                      }}
+                      disabled={!couvertEnabled}
+                      className="w-24 h-8 text-center tabular-nums"
+                    />
+                  </div>
+                </div>
+              </div>
+              {couvertEnabled && couvertPerPerson > 0 && (
+                <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-md px-3 py-2">
+                  <span className="text-xs text-muted-foreground">
+                    {peopleForCouvert}× {formatBRL(couvertPerPerson)} {splitCount > 1 ? "(por pessoa)" : "(1 pessoa)"}
+                  </span>
+                  <span className="text-sm font-bold tabular-nums text-primary">
+                    + {formatBRL(couvertTotal)}
+                  </span>
+                </div>
+              )}
+            </div>
+
             {/* ─── Dividir conta ─── */}
             <div className="rounded-md border border-border p-4 space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
