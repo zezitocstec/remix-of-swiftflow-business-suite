@@ -364,11 +364,27 @@ export default function ComandaDialog({
   const removePayment = (id: string) => setPayments((prev) => prev.filter((p) => p.id !== id));
   const fillRemaining = (method: string) => addPayment(method, remaining);
 
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const unassignedTotalQty = useMemo(() => {
+    if (splitMode !== "custom" || splitCount <= 1) return 0;
+    return items.reduce((sum, it) => sum + Math.max(0, it.quantity - assignedQty(it.id)), 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [splitMode, splitCount, items, splitAssignments]);
+
   const finalize = async () => {
     if (!order || !table || items.length === 0) return;
     if (totalPaid + 0.001 < total) {
       return toast({ title: "Pagamento incompleto", description: "O valor pago é menor que o total.", variant: "destructive" });
     }
+    if (unassignedTotalQty > 0) {
+      setConfirmCloseOpen(true);
+      return;
+    }
+    await doFinalize();
+  };
+
+  const doFinalize = async () => {
+    if (!order || !table) return;
     setClosing(true);
     try {
       // Adjust last payment so totalPaid never exceeds total (handles dinheiro com troco)
@@ -380,12 +396,14 @@ export default function ComandaDialog({
         adjusted[adjusted.length - 1] = { ...last, amount: last.amount - overpay };
       }
 
-      // Sale total = subtotal of items. Service fee is recorded as a separate
-      // payment line, so payments sum > sale total by exactly feeAmount.
-      // Scale payment methods proportionally down to subtotal.
+      // Sale total = productsSubtotal (only consumed products). Service fee and
+      // couvert are recorded as separate sale_payments lines, so payments sum
+      // exceeds sale total by exactly feeAmount + couvertTotal.
+      // Scale payment methods proportionally down to productsSubtotal.
       let methodsForSale = adjusted.map((p) => ({ method: p.method, amount: p.amount }));
-      if (feeAmount > 0.001 && total > 0.001) {
-        const scale = subtotal / total;
+      const extras = feeAmount + couvertTotal;
+      if (extras > 0.001 && total > 0.001) {
+        const scale = productsSubtotal / total;
         methodsForSale = methodsForSale.map((p) => ({ method: p.method, amount: p.amount * scale }));
       }
 
@@ -398,14 +416,28 @@ export default function ComandaDialog({
         operatorId
       );
 
-      // Add the service fee as an extra payment line (label includes the %).
-      if (feeAmount > 0.001 && saleId && tenantId) {
-        await sb.from("sale_payments").insert({
-          sale_id: saleId,
-          method: `Taxa de serviço (${feePct}%)`,
-          amount: feeAmount,
-          tenant_id: tenantId,
-        });
+      // Add the service fee + couvert as extra payment lines.
+      if (saleId && tenantId) {
+        const extraRows: any[] = [];
+        if (feeAmount > 0.001) {
+          extraRows.push({
+            sale_id: saleId,
+            method: `Taxa de serviço (${feePct}%)`,
+            amount: feeAmount,
+            tenant_id: tenantId,
+          });
+        }
+        if (couvertTotal > 0.001) {
+          extraRows.push({
+            sale_id: saleId,
+            method: `Couvert (${peopleForCouvert}× ${formatBRL(couvertPerPerson)})`,
+            amount: couvertTotal,
+            tenant_id: tenantId,
+          });
+        }
+        if (extraRows.length > 0) {
+          await sb.from("sale_payments").insert(extraRows);
+        }
       }
 
       // Close the order, link to sale
