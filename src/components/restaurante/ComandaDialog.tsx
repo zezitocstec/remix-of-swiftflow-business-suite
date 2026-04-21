@@ -610,6 +610,51 @@ export default function ComandaDialog({
               )}
             </div>
 
+            {/* ─── Taxa de serviço ─── */}
+            <div className="rounded-md border border-border p-4 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-2">
+                  <Percent className="h-4 w-4 text-primary" />
+                  <Label htmlFor="service-fee-toggle" className="text-sm font-medium text-foreground cursor-pointer">
+                    Taxa de serviço (garçom)
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="service-fee-toggle"
+                    checked={serviceFeeEnabled}
+                    onCheckedChange={setServiceFeeEnabled}
+                  />
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="0.5"
+                      value={serviceFeePct}
+                      onChange={(e) => {
+                        const n = parseFloat(e.target.value);
+                        if (!isNaN(n) && n >= 0 && n <= 100) setServiceFeePct(n);
+                      }}
+                      disabled={!serviceFeeEnabled}
+                      className="w-16 h-8 text-center tabular-nums"
+                    />
+                    <span className="text-xs text-muted-foreground">%</span>
+                  </div>
+                </div>
+              </div>
+              {serviceFeeEnabled && (
+                <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-md px-3 py-2">
+                  <span className="text-xs text-muted-foreground">
+                    Acrescido ao total e dividido proporcionalmente
+                  </span>
+                  <span className="text-sm font-bold tabular-nums text-primary">
+                    + {formatBRL(feeAmount)}
+                  </span>
+                </div>
+              )}
+            </div>
+
             {/* ─── Dividir conta ─── */}
             <div className="rounded-md border border-border p-4 space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
