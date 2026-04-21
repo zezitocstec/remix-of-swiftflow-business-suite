@@ -117,12 +117,12 @@ export default function ComandaDialog({
       return next;
     });
 
-  // Subtotals per person for "custom" mode (assigned items + share of unassigned)
-  // Returned values INCLUDE the service fee, distributed proportionally to each
-  // person's share of the subtotal.
+  // Per-person totals for "custom" mode.
+  // Each person pays: (assigned items + share of unassigned items) × (1 + fee%) + couvert.
+  // Service fee applies only to consumption (not to couvert).
   const customPerPerson = useMemo(() => {
     if (splitMode !== "custom" || splitCount <= 1) return [];
-    const subtotals = Array.from({ length: splitCount }, () => 0);
+    const consumed = Array.from({ length: splitCount }, () => 0);
     let sharedSub = 0;
     items.forEach((it) => {
       const a = splitAssignments[it.id] || {};
@@ -130,7 +130,7 @@ export default function ComandaDialog({
       for (let p = 0; p < splitCount; p++) {
         const q = Math.max(0, Math.floor(a[p] || 0));
         if (q > 0) {
-          subtotals[p] += q * it.price;
+          consumed[p] += q * it.price;
           assigned += q;
         }
       }
@@ -139,11 +139,10 @@ export default function ComandaDialog({
     });
     if (sharedSub > 0) {
       const share = sharedSub / splitCount;
-      for (let p = 0; p < splitCount; p++) subtotals[p] += share;
+      for (let p = 0; p < splitCount; p++) consumed[p] += share;
     }
-    // Apply service fee proportionally (same % for everyone since fee is on subtotal)
-    return subtotals.map((s) => s * (1 + feePct / 100));
-  }, [splitMode, splitCount, items, splitAssignments, feePct]);
+    return consumed.map((c) => c * (1 + feePct / 100) + couvertPerPerson);
+  }, [splitMode, splitCount, items, splitAssignments, feePct, couvertPerPerson]);
 
   const assignedQty = (itemId: string) =>
     Object.values(splitAssignments[itemId] || {}).reduce(
