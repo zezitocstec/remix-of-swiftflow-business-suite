@@ -21,7 +21,7 @@ interface PrintOpts {
   tableNumero: number;
   tableNome?: string | null;
   items: PreContaItem[];
-  /** Subtotal (sum of items, before service fee). */
+  /** Subtotal of consumed products (sum of items, before service fee and couvert). */
   total: number;
   operatorName?: string;
   mode?: SplitMode;
@@ -31,6 +31,10 @@ interface PrintOpts {
   personNames?: string[];
   /** Service fee percentage (e.g. 10 for 10%). 0 or undefined disables it. */
   serviceFeePct?: number;
+  /** Couvert charged per person (R$). 0 or undefined disables it. */
+  couvertPerPerson?: number;
+  /** Number of people to charge couvert for. Defaults to splitCount or 1. */
+  peopleForCouvert?: number;
 }
 
 export function printPreConta(opts: PrintOpts) {
