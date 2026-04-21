@@ -630,16 +630,26 @@ export default function ComandaDialog({
           // ─── Tela de pagamento ───
           <div className="flex-1 flex flex-col min-h-0 p-4 gap-4 overflow-auto">
             <div className="rounded-md border border-border p-4 bg-muted/30 space-y-2">
-              {feePct > 0 && (
+              {(feePct > 0 || couvertTotal > 0) && (
                 <>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Subtotal</span>
-                    <span className="text-base tabular-nums text-foreground">{formatBRL(subtotal)}</span>
+                    <span className="text-sm text-muted-foreground">Subtotal (produtos)</span>
+                    <span className="text-base tabular-nums text-foreground">{formatBRL(productsSubtotal)}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Taxa de serviço ({feePct}%)</span>
-                    <span className="text-base tabular-nums text-foreground">{formatBRL(feeAmount)}</span>
-                  </div>
+                  {feePct > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Taxa de serviço ({feePct}%)</span>
+                      <span className="text-base tabular-nums text-foreground">{formatBRL(feeAmount)}</span>
+                    </div>
+                  )}
+                  {couvertTotal > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Couvert ({peopleForCouvert}× {formatBRL(couvertPerPerson)})
+                      </span>
+                      <span className="text-base tabular-nums text-foreground">{formatBRL(couvertTotal)}</span>
+                    </div>
+                  )}
                 </>
               )}
               <div className="flex items-center justify-between">
