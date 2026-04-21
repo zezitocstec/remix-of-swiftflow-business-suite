@@ -358,14 +358,33 @@ export default function ComandaDialog({
         adjusted[adjusted.length - 1] = { ...last, amount: last.amount - overpay };
       }
 
+      // Sale total = subtotal of items. Service fee is recorded as a separate
+      // payment line, so payments sum > sale total by exactly feeAmount.
+      // Scale payment methods proportionally down to subtotal.
+      let methodsForSale = adjusted.map((p) => ({ method: p.method, amount: p.amount }));
+      if (feeAmount > 0.001 && total > 0.001) {
+        const scale = subtotal / total;
+        methodsForSale = methodsForSale.map((p) => ({ method: p.method, amount: p.amount * scale }));
+      }
+
       // Register sale via PDV path (creates sale + sale_items + sale_payments + stock movement)
       const saleId = await sellProducts(
         items.map((i) => ({ productId: i.product_id, quantity: i.quantity })),
-        adjusted.map((p) => ({ method: p.method, amount: p.amount })),
+        methodsForSale,
         undefined,
         undefined,
         operatorId
       );
+
+      // Add the service fee as an extra payment line (label includes the %).
+      if (feeAmount > 0.001 && saleId && tenantId) {
+        await sb.from("sale_payments").insert({
+          sale_id: saleId,
+          method: `Taxa de serviço (${feePct}%)`,
+          amount: feeAmount,
+          tenant_id: tenantId,
+        });
+      }
 
       // Close the order, link to sale
       const { error: e1 } = await sb
