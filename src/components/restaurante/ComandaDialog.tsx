@@ -10,10 +10,20 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Search, Plus, Minus, Trash2, Loader2, Receipt, Clock, CheckCircle2,
   Banknote, QrCode, CreditCard, Smartphone, MessageSquarePlus, ChevronLeft,
-  Users, Printer, Percent,
+  Users, Printer, Percent, Coins, AlertTriangle,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts, type Product } from "@/contexts/ProductContext";
 import { useTenant } from "@/contexts/TenantContext";
@@ -21,6 +31,7 @@ import { toast } from "@/hooks/use-toast";
 import { formatBRL } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { printPreConta } from "./PreContaPrint";
+import { loadRestaurantSettings, DEFAULT_RESTAURANT_SETTINGS } from "@/components/config/RestauranteConfig";
 
 const sb = supabase as any;
 
@@ -88,13 +99,21 @@ export default function ComandaDialog({
   const [personNames, setPersonNames] = useState<string[]>([]);
   const [serviceFeeEnabled, setServiceFeeEnabled] = useState(false);
   const [serviceFeePct, setServiceFeePct] = useState(10);
+  const [couvertEnabled, setCouvertEnabled] = useState(false);
+  const [couvertAmount, setCouvertAmount] = useState(0);
 
-  const subtotal = useMemo(
+  const productsSubtotal = useMemo(
     () => items.reduce((s, i) => s + i.price * i.quantity, 0),
     [items]
   );
   const feePct = serviceFeeEnabled ? Math.max(0, serviceFeePct) : 0;
-  const feeAmount = subtotal * (feePct / 100);
+  const feeAmount = productsSubtotal * (feePct / 100);
+  // Couvert is per-person; if no split, count as 1 person
+  const peopleForCouvert = Math.max(1, splitCount);
+  const couvertPerPerson = couvertEnabled ? Math.max(0, couvertAmount) : 0;
+  const couvertTotal = couvertPerPerson * peopleForCouvert;
+  // "subtotal" = consumption + couvert (service fee applies only to products)
+  const subtotal = productsSubtotal + couvertTotal;
   const total = subtotal + feeAmount;
   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
   const remaining = Math.max(0, total - totalPaid);
@@ -109,12 +128,12 @@ export default function ComandaDialog({
       return next;
     });
 
-  // Subtotals per person for "custom" mode (assigned items + share of unassigned)
-  // Returned values INCLUDE the service fee, distributed proportionally to each
-  // person's share of the subtotal.
+  // Per-person totals for "custom" mode.
+  // Each person pays: (assigned items + share of unassigned items) × (1 + fee%) + couvert.
+  // Service fee applies only to consumption (not to couvert).
   const customPerPerson = useMemo(() => {
     if (splitMode !== "custom" || splitCount <= 1) return [];
-    const subtotals = Array.from({ length: splitCount }, () => 0);
+    const consumed = Array.from({ length: splitCount }, () => 0);
     let sharedSub = 0;
     items.forEach((it) => {
       const a = splitAssignments[it.id] || {};
@@ -122,7 +141,7 @@ export default function ComandaDialog({
       for (let p = 0; p < splitCount; p++) {
         const q = Math.max(0, Math.floor(a[p] || 0));
         if (q > 0) {
-          subtotals[p] += q * it.price;
+          consumed[p] += q * it.price;
           assigned += q;
         }
       }
@@ -131,11 +150,10 @@ export default function ComandaDialog({
     });
     if (sharedSub > 0) {
       const share = sharedSub / splitCount;
-      for (let p = 0; p < splitCount; p++) subtotals[p] += share;
+      for (let p = 0; p < splitCount; p++) consumed[p] += share;
     }
-    // Apply service fee proportionally (same % for everyone since fee is on subtotal)
-    return subtotals.map((s) => s * (1 + feePct / 100));
-  }, [splitMode, splitCount, items, splitAssignments, feePct]);
+    return consumed.map((c) => c * (1 + feePct / 100) + couvertPerPerson);
+  }, [splitMode, splitCount, items, splitAssignments, feePct, couvertPerPerson]);
 
   const assignedQty = (itemId: string) =>
     Object.values(splitAssignments[itemId] || {}).reduce(
@@ -222,14 +240,26 @@ export default function ComandaDialog({
       setSplitMode("equal");
       setSplitAssignments({});
       setPersonNames([]);
-      setServiceFeeEnabled(false);
-      setServiceFeePct(10);
+      // Provisionally apply defaults; refined after settings load
+      setServiceFeeEnabled(DEFAULT_RESTAURANT_SETTINGS.service_fee_enabled);
+      setServiceFeePct(DEFAULT_RESTAURANT_SETTINGS.service_fee_pct);
+      setCouvertEnabled(DEFAULT_RESTAURANT_SETTINGS.couvert_enabled);
+      setCouvertAmount(DEFAULT_RESTAURANT_SETTINGS.couvert_amount);
+      // Load tenant restaurant settings (taxa de serviço + couvert padrões)
+      if (tenantId) {
+        loadRestaurantSettings(tenantId).then((s) => {
+          setServiceFeeEnabled(s.service_fee_enabled);
+          setServiceFeePct(s.service_fee_pct);
+          setCouvertEnabled(s.couvert_enabled);
+          setCouvertAmount(s.couvert_amount);
+        });
+      }
       loadOrCreateOrder();
     } else {
       setOrder(null);
       setItems([]);
     }
-  }, [open, table, loadOrCreateOrder]);
+  }, [open, table, tenantId, loadOrCreateOrder]);
 
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -309,13 +339,15 @@ export default function ComandaDialog({
         quantity: i.quantity,
         observacao: i.observacao,
       })),
-      total: subtotal,
+      total: productsSubtotal,
       operatorName,
       mode,
       splitCount: mode !== "none" ? splitCount : undefined,
       assignments: mode === "custom" ? splitAssignments : undefined,
       personNames: mode !== "none" ? personNames : undefined,
       serviceFeePct: feePct,
+      couvertPerPerson: couvertEnabled ? couvertPerPerson : 0,
+      peopleForCouvert,
     });
   };
 
@@ -342,11 +374,27 @@ export default function ComandaDialog({
   const removePayment = (id: string) => setPayments((prev) => prev.filter((p) => p.id !== id));
   const fillRemaining = (method: string) => addPayment(method, remaining);
 
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const unassignedTotalQty = useMemo(() => {
+    if (splitMode !== "custom" || splitCount <= 1) return 0;
+    return items.reduce((sum, it) => sum + Math.max(0, it.quantity - assignedQty(it.id)), 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [splitMode, splitCount, items, splitAssignments]);
+
   const finalize = async () => {
     if (!order || !table || items.length === 0) return;
     if (totalPaid + 0.001 < total) {
       return toast({ title: "Pagamento incompleto", description: "O valor pago é menor que o total.", variant: "destructive" });
     }
+    if (unassignedTotalQty > 0) {
+      setConfirmCloseOpen(true);
+      return;
+    }
+    await doFinalize();
+  };
+
+  const doFinalize = async () => {
+    if (!order || !table) return;
     setClosing(true);
     try {
       // Adjust last payment so totalPaid never exceeds total (handles dinheiro com troco)
@@ -358,12 +406,14 @@ export default function ComandaDialog({
         adjusted[adjusted.length - 1] = { ...last, amount: last.amount - overpay };
       }
 
-      // Sale total = subtotal of items. Service fee is recorded as a separate
-      // payment line, so payments sum > sale total by exactly feeAmount.
-      // Scale payment methods proportionally down to subtotal.
+      // Sale total = productsSubtotal (only consumed products). Service fee and
+      // couvert are recorded as separate sale_payments lines, so payments sum
+      // exceeds sale total by exactly feeAmount + couvertTotal.
+      // Scale payment methods proportionally down to productsSubtotal.
       let methodsForSale = adjusted.map((p) => ({ method: p.method, amount: p.amount }));
-      if (feeAmount > 0.001 && total > 0.001) {
-        const scale = subtotal / total;
+      const extras = feeAmount + couvertTotal;
+      if (extras > 0.001 && total > 0.001) {
+        const scale = productsSubtotal / total;
         methodsForSale = methodsForSale.map((p) => ({ method: p.method, amount: p.amount * scale }));
       }
 
@@ -376,14 +426,28 @@ export default function ComandaDialog({
         operatorId
       );
 
-      // Add the service fee as an extra payment line (label includes the %).
-      if (feeAmount > 0.001 && saleId && tenantId) {
-        await sb.from("sale_payments").insert({
-          sale_id: saleId,
-          method: `Taxa de serviço (${feePct}%)`,
-          amount: feeAmount,
-          tenant_id: tenantId,
-        });
+      // Add the service fee + couvert as extra payment lines.
+      if (saleId && tenantId) {
+        const extraRows: any[] = [];
+        if (feeAmount > 0.001) {
+          extraRows.push({
+            sale_id: saleId,
+            method: `Taxa de serviço (${feePct}%)`,
+            amount: feeAmount,
+            tenant_id: tenantId,
+          });
+        }
+        if (couvertTotal > 0.001) {
+          extraRows.push({
+            sale_id: saleId,
+            method: `Couvert (${peopleForCouvert}× ${formatBRL(couvertPerPerson)})`,
+            amount: couvertTotal,
+            tenant_id: tenantId,
+          });
+        }
+        if (extraRows.length > 0) {
+          await sb.from("sale_payments").insert(extraRows);
+        }
       }
 
       // Close the order, link to sale
@@ -576,16 +640,26 @@ export default function ComandaDialog({
           // ─── Tela de pagamento ───
           <div className="flex-1 flex flex-col min-h-0 p-4 gap-4 overflow-auto">
             <div className="rounded-md border border-border p-4 bg-muted/30 space-y-2">
-              {feePct > 0 && (
+              {(feePct > 0 || couvertTotal > 0) && (
                 <>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Subtotal</span>
-                    <span className="text-base tabular-nums text-foreground">{formatBRL(subtotal)}</span>
+                    <span className="text-sm text-muted-foreground">Subtotal (produtos)</span>
+                    <span className="text-base tabular-nums text-foreground">{formatBRL(productsSubtotal)}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Taxa de serviço ({feePct}%)</span>
-                    <span className="text-base tabular-nums text-foreground">{formatBRL(feeAmount)}</span>
-                  </div>
+                  {feePct > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Taxa de serviço ({feePct}%)</span>
+                      <span className="text-base tabular-nums text-foreground">{formatBRL(feeAmount)}</span>
+                    </div>
+                  )}
+                  {couvertTotal > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Couvert ({peopleForCouvert}× {formatBRL(couvertPerPerson)})
+                      </span>
+                      <span className="text-base tabular-nums text-foreground">{formatBRL(couvertTotal)}</span>
+                    </div>
+                  )}
                 </>
               )}
               <div className="flex items-center justify-between">
@@ -650,6 +724,50 @@ export default function ComandaDialog({
                   </span>
                   <span className="text-sm font-bold tabular-nums text-primary">
                     + {formatBRL(feeAmount)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* ─── Couvert ─── */}
+            <div className="rounded-md border border-border p-4 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-2">
+                  <Coins className="h-4 w-4 text-primary" />
+                  <Label htmlFor="couvert-toggle" className="text-sm font-medium text-foreground cursor-pointer">
+                    Couvert (por pessoa)
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="couvert-toggle"
+                    checked={couvertEnabled}
+                    onCheckedChange={setCouvertEnabled}
+                  />
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground">R$</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={couvertAmount}
+                      onChange={(e) => {
+                        const n = parseFloat(e.target.value);
+                        if (!isNaN(n) && n >= 0) setCouvertAmount(n);
+                      }}
+                      disabled={!couvertEnabled}
+                      className="w-24 h-8 text-center tabular-nums"
+                    />
+                  </div>
+                </div>
+              </div>
+              {couvertEnabled && couvertPerPerson > 0 && (
+                <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-md px-3 py-2">
+                  <span className="text-xs text-muted-foreground">
+                    {peopleForCouvert}× {formatBRL(couvertPerPerson)} {splitCount > 1 ? "(por pessoa)" : "(1 pessoa)"}
+                  </span>
+                  <span className="text-sm font-bold tabular-nums text-primary">
+                    + {formatBRL(couvertTotal)}
                   </span>
                 </div>
               )}
@@ -983,6 +1101,31 @@ export default function ComandaDialog({
           )}
         </DialogFooter>
       </DialogContent>
+
+      {/* Confirmação ao fechar com itens não atribuídos no modo "Por itens" */}
+      <AlertDialog open={confirmCloseOpen} onOpenChange={setConfirmCloseOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Itens não atribuídos
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Há <b>{unassignedTotalQty}</b> {unassignedTotalQty === 1 ? "unidade" : "unidades"} de itens
+              que não foram atribuídas a nenhuma pessoa. Esses itens serão tratados como
+              <b> compartilhados</b> e divididos igualmente entre as {splitCount} pessoas.
+              <br /><br />
+              Deseja realmente fechar a mesa assim?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar e revisar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConfirmCloseOpen(false); doFinalize(); }}>
+              Sim, dividir como compartilhado
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

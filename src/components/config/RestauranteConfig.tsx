@@ -1,0 +1,185 @@
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useTenant } from "@/contexts/TenantContext";
+import { toast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Loader2, Percent, Coins, Save } from "lucide-react";
+import { formatBRL } from "@/lib/mock-data";
+
+const sb = supabase as any;
+
+export interface RestaurantSettings {
+  service_fee_enabled: boolean;
+  service_fee_pct: number;
+  couvert_enabled: boolean;
+  couvert_amount: number;
+}
+
+export const DEFAULT_RESTAURANT_SETTINGS: RestaurantSettings = {
+  service_fee_enabled: false,
+  service_fee_pct: 10,
+  couvert_enabled: false,
+  couvert_amount: 0,
+};
+
+export async function loadRestaurantSettings(tenantId: string): Promise<RestaurantSettings> {
+  const { data } = await sb
+    .from("restaurant_settings")
+    .select("service_fee_enabled, service_fee_pct, couvert_enabled, couvert_amount")
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  if (!data) return DEFAULT_RESTAURANT_SETTINGS;
+  return {
+    service_fee_enabled: !!data.service_fee_enabled,
+    service_fee_pct: Number(data.service_fee_pct) || 0,
+    couvert_enabled: !!data.couvert_enabled,
+    couvert_amount: Number(data.couvert_amount) || 0,
+  };
+}
+
+export default function RestauranteConfig() {
+  const { tenantId } = useTenant();
+  const [settings, setSettings] = useState<RestaurantSettings>(DEFAULT_RESTAURANT_SETTINGS);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!tenantId) return;
+    setLoading(true);
+    loadRestaurantSettings(tenantId).then((s) => {
+      if (!cancelled) {
+        setSettings(s);
+        setLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [tenantId]);
+
+  const save = async () => {
+    if (!tenantId) return;
+    setSaving(true);
+    const { error } = await sb
+      .from("restaurant_settings")
+      .upsert({ tenant_id: tenantId, ...settings }, { onConflict: "tenant_id" });
+    setSaving(false);
+    if (error) {
+      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Configurações salvas", description: "Aplicado a novas comandas." });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div>
+        <h2 className="text-xl font-semibold text-foreground">Restaurante</h2>
+        <p className="text-sm text-muted-foreground">
+          Configurações padrão aplicadas a toda comanda nova (taxa de serviço e couvert).
+        </p>
+      </div>
+
+      {/* ─── Taxa de serviço ─── */}
+      <div className="rounded-md border border-border p-4 space-y-4">
+        <div className="flex items-start gap-3">
+          <Percent className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+          <div className="flex-1 space-y-1">
+            <Label htmlFor="rs-fee-enabled" className="text-sm font-medium text-foreground cursor-pointer">
+              Taxa de serviço (garçom)
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Quando ativada, virá pré-marcada em toda comanda nova com o percentual abaixo.
+              Acrescido proporcionalmente em divisões de conta.
+            </p>
+          </div>
+          <Switch
+            id="rs-fee-enabled"
+            checked={settings.service_fee_enabled}
+            onCheckedChange={(v) => setSettings((s) => ({ ...s, service_fee_enabled: v }))}
+          />
+        </div>
+        <div className="flex items-center gap-2 pl-8">
+          <Label htmlFor="rs-fee-pct" className="text-sm text-foreground w-28">Percentual</Label>
+          <Input
+            id="rs-fee-pct"
+            type="number"
+            min={0}
+            max={100}
+            step="0.5"
+            value={settings.service_fee_pct}
+            onChange={(e) => {
+              const n = parseFloat(e.target.value);
+              if (!isNaN(n) && n >= 0 && n <= 100) {
+                setSettings((s) => ({ ...s, service_fee_pct: n }));
+              }
+            }}
+            className="w-24 tabular-nums"
+          />
+          <span className="text-sm text-muted-foreground">%</span>
+        </div>
+      </div>
+
+      {/* ─── Couvert ─── */}
+      <div className="rounded-md border border-border p-4 space-y-4">
+        <div className="flex items-start gap-3">
+          <Coins className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+          <div className="flex-1 space-y-1">
+            <Label htmlFor="rs-couvert-enabled" className="text-sm font-medium text-foreground cursor-pointer">
+              Couvert artístico
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Valor fixo cobrado <b>por pessoa</b>. Ao dividir a conta, multiplicado pelo número de pessoas.
+              Se não houver divisão, conta como 1 pessoa.
+            </p>
+          </div>
+          <Switch
+            id="rs-couvert-enabled"
+            checked={settings.couvert_enabled}
+            onCheckedChange={(v) => setSettings((s) => ({ ...s, couvert_enabled: v }))}
+          />
+        </div>
+        <div className="flex items-center gap-2 pl-8">
+          <Label htmlFor="rs-couvert-amount" className="text-sm text-foreground w-28">Valor por pessoa</Label>
+          <span className="text-sm text-muted-foreground">R$</span>
+          <Input
+            id="rs-couvert-amount"
+            type="number"
+            min={0}
+            step="0.01"
+            value={settings.couvert_amount}
+            onChange={(e) => {
+              const n = parseFloat(e.target.value);
+              if (!isNaN(n) && n >= 0) {
+                setSettings((s) => ({ ...s, couvert_amount: n }));
+              }
+            }}
+            className="w-32 tabular-nums"
+          />
+          {settings.couvert_enabled && settings.couvert_amount > 0 && (
+            <span className="text-xs text-muted-foreground ml-2">
+              ({formatBRL(settings.couvert_amount)} × pessoas)
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <Button onClick={save} disabled={saving} className="gap-2">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          Salvar configurações
+        </Button>
+      </div>
+    </div>
+  );
+}

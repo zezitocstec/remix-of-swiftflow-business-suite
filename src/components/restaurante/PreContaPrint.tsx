@@ -21,7 +21,7 @@ interface PrintOpts {
   tableNumero: number;
   tableNome?: string | null;
   items: PreContaItem[];
-  /** Subtotal (sum of items, before service fee). */
+  /** Subtotal of consumed products (sum of items, before service fee and couvert). */
   total: number;
   operatorName?: string;
   mode?: SplitMode;
@@ -31,6 +31,10 @@ interface PrintOpts {
   personNames?: string[];
   /** Service fee percentage (e.g. 10 for 10%). 0 or undefined disables it. */
   serviceFeePct?: number;
+  /** Couvert charged per person (R$). 0 or undefined disables it. */
+  couvertPerPerson?: number;
+  /** Number of people to charge couvert for. Defaults to splitCount or 1. */
+  peopleForCouvert?: number;
 }
 
 export function printPreConta(opts: PrintOpts) {
@@ -44,9 +48,12 @@ export function printPreConta(opts: PrintOpts) {
   const mode = opts.mode ?? "none";
   const splitCount = Math.max(1, opts.splitCount ?? 1);
   const feePct = Math.max(0, opts.serviceFeePct ?? 0);
-  const subtotal = opts.total;
-  const feeAmount = subtotal * (feePct / 100);
-  const grandTotal = subtotal + feeAmount;
+  const couvertPerPerson = Math.max(0, opts.couvertPerPerson ?? 0);
+  const peopleForCouvert = Math.max(1, opts.peopleForCouvert ?? splitCount);
+  const productsSubtotal = opts.total;
+  const feeAmount = productsSubtotal * (feePct / 100);
+  const couvertTotal = couvertPerPerson * peopleForCouvert;
+  const grandTotal = productsSubtotal + feeAmount + couvertTotal;
 
   const personNameAt = (idx: number) =>
     (opts.personNames?.[idx]?.trim() || `Pessoa ${idx + 1}`);
@@ -69,12 +76,14 @@ export function printPreConta(opts: PrintOpts) {
     </div>
   `;
 
-  // Helper to render the totals block (Subtotal / Taxa / Total) when fee>0,
-  // otherwise just a TOTAL line.
-  const totalsBlock = (sub: number) => {
-    const fee = sub * (feePct / 100);
-    const grand = sub + fee;
-    if (feePct <= 0) {
+  // Render totals block. `consumed` = consumption subtotal for THIS slip.
+  // `couvert` = couvert charged on this slip (per-person on individual slips,
+  // full couvertTotal on the global single-page slip).
+  const totalsBlock = (consumed: number, couvert: number) => {
+    const fee = consumed * (feePct / 100);
+    const grand = consumed + fee + couvert;
+    const hasExtras = feePct > 0 || couvert > 0;
+    if (!hasExtras) {
       return `
         <div style="border-top:1px dashed #000;margin-top:8px;padding-top:8px">
           <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:bold">
@@ -86,11 +95,16 @@ export function printPreConta(opts: PrintOpts) {
     return `
       <div style="border-top:1px dashed #000;margin-top:8px;padding-top:8px">
         <div style="display:flex;justify-content:space-between;font-size:11px">
-          <span>Subtotal</span><span>${formatBRL(sub)}</span>
+          <span>Subtotal</span><span>${formatBRL(consumed)}</span>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:11px">
-          <span>Taxa de serviço (${feePct}%)</span><span>${formatBRL(fee)}</span>
-        </div>
+        ${feePct > 0 ? `
+          <div style="display:flex;justify-content:space-between;font-size:11px">
+            <span>Taxa de serviço (${feePct}%)</span><span>${formatBRL(fee)}</span>
+          </div>` : ""}
+        ${couvert > 0 ? `
+          <div style="display:flex;justify-content:space-between;font-size:11px">
+            <span>Couvert</span><span>${formatBRL(couvert)}</span>
+          </div>` : ""}
         <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:bold;margin-top:4px">
           <span>TOTAL</span><span>${formatBRL(grand)}</span>
         </div>
@@ -110,27 +124,30 @@ export function printPreConta(opts: PrintOpts) {
         header,
         footer,
         title: name,
-        subtitle: `Via ${idx + 1} de ${splitCount}`,
+        subtitle: `Via ${idx + 1} de ${splitCount}${couvertPerPerson > 0 ? " • couvert incl." : ""}`,
         rows: p.lines,
-        totalsHtml: totalsBlock(p.total),
+        totalsHtml: totalsBlock(p.total, couvertPerPerson),
         notice: p.lines.length === 0 ? "Nenhum item atribuído individualmente." : undefined,
       });
     });
 
-    // Recap page (totals overview) — uses person totals incl. service fee
+    // Recap page (totals overview) — uses person totals incl. service fee + couvert
     const recapRows = perPerson.map((p, i) => ({
       label: personNameAt(i),
       qty: "",
       unit: "",
-      total: formatBRL(p.total * (1 + feePct / 100)),
+      total: formatBRL(p.total * (1 + feePct / 100) + couvertPerPerson),
     }));
+    const recapSubtitleParts: string[] = [`${splitCount} pessoas`];
+    if (feePct > 0) recapSubtitleParts.push(`taxa ${feePct}%`);
+    if (couvertPerPerson > 0) recapSubtitleParts.push(`couvert ${formatBRL(couvertPerPerson)}/pessoa`);
     body += slipPage({
       header,
       footer,
       title: "RESUMO DA DIVISÃO",
-      subtitle: `${splitCount} pessoas${feePct > 0 ? ` • taxa ${feePct}%` : ""}`,
+      subtitle: recapSubtitleParts.join(" • "),
       rows: recapRows,
-      totalsHtml: totalsBlock(subtotal),
+      totalsHtml: totalsBlock(productsSubtotal, couvertTotal),
       noTable: true,
     });
   } else {
@@ -158,20 +175,24 @@ export function printPreConta(opts: PrintOpts) {
       footer,
       title: null,
       rows,
-      totalsHtml: totalsBlock(subtotal),
+      totalsHtml: totalsBlock(productsSubtotal, couvertTotal),
       extraAfterTotal: equalSplit,
     });
 
     // If equal split, also print one slip per person
     if (mode === "equal" && splitCount > 1) {
       const share = grandTotal / splitCount;
+      const subtitleParts = [`Via {{i}} de ${splitCount} — divisão igualitária`];
+      if (feePct > 0) subtitleParts.push(`taxa ${feePct}%`);
+      if (couvertPerPerson > 0) subtitleParts.push(`couvert ${formatBRL(couvertPerPerson)}`);
+      const subtitleTpl = subtitleParts.join(" • ");
       for (let i = 0; i < splitCount; i++) {
         const name = personNameAt(i);
         body += slipPage({
           header,
           footer,
           title: name,
-          subtitle: `Via ${i + 1} de ${splitCount} — divisão igualitária${feePct > 0 ? ` • taxa ${feePct}%` : ""}`,
+          subtitle: subtitleTpl.replace("{{i}}", String(i + 1)),
           rows: [{ label: "Parte da conta", qty: "", unit: "", total: formatBRL(share) }],
           totalsHtml: `
             <div style="border-top:1px dashed #000;margin-top:8px;padding-top:8px">
