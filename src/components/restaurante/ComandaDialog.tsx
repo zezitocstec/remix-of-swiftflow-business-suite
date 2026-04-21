@@ -10,10 +10,20 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Search, Plus, Minus, Trash2, Loader2, Receipt, Clock, CheckCircle2,
   Banknote, QrCode, CreditCard, Smartphone, MessageSquarePlus, ChevronLeft,
-  Users, Printer, Percent,
+  Users, Printer, Percent, Coins, AlertTriangle,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useProducts, type Product } from "@/contexts/ProductContext";
 import { useTenant } from "@/contexts/TenantContext";
