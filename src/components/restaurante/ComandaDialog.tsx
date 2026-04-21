@@ -221,6 +221,9 @@ export default function ComandaDialog({
       setSplitCount(1);
       setSplitMode("equal");
       setSplitAssignments({});
+      setPersonNames([]);
+      setServiceFeeEnabled(false);
+      setServiceFeePct(10);
       loadOrCreateOrder();
     } else {
       setOrder(null);
