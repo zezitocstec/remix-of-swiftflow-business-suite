@@ -700,6 +700,23 @@ export default function ComandaDialog({
 
               {splitCount > 1 && (
                 <>
+                  {/* Nomes das pessoas */}
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-muted-foreground">Nome de cada pessoa (opcional)</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                      {Array.from({ length: splitCount }, (_, idx) => (
+                        <Input
+                          key={idx}
+                          value={personNames[idx] ?? ""}
+                          onChange={(e) => setPersonNameAt(idx, e.target.value)}
+                          placeholder={`Pessoa ${idx + 1}`}
+                          className="h-8 text-xs"
+                          maxLength={30}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Toggle modo */}
                   <div className="flex gap-1 bg-muted rounded-md p-1">
                     <button
