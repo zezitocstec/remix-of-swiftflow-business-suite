@@ -93,6 +93,7 @@ export default function Configuracoes() {
           {active === "empresa" && <EmpresaForm />}
           {active === "impressora" && <ImpressoraConfig />}
           {active === "venda" && <VendaConfig />}
+          {active === "restaurante" && <RestauranteConfig />}
           {active === "usuarios_sistema" && <UsuariosConfig />}
           {active === "operadores" && <OperadoresConfig />}
           {active === "seguranca" && <SegurancaConfig />}
