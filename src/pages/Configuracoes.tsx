@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { TopBar } from "@/components/TopBar";
-import { Building2, Printer, Receipt, Shield, Users, Monitor, ClipboardList, ChevronDown, DatabaseBackup, Lock, UserCheck, UserCog, Scale } from "lucide-react";
+import { Building2, Printer, Receipt, Shield, Users, Monitor, ClipboardList, ChevronDown, DatabaseBackup, Lock, UserCheck, UserCog, Scale, UtensilsCrossed } from "lucide-react";
 import EmpresaForm from "@/components/config/EmpresaForm";
 import ImpressoraConfig from "@/components/config/ImpressoraConfig";
 import VendaConfig from "@/components/config/VendaConfig";
@@ -12,6 +12,7 @@ import SegurancaConfig from "@/components/config/SegurancaConfig";
 import VendedoresConfig from "@/components/config/VendedoresConfig";
 import UsuariosConfig from "@/components/config/UsuariosConfig";
 import BalancasConfig from "@/components/config/BalancasConfig";
+import RestauranteConfig from "@/components/config/RestauranteConfig";
 import {
   DropdownMenu,
   DropdownMenuContent,
