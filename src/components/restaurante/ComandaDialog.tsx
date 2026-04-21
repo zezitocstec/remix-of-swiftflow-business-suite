@@ -774,11 +774,15 @@ export default function ComandaDialog({
                           <thead className="bg-muted/50">
                             <tr>
                               <th className="text-left p-2 font-medium text-muted-foreground sticky left-0 bg-muted/50">Item</th>
-                              {Array.from({ length: splitCount }, (_, p) => (
-                                <th key={p} className="p-2 font-medium text-muted-foreground text-center min-w-[88px]">
-                                  P{p + 1}
-                                </th>
-                              ))}
+                              {Array.from({ length: splitCount }, (_, p) => {
+                                const nm = personNameAt(p);
+                                const short = nm.length > 8 ? nm.slice(0, 7) + "…" : nm;
+                                return (
+                                  <th key={p} className="p-2 font-medium text-muted-foreground text-center min-w-[88px]" title={nm}>
+                                    {short}
+                                  </th>
+                                );
+                              })}
                               <th className="text-right p-2 font-medium text-muted-foreground">Restante</th>
                             </tr>
                           </thead>
