@@ -230,14 +230,26 @@ export default function ComandaDialog({
       setSplitMode("equal");
       setSplitAssignments({});
       setPersonNames([]);
-      setServiceFeeEnabled(false);
-      setServiceFeePct(10);
+      // Provisionally apply defaults; refined after settings load
+      setServiceFeeEnabled(DEFAULT_RESTAURANT_SETTINGS.service_fee_enabled);
+      setServiceFeePct(DEFAULT_RESTAURANT_SETTINGS.service_fee_pct);
+      setCouvertEnabled(DEFAULT_RESTAURANT_SETTINGS.couvert_enabled);
+      setCouvertAmount(DEFAULT_RESTAURANT_SETTINGS.couvert_amount);
+      // Load tenant restaurant settings (taxa de serviço + couvert padrões)
+      if (tenantId) {
+        loadRestaurantSettings(tenantId).then((s) => {
+          setServiceFeeEnabled(s.service_fee_enabled);
+          setServiceFeePct(s.service_fee_pct);
+          setCouvertEnabled(s.couvert_enabled);
+          setCouvertAmount(s.couvert_amount);
+        });
+      }
       loadOrCreateOrder();
     } else {
       setOrder(null);
       setItems([]);
     }
-  }, [open, table, loadOrCreateOrder]);
+  }, [open, table, tenantId, loadOrCreateOrder]);
 
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLowerCase();
