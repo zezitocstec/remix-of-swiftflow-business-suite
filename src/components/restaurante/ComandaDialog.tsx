@@ -552,7 +552,19 @@ export default function ComandaDialog({
                 </div>
               </ScrollArea>
 
-              <div className="p-3 border-t border-border bg-muted/30 shrink-0 space-y-2">
+              <div className="p-3 border-t border-border bg-muted/30 shrink-0 space-y-1">
+                {feePct > 0 && (
+                  <>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Subtotal</span>
+                      <span className="tabular-nums">{formatBRL(subtotal)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Taxa de serviço ({feePct}%)</span>
+                      <span className="tabular-nums">{formatBRL(feeAmount)}</span>
+                    </div>
+                  </>
+                )}
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Total</span>
                   <span className="text-2xl font-bold tabular-nums text-foreground">{formatBRL(total)}</span>
@@ -564,6 +576,18 @@ export default function ComandaDialog({
           // ─── Tela de pagamento ───
           <div className="flex-1 flex flex-col min-h-0 p-4 gap-4 overflow-auto">
             <div className="rounded-md border border-border p-4 bg-muted/30 space-y-2">
+              {feePct > 0 && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Subtotal</span>
+                    <span className="text-base tabular-nums text-foreground">{formatBRL(subtotal)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Taxa de serviço ({feePct}%)</span>
+                    <span className="text-base tabular-nums text-foreground">{formatBRL(feeAmount)}</span>
+                  </div>
+                </>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Total da comanda</span>
                 <span className="text-xl font-bold tabular-nums text-foreground">{formatBRL(total)}</span>
