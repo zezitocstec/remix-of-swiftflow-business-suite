@@ -88,13 +88,21 @@ export default function ComandaDialog({
   const [personNames, setPersonNames] = useState<string[]>([]);
   const [serviceFeeEnabled, setServiceFeeEnabled] = useState(false);
   const [serviceFeePct, setServiceFeePct] = useState(10);
+  const [couvertEnabled, setCouvertEnabled] = useState(false);
+  const [couvertAmount, setCouvertAmount] = useState(0);
 
-  const subtotal = useMemo(
+  const productsSubtotal = useMemo(
     () => items.reduce((s, i) => s + i.price * i.quantity, 0),
     [items]
   );
   const feePct = serviceFeeEnabled ? Math.max(0, serviceFeePct) : 0;
-  const feeAmount = subtotal * (feePct / 100);
+  const feeAmount = productsSubtotal * (feePct / 100);
+  // Couvert is per-person; if no split, count as 1 person
+  const peopleForCouvert = Math.max(1, splitCount);
+  const couvertPerPerson = couvertEnabled ? Math.max(0, couvertAmount) : 0;
+  const couvertTotal = couvertPerPerson * peopleForCouvert;
+  // "subtotal" = consumption + couvert (service fee applies only to products)
+  const subtotal = productsSubtotal + couvertTotal;
   const total = subtotal + feeAmount;
   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
   const remaining = Math.max(0, total - totalPaid);
