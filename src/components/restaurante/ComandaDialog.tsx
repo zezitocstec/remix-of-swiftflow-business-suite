@@ -329,13 +329,15 @@ export default function ComandaDialog({
         quantity: i.quantity,
         observacao: i.observacao,
       })),
-      total: subtotal,
+      total: productsSubtotal,
       operatorName,
       mode,
       splitCount: mode !== "none" ? splitCount : undefined,
       assignments: mode === "custom" ? splitAssignments : undefined,
       personNames: mode !== "none" ? personNames : undefined,
       serviceFeePct: feePct,
+      couvertPerPerson: couvertEnabled ? couvertPerPerson : 0,
+      peopleForCouvert,
     });
   };
 
