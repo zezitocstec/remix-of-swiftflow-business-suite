@@ -24,6 +24,7 @@ const tabs = [
   { id: "empresa", icon: Building2, label: "Empresa" },
   { id: "impressora", icon: Printer, label: "Impressora" },
   { id: "venda", icon: Receipt, label: "Venda / Fiscal" },
+  { id: "restaurante", icon: UtensilsCrossed, label: "Restaurante" },
   { id: "usuarios_sistema", icon: UserCog, label: "Usuários" },
   { id: "operadores", icon: Users, label: "Operadores" },
   { id: "terminais", icon: Monitor, label: "Terminais" },
