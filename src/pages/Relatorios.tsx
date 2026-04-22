@@ -708,6 +708,7 @@ export default function Relatorios() {
         {view === "orcamentos" && <OrcamentosReport />}
         {view === "comissoes" && <ComissoesReport />}
         {view === "conversao" && <ConversaoReport />}
+        {view === "restaurante" && <RestauranteReport />}
       </div>
     </div>
   );
