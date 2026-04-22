@@ -185,7 +185,7 @@ function Faturamento() {
           <p className="text-xs text-muted-foreground">Ticket Médio</p>
           <p className="text-lg font-semibold tabular-nums text-foreground">{formatBRL(ticketMedio)}</p>
         </div>
-        {comparison && (
+        {comparison ? (
           <div className="rounded-md border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground">Variação Mensal</p>
             <p className={`text-lg font-semibold tabular-nums ${comparison.pctChange >= 0 ? "text-success" : "text-destructive"}`}>
@@ -193,8 +193,17 @@ function Faturamento() {
             </p>
             <p className="text-[10px] text-muted-foreground">{comparison.prev.label} → {comparison.current.label}</p>
           </div>
-        )}
+        ) : null}
+        <div className="rounded-md border border-border bg-card p-4">
+          <p className="text-xs text-muted-foreground">Taxa de Serviço</p>
+          <p className="text-lg font-semibold tabular-nums text-foreground">{formatBRL(totalServiceFee)}</p>
+        </div>
+        <div className="rounded-md border border-border bg-card p-4">
+          <p className="text-xs text-muted-foreground">Couvert</p>
+          <p className="text-lg font-semibold tabular-nums text-foreground">{formatBRL(totalCouvert)}</p>
+        </div>
       </div>
+
 
       {/* Monthly bar chart */}
       {monthlyData.length > 0 && (
