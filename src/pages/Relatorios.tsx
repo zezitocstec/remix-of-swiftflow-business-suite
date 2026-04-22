@@ -254,12 +254,15 @@ function Faturamento() {
         <div className="p-4 border-b border-border">
           <h4 className="text-sm font-semibold text-foreground">Detalhamento Mensal</h4>
         </div>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-secondary text-muted-foreground">
               <th className="text-left py-2.5 px-4 font-medium">Mês</th>
               <th className="text-right py-2.5 px-4 font-medium">Vendas</th>
               <th className="text-right py-2.5 px-4 font-medium">Faturamento</th>
+              <th className="text-right py-2.5 px-4 font-medium">Taxa serv.</th>
+              <th className="text-right py-2.5 px-4 font-medium">Couvert</th>
               <th className="text-right py-2.5 px-4 font-medium">Ticket Médio</th>
             </tr>
           </thead>
@@ -269,11 +272,14 @@ function Faturamento() {
                 <td className="py-2 px-4 text-foreground font-medium">{d.label}</td>
                 <td className="py-2 px-4 text-right tabular-nums text-foreground">{d.sales}</td>
                 <td className="py-2 px-4 text-right tabular-nums text-foreground">{formatBRL(d.revenue)}</td>
+                <td className="py-2 px-4 text-right tabular-nums text-muted-foreground">{d.serviceFee > 0 ? formatBRL(d.serviceFee) : "—"}</td>
+                <td className="py-2 px-4 text-right tabular-nums text-muted-foreground">{d.couvert > 0 ? formatBRL(d.couvert) : "—"}</td>
                 <td className="py-2 px-4 text-right tabular-nums text-muted-foreground">{formatBRL(d.ticket)}</td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
