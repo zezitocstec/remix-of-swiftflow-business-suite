@@ -31,6 +31,7 @@ import { toast } from "@/hooks/use-toast";
 import { formatBRL } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { printPreConta } from "./PreContaPrint";
+import { printFinalReceipt } from "./FinalReceiptPrint";
 import { loadRestaurantSettings, DEFAULT_RESTAURANT_SETTINGS } from "@/components/config/RestauranteConfig";
 
 const sb = supabase as any;
