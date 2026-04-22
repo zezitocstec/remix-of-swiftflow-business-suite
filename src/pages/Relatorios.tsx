@@ -61,12 +61,14 @@ function Faturamento() {
   }, [sales, dateFrom, dateTo]);
 
   const monthlyData = useMemo(() => {
-    const map = new Map<string, { revenue: number; sales: number; key: string }>();
+    const map = new Map<string, { revenue: number; sales: number; key: string; serviceFee: number; couvert: number }>();
     filtered.forEach((s) => {
       const key = `${s.date.getFullYear()}-${String(s.date.getMonth() + 1).padStart(2, "0")}`;
-      const label = s.date.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
-      const existing = map.get(key) || { revenue: 0, sales: 0, key };
+      const existing = map.get(key) || { revenue: 0, sales: 0, key, serviceFee: 0, couvert: 0 };
+      const { serviceFee, couvert } = extractSaleExtras(s.methods);
       existing.revenue += s.total;
+      existing.serviceFee += serviceFee;
+      existing.couvert += couvert;
       existing.sales++;
       map.set(key, existing);
     });
@@ -88,6 +90,14 @@ function Faturamento() {
   }, [filtered]);
 
   const totalRevenue = filtered.reduce((s, sale) => s + sale.total, 0);
+  const totalServiceFee = useMemo(
+    () => filtered.reduce((s, sale) => s + extractSaleExtras(sale.methods).serviceFee, 0),
+    [filtered]
+  );
+  const totalCouvert = useMemo(
+    () => filtered.reduce((s, sale) => s + extractSaleExtras(sale.methods).couvert, 0),
+    [filtered]
+  );
   const totalSales = filtered.length;
   const ticketMedio = totalSales > 0 ? totalRevenue / totalSales : 0;
 
