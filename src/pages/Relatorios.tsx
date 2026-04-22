@@ -26,6 +26,7 @@ type ReportView = "menu" | "faturamento" | "vendas-terminal" | "estoque" | "fina
 const reports = [
   { id: "faturamento" as ReportView, icon: DollarSign, title: "Faturamento", desc: "Receitas por período, comparativo mensal" },
   { id: "vendas-terminal" as ReportView, icon: Monitor, title: "Vendas por Terminal", desc: "Detalhamento por caixa, ticket médio, métodos de pagamento" },
+  { id: "restaurante" as ReportView, icon: UtensilsCrossed, title: "Vendas do Restaurante", desc: "Mesa, itens, cliente, data/hora e garçom" },
   { id: "estoque" as ReportView, icon: Package, title: "Estoque", desc: "Movimentação, inventário, giro de produtos" },
   { id: "financeiro" as ReportView, icon: BarChart3, title: "Financeiro", desc: "Fluxo de caixa, contas a pagar/receber" },
   { id: "despesas" as ReportView, icon: DollarSign, title: "Despesas por Categoria", desc: "Gráfico de pizza, evolução mensal, detalhamento" },
