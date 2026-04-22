@@ -1156,6 +1156,35 @@ export default function ComandaDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Imprimir 2ª via opcional */}
+      <AlertDialog open={secondCopyOpen} onOpenChange={setSecondCopyOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Printer className="h-5 w-5 text-primary" />
+              Imprimir 2ª via?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              A 1ª via do cupom já foi enviada para a impressora.
+              Deseja imprimir uma segunda via (cliente / arquivo)?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setSecondCopyOpen(false); setLastReceiptOpts(null); onOpenChange(false); }}>
+              Não, encerrar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (lastReceiptOpts) printFinalReceipt(lastReceiptOpts);
+              setSecondCopyOpen(false);
+              setLastReceiptOpts(null);
+              onOpenChange(false);
+            }}>
+              Imprimir 2ª via
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
