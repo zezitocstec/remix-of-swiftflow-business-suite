@@ -468,8 +468,35 @@ export default function ComandaDialog({
       if (e2) throw e2;
 
       onTableStatusChange(table.id, "livre");
+
+      // Build receipt data and print first copy automatically
+      const totalPaidFinal = adjusted.reduce((s, p) => s + p.amount, 0);
+      const change = Math.max(0, totalPaidFinal - total);
+      const receiptOpts = {
+        tableNumero: table.numero,
+        tableNome: table.nome ?? null,
+        items: items.map((i) => ({
+          id: i.id,
+          product_name: i.product_name,
+          price: i.price,
+          quantity: i.quantity,
+          observacao: i.observacao,
+        })),
+        productsSubtotal,
+        serviceFeePct: feePct,
+        serviceFeeAmount: feeAmount,
+        couvertPerPerson,
+        peopleForCouvert,
+        couvertTotal,
+        total,
+        payments: adjusted.map((p) => ({ method: p.method, amount: p.amount })),
+        change,
+        operatorName,
+      };
+      printFinalReceipt(receiptOpts);
+      setLastReceiptOpts(receiptOpts);
+      setSecondCopyOpen(true);
       toast({ title: "Comanda fechada", description: `Mesa ${table.numero} liberada` });
-      onOpenChange(false);
     } catch (err: any) {
       toast({ title: "Erro ao fechar", description: err?.message ?? "Falha", variant: "destructive" });
     } finally {
