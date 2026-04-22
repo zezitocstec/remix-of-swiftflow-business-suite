@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Percent, Coins, Save } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Percent, Coins, Save, Printer } from "lucide-react";
 import { formatBRL } from "@/lib/mock-data";
 
 const sb = supabase as any;
@@ -16,6 +17,7 @@ export interface RestaurantSettings {
   service_fee_pct: number;
   couvert_enabled: boolean;
   couvert_amount: number;
+  receipt_copies: 1 | 2 | 3;
 }
 
 export const DEFAULT_RESTAURANT_SETTINGS: RestaurantSettings = {
@@ -23,20 +25,24 @@ export const DEFAULT_RESTAURANT_SETTINGS: RestaurantSettings = {
   service_fee_pct: 10,
   couvert_enabled: false,
   couvert_amount: 0,
+  receipt_copies: 1,
 };
 
 export async function loadRestaurantSettings(tenantId: string): Promise<RestaurantSettings> {
   const { data } = await sb
     .from("restaurant_settings")
-    .select("service_fee_enabled, service_fee_pct, couvert_enabled, couvert_amount")
+    .select("service_fee_enabled, service_fee_pct, couvert_enabled, couvert_amount, receipt_copies")
     .eq("tenant_id", tenantId)
     .maybeSingle();
   if (!data) return DEFAULT_RESTAURANT_SETTINGS;
+  const copiesRaw = Number(data.receipt_copies) || 1;
+  const copies = (copiesRaw >= 1 && copiesRaw <= 3 ? copiesRaw : 1) as 1 | 2 | 3;
   return {
     service_fee_enabled: !!data.service_fee_enabled,
     service_fee_pct: Number(data.service_fee_pct) || 0,
     couvert_enabled: !!data.couvert_enabled,
     couvert_amount: Number(data.couvert_amount) || 0,
+    receipt_copies: copies,
   };
 }
 
@@ -171,6 +177,37 @@ export default function RestauranteConfig() {
               ({formatBRL(settings.couvert_amount)} × pessoas)
             </span>
           )}
+        </div>
+      </div>
+
+      {/* ─── Vias de impressão ─── */}
+      <div className="rounded-md border border-border p-4 space-y-4">
+        <div className="flex items-start gap-3">
+          <Printer className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+          <div className="flex-1 space-y-1">
+            <Label htmlFor="rs-copies" className="text-sm font-medium text-foreground">
+              Vias do cupom ao fechar mesa
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Quantidade de vias impressas automaticamente quando uma mesa é finalizada
+              (ex.: 1 estabelecimento + 1 cliente). Aplicado a todas as mesas novas.
+            </p>
+          </div>
+          <Select
+            value={String(settings.receipt_copies)}
+            onValueChange={(v) =>
+              setSettings((s) => ({ ...s, receipt_copies: (Number(v) as 1 | 2 | 3) }))
+            }
+          >
+            <SelectTrigger className="w-24 h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">1 via</SelectItem>
+              <SelectItem value="2">2 vias</SelectItem>
+              <SelectItem value="3">3 vias</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
