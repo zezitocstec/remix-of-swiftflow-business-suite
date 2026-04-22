@@ -1,10 +1,12 @@
 import { useState, useMemo } from "react";
 import ComissoesReport from "@/components/reports/ComissoesReport";
 import ConversaoReport from "@/components/reports/ConversaoReport";
+import RestauranteReport from "@/components/reports/RestauranteReport";
 import { TopBar } from "@/components/TopBar";
 import { useProducts } from "@/contexts/ProductContext";
 import { formatBRL } from "@/lib/mock-data";
-import { BarChart3, DollarSign, Package, TrendingUp, ArrowLeft, Monitor, CalendarIcon, Download, FileText, Users } from "lucide-react";
+import { extractSaleExtras } from "@/lib/sale-extras";
+import { BarChart3, DollarSign, Package, TrendingUp, ArrowLeft, Monitor, CalendarIcon, Download, FileText, Users, UtensilsCrossed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -19,7 +21,7 @@ import FinanceiroReport from "@/components/reports/FinanceiroReport";
 import DespesasReport from "@/components/reports/DespesasReport";
 import OrcamentosReport from "@/components/reports/OrcamentosReport";
 
-type ReportView = "menu" | "faturamento" | "vendas-terminal" | "estoque" | "financeiro" | "curva-abc" | "despesas" | "orcamentos" | "comissoes" | "conversao";
+type ReportView = "menu" | "faturamento" | "vendas-terminal" | "estoque" | "financeiro" | "curva-abc" | "despesas" | "orcamentos" | "comissoes" | "conversao" | "restaurante";
 
 const reports = [
   { id: "faturamento" as ReportView, icon: DollarSign, title: "Faturamento", desc: "Receitas por período, comparativo mensal" },
