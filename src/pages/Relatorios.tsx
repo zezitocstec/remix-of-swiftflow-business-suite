@@ -498,6 +498,7 @@ function VendasTerminal() {
         <div className="p-4 border-b border-border">
           <h4 className="text-sm font-semibold text-foreground">Vendas Detalhadas ({filtered.length})</h4>
         </div>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-secondary text-muted-foreground">
@@ -506,24 +507,32 @@ function VendasTerminal() {
               <th className="text-left py-2.5 px-4 font-medium">Operador</th>
               <th className="text-right py-2.5 px-4 font-medium">Itens</th>
               <th className="text-left py-2.5 px-4 font-medium">Pagamento</th>
+              <th className="text-right py-2.5 px-4 font-medium">Taxa serv.</th>
+              <th className="text-right py-2.5 px-4 font-medium">Couvert</th>
               <th className="text-right py-2.5 px-4 font-medium">Total</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.slice(0, 100).map((sale) => (
-              <tr key={sale.id} className="border-b border-border last:border-0">
-                <td className="py-2 px-4 text-xs text-muted-foreground whitespace-nowrap">
-                  {sale.date.toLocaleDateString("pt-BR")} {sale.date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                </td>
-                <td className="py-2 px-4 text-xs text-foreground">{sale.terminalName || "—"}</td>
-                <td className="py-2 px-4 text-xs text-foreground">{sale.operatorName || "—"}</td>
-                <td className="py-2 px-4 text-right text-xs tabular-nums text-foreground">{sale.items.reduce((s, i) => s + i.quantity, 0)}</td>
-                <td className="py-2 px-4 text-xs text-foreground">{sale.methods.map((m) => m.method).join(", ") || "—"}</td>
-                <td className="py-2 px-4 text-right text-xs tabular-nums text-foreground font-medium">{formatBRL(sale.total)}</td>
-              </tr>
-            ))}
+            {filtered.slice(0, 100).map((sale) => {
+              const { serviceFee, couvert, realMethods } = extractSaleExtras(sale.methods);
+              return (
+                <tr key={sale.id} className="border-b border-border last:border-0">
+                  <td className="py-2 px-4 text-xs text-muted-foreground whitespace-nowrap">
+                    {sale.date.toLocaleDateString("pt-BR")} {sale.date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                  </td>
+                  <td className="py-2 px-4 text-xs text-foreground">{sale.terminalName || "—"}</td>
+                  <td className="py-2 px-4 text-xs text-foreground">{sale.operatorName || "—"}</td>
+                  <td className="py-2 px-4 text-right text-xs tabular-nums text-foreground">{sale.items.reduce((s, i) => s + i.quantity, 0)}</td>
+                  <td className="py-2 px-4 text-xs text-foreground">{realMethods.map((m) => m.method).join(", ") || "—"}</td>
+                  <td className="py-2 px-4 text-right text-xs tabular-nums text-muted-foreground">{serviceFee > 0 ? formatBRL(serviceFee) : "—"}</td>
+                  <td className="py-2 px-4 text-right text-xs tabular-nums text-muted-foreground">{couvert > 0 ? formatBRL(couvert) : "—"}</td>
+                  <td className="py-2 px-4 text-right text-xs tabular-nums text-foreground font-medium">{formatBRL(sale.total + serviceFee + couvert)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
