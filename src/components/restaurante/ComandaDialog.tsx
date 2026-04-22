@@ -499,19 +499,16 @@ export default function ComandaDialog({
       };
       printFinalReceipt(receiptOpts);
       setLastReceiptOpts(receiptOpts);
-      // Only ask about an extra copy when the configured default is just 1 via.
       if (receiptCopies <= 1) {
+        // Only ask about an extra copy when the default is just 1 via.
         setSecondCopyOpen(true);
+        toast({ title: "Comanda fechada", description: `Mesa ${table.numero} liberada` });
       } else {
         toast({
           title: "Comanda fechada",
           description: `Mesa ${table.numero} liberada — ${receiptCopies} vias impressas.`,
         });
         onOpenChange(false);
-      }
-      // Keep the original "fechada" toast only when a follow-up dialog is shown.
-      if (receiptCopies <= 1) {
-        toast({ title: "Comanda fechada", description: `Mesa ${table.numero} liberada` });
       }
     } catch (err: any) {
       toast({ title: "Erro ao fechar", description: err?.message ?? "Falha", variant: "destructive" });
