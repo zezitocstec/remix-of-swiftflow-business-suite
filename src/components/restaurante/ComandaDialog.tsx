@@ -102,6 +102,7 @@ export default function ComandaDialog({
   const [serviceFeePct, setServiceFeePct] = useState(10);
   const [couvertEnabled, setCouvertEnabled] = useState(false);
   const [couvertAmount, setCouvertAmount] = useState(0);
+  const [receiptCopies, setReceiptCopies] = useState<1 | 2 | 3>(1);
 
   const productsSubtotal = useMemo(
     () => items.reduce((s, i) => s + i.price * i.quantity, 0),
@@ -246,13 +247,15 @@ export default function ComandaDialog({
       setServiceFeePct(DEFAULT_RESTAURANT_SETTINGS.service_fee_pct);
       setCouvertEnabled(DEFAULT_RESTAURANT_SETTINGS.couvert_enabled);
       setCouvertAmount(DEFAULT_RESTAURANT_SETTINGS.couvert_amount);
-      // Load tenant restaurant settings (taxa de serviço + couvert padrões)
+      setReceiptCopies(DEFAULT_RESTAURANT_SETTINGS.receipt_copies);
+      // Load tenant restaurant settings (taxa de serviço + couvert + vias padrões)
       if (tenantId) {
         loadRestaurantSettings(tenantId).then((s) => {
           setServiceFeeEnabled(s.service_fee_enabled);
           setServiceFeePct(s.service_fee_pct);
           setCouvertEnabled(s.couvert_enabled);
           setCouvertAmount(s.couvert_amount);
+          setReceiptCopies(s.receipt_copies);
         });
       }
       loadOrCreateOrder();
@@ -469,7 +472,7 @@ export default function ComandaDialog({
 
       onTableStatusChange(table.id, "livre");
 
-      // Build receipt data and print first copy automatically
+      // Build receipt data and print all configured copies automatically.
       const totalPaidFinal = adjusted.reduce((s, p) => s + p.amount, 0);
       const change = Math.max(0, totalPaidFinal - total);
       const receiptOpts = {
@@ -492,11 +495,21 @@ export default function ComandaDialog({
         payments: adjusted.map((p) => ({ method: p.method, amount: p.amount })),
         change,
         operatorName,
+        copies: receiptCopies,
       };
       printFinalReceipt(receiptOpts);
       setLastReceiptOpts(receiptOpts);
-      setSecondCopyOpen(true);
-      toast({ title: "Comanda fechada", description: `Mesa ${table.numero} liberada` });
+      if (receiptCopies <= 1) {
+        // Only ask about an extra copy when the default is just 1 via.
+        setSecondCopyOpen(true);
+        toast({ title: "Comanda fechada", description: `Mesa ${table.numero} liberada` });
+      } else {
+        toast({
+          title: "Comanda fechada",
+          description: `Mesa ${table.numero} liberada — ${receiptCopies} vias impressas.`,
+        });
+        onOpenChange(false);
+      }
     } catch (err: any) {
       toast({ title: "Erro ao fechar", description: err?.message ?? "Falha", variant: "destructive" });
     } finally {

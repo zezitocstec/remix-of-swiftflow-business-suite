@@ -134,13 +134,13 @@ export default function RestauranteReport() {
   });
 
   const handleExportPDF = () => {
-    const headers = ["Data/Hora", "Mesa", "Cliente", "Garçom", "Itens", "Subtotal", "Taxa", "Couvert", "Total"];
+    const headers = ["Data/Hora", "Mesa", "Cliente", "Garçom", "Itens da mesa", "Subtotal", "Taxa", "Couvert", "Total"];
     const data = filtered.map(r => [
       `${r.closedAt.toLocaleDateString("pt-BR")} ${r.closedAt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`,
       r.tableNome ? `${r.tableNumero} (${r.tableNome})` : String(r.tableNumero),
       r.clientName || "—",
       r.operatorName,
-      String(r.items.reduce((s, i) => s + i.quantity, 0)),
+      r.items.map(i => `${i.quantity}× ${i.product_name}`).join(" • ") || "—",
       formatBRL(r.productsTotal),
       r.serviceFee > 0 ? formatBRL(r.serviceFee) : "—",
       r.couvert > 0 ? formatBRL(r.couvert) : "—",
@@ -259,7 +259,7 @@ export default function RestauranteReport() {
                 <th className="text-left py-2.5 px-3 font-medium">Mesa</th>
                 <th className="text-left py-2.5 px-3 font-medium">Cliente</th>
                 <th className="text-left py-2.5 px-3 font-medium">Garçom</th>
-                <th className="text-right py-2.5 px-3 font-medium">Itens</th>
+                <th className="text-left py-2.5 px-3 font-medium min-w-[220px]">Itens da mesa</th>
                 <th className="text-right py-2.5 px-3 font-medium">Subtotal</th>
                 <th className="text-right py-2.5 px-3 font-medium">Taxa</th>
                 <th className="text-right py-2.5 px-3 font-medium">Couvert</th>
@@ -270,6 +270,7 @@ export default function RestauranteReport() {
               {filtered.map((r) => {
                 const isOpen = expanded.has(r.orderId);
                 const itemsCount = r.items.reduce((s, i) => s + i.quantity, 0);
+                const itemsSummary = r.items.map(i => `${i.quantity}× ${i.product_name}`).join(" • ");
                 return (
                   <>
                     <tr key={r.orderId} className="border-b border-border hover:bg-muted/30 cursor-pointer" onClick={() => toggle(r.orderId)}>
@@ -284,7 +285,12 @@ export default function RestauranteReport() {
                       </td>
                       <td className="py-2 px-3 text-xs text-foreground">{r.clientName || "—"}</td>
                       <td className="py-2 px-3 text-xs text-foreground">{r.operatorName}</td>
-                      <td className="py-2 px-3 text-right text-xs tabular-nums text-foreground">{itemsCount}</td>
+                      <td className="py-2 px-3 text-xs text-foreground max-w-[320px]">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-muted-foreground tabular-nums shrink-0">{itemsCount}×</span>
+                          <span className="line-clamp-2" title={itemsSummary}>{itemsSummary || "—"}</span>
+                        </div>
+                      </td>
                       <td className="py-2 px-3 text-right text-xs tabular-nums text-foreground">{formatBRL(r.productsTotal)}</td>
                       <td className="py-2 px-3 text-right text-xs tabular-nums text-muted-foreground">{r.serviceFee > 0 ? formatBRL(r.serviceFee) : "—"}</td>
                       <td className="py-2 px-3 text-right text-xs tabular-nums text-muted-foreground">{r.couvert > 0 ? formatBRL(r.couvert) : "—"}</td>
@@ -292,18 +298,53 @@ export default function RestauranteReport() {
                     </tr>
                     {isOpen && (
                       <tr key={r.orderId + "-d"} className="border-b border-border bg-muted/20">
-                        <td colSpan={10} className="px-6 py-3">
+                        <td colSpan={11} className="px-6 py-3">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Audit: itemized breakdown + extras */}
                             <div>
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5">Itens consumidos</p>
-                              <div className="space-y-1">
-                                {r.items.map((it, idx) => (
-                                  <div key={idx} className="flex items-center justify-between text-xs">
-                                    <span className="text-foreground">{it.quantity}× {it.product_name}</span>
-                                    <span className="tabular-nums text-muted-foreground">{formatBRL(it.price * it.quantity)}</span>
-                                  </div>
-                                ))}
-                              </div>
+                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5">
+                                Detalhamento por item
+                              </p>
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className="text-muted-foreground border-b border-border/60">
+                                    <th className="text-left py-1 font-medium">Produto</th>
+                                    <th className="text-center py-1 font-medium w-10">Qtd</th>
+                                    <th className="text-right py-1 font-medium w-20">Unit.</th>
+                                    <th className="text-right py-1 font-medium w-24">Total</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {r.items.map((it, idx) => (
+                                    <tr key={idx} className="border-b border-border/30 last:border-0">
+                                      <td className="py-1 text-foreground">{it.product_name}</td>
+                                      <td className="py-1 text-center tabular-nums text-foreground">{it.quantity}</td>
+                                      <td className="py-1 text-right tabular-nums text-muted-foreground">{formatBRL(it.price)}</td>
+                                      <td className="py-1 text-right tabular-nums text-foreground">{formatBRL(it.price * it.quantity)}</td>
+                                    </tr>
+                                  ))}
+                                  <tr className="border-t border-border">
+                                    <td colSpan={3} className="py-1 text-right text-muted-foreground">Subtotal produtos</td>
+                                    <td className="py-1 text-right tabular-nums font-medium text-foreground">{formatBRL(r.productsTotal)}</td>
+                                  </tr>
+                                  {r.serviceFee > 0 && (
+                                    <tr>
+                                      <td colSpan={3} className="py-1 text-right text-muted-foreground">+ Taxa de serviço</td>
+                                      <td className="py-1 text-right tabular-nums text-foreground">{formatBRL(r.serviceFee)}</td>
+                                    </tr>
+                                  )}
+                                  {r.couvert > 0 && (
+                                    <tr>
+                                      <td colSpan={3} className="py-1 text-right text-muted-foreground">+ Couvert</td>
+                                      <td className="py-1 text-right tabular-nums text-foreground">{formatBRL(r.couvert)}</td>
+                                    </tr>
+                                  )}
+                                  <tr className="border-t border-border">
+                                    <td colSpan={3} className="py-1.5 text-right font-semibold text-foreground">Total cobrado</td>
+                                    <td className="py-1.5 text-right tabular-nums font-bold text-foreground">{formatBRL(r.grandTotal)}</td>
+                                  </tr>
+                                </tbody>
+                              </table>
                             </div>
                             <div>
                               <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5">Pagamentos</p>
@@ -316,6 +357,23 @@ export default function RestauranteReport() {
                                     <span className="tabular-nums text-muted-foreground">{formatBRL(p.amount)}</span>
                                   </div>
                                 ))}
+                                {(r.serviceFee > 0 || r.couvert > 0) && (
+                                  <div className="mt-2 pt-2 border-t border-border/60 space-y-1">
+                                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Extras cobrados</p>
+                                    {r.serviceFee > 0 && (
+                                      <div className="flex items-center justify-between text-xs">
+                                        <span className="text-foreground">Taxa de serviço</span>
+                                        <span className="tabular-nums text-muted-foreground">{formatBRL(r.serviceFee)}</span>
+                                      </div>
+                                    )}
+                                    {r.couvert > 0 && (
+                                      <div className="flex items-center justify-between text-xs">
+                                        <span className="text-foreground">Couvert</span>
+                                        <span className="tabular-nums text-muted-foreground">{formatBRL(r.couvert)}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
