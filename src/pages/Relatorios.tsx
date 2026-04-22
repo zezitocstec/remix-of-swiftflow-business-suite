@@ -1,10 +1,12 @@
 import { useState, useMemo } from "react";
 import ComissoesReport from "@/components/reports/ComissoesReport";
 import ConversaoReport from "@/components/reports/ConversaoReport";
+import RestauranteReport from "@/components/reports/RestauranteReport";
 import { TopBar } from "@/components/TopBar";
 import { useProducts } from "@/contexts/ProductContext";
 import { formatBRL } from "@/lib/mock-data";
-import { BarChart3, DollarSign, Package, TrendingUp, ArrowLeft, Monitor, CalendarIcon, Download, FileText, Users } from "lucide-react";
+import { extractSaleExtras } from "@/lib/sale-extras";
+import { BarChart3, DollarSign, Package, TrendingUp, ArrowLeft, Monitor, CalendarIcon, Download, FileText, Users, UtensilsCrossed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -19,11 +21,12 @@ import FinanceiroReport from "@/components/reports/FinanceiroReport";
 import DespesasReport from "@/components/reports/DespesasReport";
 import OrcamentosReport from "@/components/reports/OrcamentosReport";
 
-type ReportView = "menu" | "faturamento" | "vendas-terminal" | "estoque" | "financeiro" | "curva-abc" | "despesas" | "orcamentos" | "comissoes" | "conversao";
+type ReportView = "menu" | "faturamento" | "vendas-terminal" | "estoque" | "financeiro" | "curva-abc" | "despesas" | "orcamentos" | "comissoes" | "conversao" | "restaurante";
 
 const reports = [
   { id: "faturamento" as ReportView, icon: DollarSign, title: "Faturamento", desc: "Receitas por período, comparativo mensal" },
   { id: "vendas-terminal" as ReportView, icon: Monitor, title: "Vendas por Terminal", desc: "Detalhamento por caixa, ticket médio, métodos de pagamento" },
+  { id: "restaurante" as ReportView, icon: UtensilsCrossed, title: "Vendas do Restaurante", desc: "Mesa, itens, cliente, data/hora e garçom" },
   { id: "estoque" as ReportView, icon: Package, title: "Estoque", desc: "Movimentação, inventário, giro de produtos" },
   { id: "financeiro" as ReportView, icon: BarChart3, title: "Financeiro", desc: "Fluxo de caixa, contas a pagar/receber" },
   { id: "despesas" as ReportView, icon: DollarSign, title: "Despesas por Categoria", desc: "Gráfico de pizza, evolução mensal, detalhamento" },
@@ -58,12 +61,14 @@ function Faturamento() {
   }, [sales, dateFrom, dateTo]);
 
   const monthlyData = useMemo(() => {
-    const map = new Map<string, { revenue: number; sales: number; key: string }>();
+    const map = new Map<string, { revenue: number; sales: number; key: string; serviceFee: number; couvert: number }>();
     filtered.forEach((s) => {
       const key = `${s.date.getFullYear()}-${String(s.date.getMonth() + 1).padStart(2, "0")}`;
-      const label = s.date.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
-      const existing = map.get(key) || { revenue: 0, sales: 0, key };
+      const existing = map.get(key) || { revenue: 0, sales: 0, key, serviceFee: 0, couvert: 0 };
+      const { serviceFee, couvert } = extractSaleExtras(s.methods);
       existing.revenue += s.total;
+      existing.serviceFee += serviceFee;
+      existing.couvert += couvert;
       existing.sales++;
       map.set(key, existing);
     });
@@ -85,6 +90,14 @@ function Faturamento() {
   }, [filtered]);
 
   const totalRevenue = filtered.reduce((s, sale) => s + sale.total, 0);
+  const totalServiceFee = useMemo(
+    () => filtered.reduce((s, sale) => s + extractSaleExtras(sale.methods).serviceFee, 0),
+    [filtered]
+  );
+  const totalCouvert = useMemo(
+    () => filtered.reduce((s, sale) => s + extractSaleExtras(sale.methods).couvert, 0),
+    [filtered]
+  );
   const totalSales = filtered.length;
   const ticketMedio = totalSales > 0 ? totalRevenue / totalSales : 0;
 
@@ -172,7 +185,7 @@ function Faturamento() {
           <p className="text-xs text-muted-foreground">Ticket Médio</p>
           <p className="text-lg font-semibold tabular-nums text-foreground">{formatBRL(ticketMedio)}</p>
         </div>
-        {comparison && (
+        {comparison ? (
           <div className="rounded-md border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground">Variação Mensal</p>
             <p className={`text-lg font-semibold tabular-nums ${comparison.pctChange >= 0 ? "text-success" : "text-destructive"}`}>
@@ -180,8 +193,17 @@ function Faturamento() {
             </p>
             <p className="text-[10px] text-muted-foreground">{comparison.prev.label} → {comparison.current.label}</p>
           </div>
-        )}
+        ) : null}
+        <div className="rounded-md border border-border bg-card p-4">
+          <p className="text-xs text-muted-foreground">Taxa de Serviço</p>
+          <p className="text-lg font-semibold tabular-nums text-foreground">{formatBRL(totalServiceFee)}</p>
+        </div>
+        <div className="rounded-md border border-border bg-card p-4">
+          <p className="text-xs text-muted-foreground">Couvert</p>
+          <p className="text-lg font-semibold tabular-nums text-foreground">{formatBRL(totalCouvert)}</p>
+        </div>
       </div>
+
 
       {/* Monthly bar chart */}
       {monthlyData.length > 0 && (
@@ -232,12 +254,15 @@ function Faturamento() {
         <div className="p-4 border-b border-border">
           <h4 className="text-sm font-semibold text-foreground">Detalhamento Mensal</h4>
         </div>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-secondary text-muted-foreground">
               <th className="text-left py-2.5 px-4 font-medium">Mês</th>
               <th className="text-right py-2.5 px-4 font-medium">Vendas</th>
               <th className="text-right py-2.5 px-4 font-medium">Faturamento</th>
+              <th className="text-right py-2.5 px-4 font-medium">Taxa serv.</th>
+              <th className="text-right py-2.5 px-4 font-medium">Couvert</th>
               <th className="text-right py-2.5 px-4 font-medium">Ticket Médio</th>
             </tr>
           </thead>
@@ -247,11 +272,14 @@ function Faturamento() {
                 <td className="py-2 px-4 text-foreground font-medium">{d.label}</td>
                 <td className="py-2 px-4 text-right tabular-nums text-foreground">{d.sales}</td>
                 <td className="py-2 px-4 text-right tabular-nums text-foreground">{formatBRL(d.revenue)}</td>
+                <td className="py-2 px-4 text-right tabular-nums text-muted-foreground">{d.serviceFee > 0 ? formatBRL(d.serviceFee) : "—"}</td>
+                <td className="py-2 px-4 text-right tabular-nums text-muted-foreground">{d.couvert > 0 ? formatBRL(d.couvert) : "—"}</td>
                 <td className="py-2 px-4 text-right tabular-nums text-muted-foreground">{formatBRL(d.ticket)}</td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -495,6 +523,7 @@ function VendasTerminal() {
         <div className="p-4 border-b border-border">
           <h4 className="text-sm font-semibold text-foreground">Vendas Detalhadas ({filtered.length})</h4>
         </div>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-secondary text-muted-foreground">
@@ -503,24 +532,32 @@ function VendasTerminal() {
               <th className="text-left py-2.5 px-4 font-medium">Operador</th>
               <th className="text-right py-2.5 px-4 font-medium">Itens</th>
               <th className="text-left py-2.5 px-4 font-medium">Pagamento</th>
+              <th className="text-right py-2.5 px-4 font-medium">Taxa serv.</th>
+              <th className="text-right py-2.5 px-4 font-medium">Couvert</th>
               <th className="text-right py-2.5 px-4 font-medium">Total</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.slice(0, 100).map((sale) => (
-              <tr key={sale.id} className="border-b border-border last:border-0">
-                <td className="py-2 px-4 text-xs text-muted-foreground whitespace-nowrap">
-                  {sale.date.toLocaleDateString("pt-BR")} {sale.date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                </td>
-                <td className="py-2 px-4 text-xs text-foreground">{sale.terminalName || "—"}</td>
-                <td className="py-2 px-4 text-xs text-foreground">{sale.operatorName || "—"}</td>
-                <td className="py-2 px-4 text-right text-xs tabular-nums text-foreground">{sale.items.reduce((s, i) => s + i.quantity, 0)}</td>
-                <td className="py-2 px-4 text-xs text-foreground">{sale.methods.map((m) => m.method).join(", ") || "—"}</td>
-                <td className="py-2 px-4 text-right text-xs tabular-nums text-foreground font-medium">{formatBRL(sale.total)}</td>
-              </tr>
-            ))}
+            {filtered.slice(0, 100).map((sale) => {
+              const { serviceFee, couvert, realMethods } = extractSaleExtras(sale.methods);
+              return (
+                <tr key={sale.id} className="border-b border-border last:border-0">
+                  <td className="py-2 px-4 text-xs text-muted-foreground whitespace-nowrap">
+                    {sale.date.toLocaleDateString("pt-BR")} {sale.date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                  </td>
+                  <td className="py-2 px-4 text-xs text-foreground">{sale.terminalName || "—"}</td>
+                  <td className="py-2 px-4 text-xs text-foreground">{sale.operatorName || "—"}</td>
+                  <td className="py-2 px-4 text-right text-xs tabular-nums text-foreground">{sale.items.reduce((s, i) => s + i.quantity, 0)}</td>
+                  <td className="py-2 px-4 text-xs text-foreground">{realMethods.map((m) => m.method).join(", ") || "—"}</td>
+                  <td className="py-2 px-4 text-right text-xs tabular-nums text-muted-foreground">{serviceFee > 0 ? formatBRL(serviceFee) : "—"}</td>
+                  <td className="py-2 px-4 text-right text-xs tabular-nums text-muted-foreground">{couvert > 0 ? formatBRL(couvert) : "—"}</td>
+                  <td className="py-2 px-4 text-right text-xs tabular-nums text-foreground font-medium">{formatBRL(sale.total + serviceFee + couvert)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -671,6 +708,7 @@ export default function Relatorios() {
         {view === "orcamentos" && <OrcamentosReport />}
         {view === "comissoes" && <ComissoesReport />}
         {view === "conversao" && <ConversaoReport />}
+        {view === "restaurante" && <RestauranteReport />}
       </div>
     </div>
   );

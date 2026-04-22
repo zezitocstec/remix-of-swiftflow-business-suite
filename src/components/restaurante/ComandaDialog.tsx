@@ -31,6 +31,7 @@ import { toast } from "@/hooks/use-toast";
 import { formatBRL } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { printPreConta } from "./PreContaPrint";
+import { printFinalReceipt } from "./FinalReceiptPrint";
 import { loadRestaurantSettings, DEFAULT_RESTAURANT_SETTINGS } from "@/components/config/RestauranteConfig";
 
 const sb = supabase as any;
@@ -375,6 +376,8 @@ export default function ComandaDialog({
   const fillRemaining = (method: string) => addPayment(method, remaining);
 
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const [secondCopyOpen, setSecondCopyOpen] = useState(false);
+  const [lastReceiptOpts, setLastReceiptOpts] = useState<Parameters<typeof printFinalReceipt>[0] | null>(null);
   const unassignedTotalQty = useMemo(() => {
     if (splitMode !== "custom" || splitCount <= 1) return 0;
     return items.reduce((sum, it) => sum + Math.max(0, it.quantity - assignedQty(it.id)), 0);
@@ -465,8 +468,35 @@ export default function ComandaDialog({
       if (e2) throw e2;
 
       onTableStatusChange(table.id, "livre");
+
+      // Build receipt data and print first copy automatically
+      const totalPaidFinal = adjusted.reduce((s, p) => s + p.amount, 0);
+      const change = Math.max(0, totalPaidFinal - total);
+      const receiptOpts = {
+        tableNumero: table.numero,
+        tableNome: table.nome ?? null,
+        items: items.map((i) => ({
+          id: i.id,
+          product_name: i.product_name,
+          price: i.price,
+          quantity: i.quantity,
+          observacao: i.observacao,
+        })),
+        productsSubtotal,
+        serviceFeePct: feePct,
+        serviceFeeAmount: feeAmount,
+        couvertPerPerson,
+        peopleForCouvert,
+        couvertTotal,
+        total,
+        payments: adjusted.map((p) => ({ method: p.method, amount: p.amount })),
+        change,
+        operatorName,
+      };
+      printFinalReceipt(receiptOpts);
+      setLastReceiptOpts(receiptOpts);
+      setSecondCopyOpen(true);
       toast({ title: "Comanda fechada", description: `Mesa ${table.numero} liberada` });
-      onOpenChange(false);
     } catch (err: any) {
       toast({ title: "Erro ao fechar", description: err?.message ?? "Falha", variant: "destructive" });
     } finally {
@@ -1122,6 +1152,35 @@ export default function ComandaDialog({
             <AlertDialogCancel>Voltar e revisar</AlertDialogCancel>
             <AlertDialogAction onClick={() => { setConfirmCloseOpen(false); doFinalize(); }}>
               Sim, dividir como compartilhado
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Imprimir 2ª via opcional */}
+      <AlertDialog open={secondCopyOpen} onOpenChange={setSecondCopyOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Printer className="h-5 w-5 text-primary" />
+              Imprimir 2ª via?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              A 1ª via do cupom já foi enviada para a impressora.
+              Deseja imprimir uma segunda via (cliente / arquivo)?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setSecondCopyOpen(false); setLastReceiptOpts(null); onOpenChange(false); }}>
+              Não, encerrar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (lastReceiptOpts) printFinalReceipt(lastReceiptOpts);
+              setSecondCopyOpen(false);
+              setLastReceiptOpts(null);
+              onOpenChange(false);
+            }}>
+              Imprimir 2ª via
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
