@@ -376,6 +376,8 @@ export default function ComandaDialog({
   const fillRemaining = (method: string) => addPayment(method, remaining);
 
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const [secondCopyOpen, setSecondCopyOpen] = useState(false);
+  const [lastReceiptOpts, setLastReceiptOpts] = useState<Parameters<typeof printFinalReceipt>[0] | null>(null);
   const unassignedTotalQty = useMemo(() => {
     if (splitMode !== "custom" || splitCount <= 1) return 0;
     return items.reduce((sum, it) => sum + Math.max(0, it.quantity - assignedQty(it.id)), 0);
