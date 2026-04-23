@@ -104,13 +104,35 @@ function buildSlip(opts: FinalReceiptOpts, copyIdx: number): string {
   `;
 }
 
-export function printFinalReceipt(opts: FinalReceiptOpts) {
-  const printWindow = window.open("", "_blank", "width=320,height=600");
-  if (!printWindow) return;
+export function printFinalReceipt(opts: FinalReceiptOpts): { copiesRequested: number; copiesPrinted: number; ok: boolean } {
+  // Clamp copies to the supported range [1, 3] and log every step for audit.
+  const requested = Number(opts.copies ?? 1);
+  const copies = Math.min(3, Math.max(1, Number.isFinite(requested) ? Math.trunc(requested) : 1));
+  if (requested !== copies) {
+    console.warn(
+      `[FinalReceipt] copies clamped: requested=${requested} → applied=${copies} (allowed 1-3) — Mesa ${opts.tableNumero}`
+    );
+  }
+  console.info(
+    `[FinalReceipt] Mesa ${opts.tableNumero} — preparing ${copies} via(s) ESC/POS (total=${opts.total.toFixed(2)})`
+  );
 
-  const copies = Math.max(1, opts.copies ?? 1);
+  const printWindow = window.open("", "_blank", "width=320,height=600");
+  if (!printWindow) {
+    console.error("[FinalReceipt] window.open blocked — popup permission denied. 0 vias impressas.");
+    return { copiesRequested: copies, copiesPrinted: 0, ok: false };
+  }
+
   let body = "";
-  for (let i = 0; i < copies; i++) body += buildSlip(opts, i);
+  let built = 0;
+  for (let i = 0; i < copies; i++) {
+    body += buildSlip(opts, i);
+    built++;
+    console.debug(`[FinalReceipt] via ${i + 1}/${copies} montada`);
+  }
+  if (built !== copies) {
+    console.error(`[FinalReceipt] integridade quebrada: esperado=${copies} montado=${built}`);
+  }
 
   const html = `
     <html>
@@ -129,5 +151,15 @@ export function printFinalReceipt(opts: FinalReceiptOpts) {
   printWindow.document.write(html);
   printWindow.document.close();
   printWindow.focus();
-  setTimeout(() => { printWindow.print(); printWindow.close(); }, 300);
+  setTimeout(() => {
+    try {
+      printWindow.print();
+      console.info(`[FinalReceipt] window.print() disparado — ${copies} via(s) enviadas à impressora.`);
+    } catch (e) {
+      console.error("[FinalReceipt] window.print() falhou:", e);
+    }
+    printWindow.close();
+  }, 300);
+
+  return { copiesRequested: copies, copiesPrinted: built, ok: built === copies };
 }
