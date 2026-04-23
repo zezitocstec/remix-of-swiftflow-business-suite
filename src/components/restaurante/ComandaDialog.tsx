@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { printPreConta } from "./PreContaPrint";
 import { printFinalReceipt } from "./FinalReceiptPrint";
 import { loadRestaurantSettings, DEFAULT_RESTAURANT_SETTINGS } from "@/components/config/RestauranteConfig";
+import { logPrintAttempt } from "@/lib/print-log";
 
 const sb = supabase as any;
 
