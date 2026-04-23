@@ -1225,7 +1225,10 @@ export default function ComandaDialog({
               Não, encerrar
             </AlertDialogCancel>
             <AlertDialogAction onClick={() => {
-              if (lastReceiptOpts) printFinalReceipt(lastReceiptOpts);
+              if (lastReceiptOpts) {
+                const r = printFinalReceipt({ ...lastReceiptOpts, copies: 1 });
+                console.info(`[Comanda] 2ª via manual — ok=${r.ok}`);
+              }
               setSecondCopyOpen(false);
               setLastReceiptOpts(null);
               onOpenChange(false);
