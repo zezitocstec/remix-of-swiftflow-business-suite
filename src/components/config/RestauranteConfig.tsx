@@ -75,6 +75,10 @@ export default function RestauranteConfig() {
     if (error) {
       toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
     } else {
+      // Notify open ComandaDialog instances to refresh without page reload.
+      window.dispatchEvent(
+        new CustomEvent("restaurant-settings-changed", { detail: { tenantId, settings } })
+      );
       toast({ title: "Configurações salvas", description: "Aplicado a novas comandas." });
     }
   };
