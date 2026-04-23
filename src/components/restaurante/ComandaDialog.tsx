@@ -265,6 +265,27 @@ export default function ComandaDialog({
     }
   }, [open, table, tenantId, loadOrCreateOrder]);
 
+  // Live-refresh when admin saves Configurações > Restaurante (no page reload needed).
+  useEffect(() => {
+    if (!open || !tenantId) return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { tenantId?: string; settings?: any } | undefined;
+      if (!detail || detail.tenantId !== tenantId) return;
+      const s = detail.settings;
+      if (!s) return;
+      const copies = Math.min(3, Math.max(1, Number(s.receipt_copies) || 1)) as 1 | 2 | 3;
+      setServiceFeeEnabled(!!s.service_fee_enabled);
+      setServiceFeePct(Number(s.service_fee_pct) || 0);
+      setCouvertEnabled(!!s.couvert_enabled);
+      setCouvertAmount(Number(s.couvert_amount) || 0);
+      setReceiptCopies(copies);
+      console.info(`[ComandaDialog] Configurações do restaurante atualizadas em tempo real — vias=${copies}`);
+      toast({ title: "Configurações atualizadas", description: `Vias do cupom: ${copies}` });
+    };
+    window.addEventListener("restaurant-settings-changed", handler);
+    return () => window.removeEventListener("restaurant-settings-changed", handler);
+  }, [open, tenantId]);
+
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return products.slice(0, 30);
@@ -497,7 +518,17 @@ export default function ComandaDialog({
         operatorName,
         copies: receiptCopies,
       };
-      printFinalReceipt(receiptOpts);
+      const printResult = printFinalReceipt(receiptOpts);
+      console.info(
+        `[Comanda] Mesa ${table.numero} fechada — vias solicitadas=${printResult.copiesRequested}, montadas=${printResult.copiesPrinted}, ok=${printResult.ok}`
+      );
+      if (!printResult.ok) {
+        toast({
+          title: "Atenção: impressão pode ter falhado",
+          description: `Solicitadas ${printResult.copiesRequested} vias, mas o navegador bloqueou a janela de impressão. Verifique pop-ups.`,
+          variant: "destructive",
+        });
+      }
       setLastReceiptOpts(receiptOpts);
       if (receiptCopies <= 1) {
         // Only ask about an extra copy when the default is just 1 via.
@@ -506,7 +537,7 @@ export default function ComandaDialog({
       } else {
         toast({
           title: "Comanda fechada",
-          description: `Mesa ${table.numero} liberada — ${receiptCopies} vias impressas.`,
+          description: `Mesa ${table.numero} liberada — ${printResult.copiesPrinted} via(s) impressas.`,
         });
         onOpenChange(false);
       }
