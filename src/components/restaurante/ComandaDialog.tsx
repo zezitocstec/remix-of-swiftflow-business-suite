@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { printPreConta } from "./PreContaPrint";
 import { printFinalReceipt } from "./FinalReceiptPrint";
 import { loadRestaurantSettings, DEFAULT_RESTAURANT_SETTINGS } from "@/components/config/RestauranteConfig";
+import { logPrintAttempt } from "@/lib/print-log";
 
 const sb = supabase as any;
 
@@ -522,6 +523,22 @@ export default function ComandaDialog({
       console.info(
         `[Comanda] Mesa ${table.numero} fechada — vias solicitadas=${printResult.copiesRequested}, montadas=${printResult.copiesPrinted}, ok=${printResult.ok}`
       );
+      // Audit log: persist requested vs printed copies for the print-log report.
+      logPrintAttempt({
+        tenant_id: tenantId!,
+        table_id: table.id,
+        table_numero: table.numero,
+        table_nome: table.nome ?? null,
+        order_id: order?.id ?? null,
+        sale_id: saleId ?? null,
+        operator_id: operatorId ?? null,
+        operator_name: operatorName ?? null,
+        copies_requested: printResult.copiesRequested,
+        copies_printed: printResult.copiesPrinted,
+        ok: printResult.ok,
+        total_amount: total,
+        error_message: printResult.ok ? null : "Impressão não confirmada (popup bloqueado ou falha de window.print)",
+      });
       if (!printResult.ok) {
         toast({
           title: "Atenção: impressão pode ter falhado",

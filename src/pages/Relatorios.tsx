@@ -2,11 +2,12 @@ import { useState, useMemo } from "react";
 import ComissoesReport from "@/components/reports/ComissoesReport";
 import ConversaoReport from "@/components/reports/ConversaoReport";
 import RestauranteReport from "@/components/reports/RestauranteReport";
+import PrintLogsReport from "@/components/reports/PrintLogsReport";
 import { TopBar } from "@/components/TopBar";
 import { useProducts } from "@/contexts/ProductContext";
 import { formatBRL } from "@/lib/mock-data";
 import { extractSaleExtras } from "@/lib/sale-extras";
-import { BarChart3, DollarSign, Package, TrendingUp, ArrowLeft, Monitor, CalendarIcon, Download, FileText, Users, UtensilsCrossed } from "lucide-react";
+import { BarChart3, DollarSign, Package, TrendingUp, ArrowLeft, Monitor, CalendarIcon, Download, FileText, Users, UtensilsCrossed, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -21,12 +22,13 @@ import FinanceiroReport from "@/components/reports/FinanceiroReport";
 import DespesasReport from "@/components/reports/DespesasReport";
 import OrcamentosReport from "@/components/reports/OrcamentosReport";
 
-type ReportView = "menu" | "faturamento" | "vendas-terminal" | "estoque" | "financeiro" | "curva-abc" | "despesas" | "orcamentos" | "comissoes" | "conversao" | "restaurante";
+type ReportView = "menu" | "faturamento" | "vendas-terminal" | "estoque" | "financeiro" | "curva-abc" | "despesas" | "orcamentos" | "comissoes" | "conversao" | "restaurante" | "print-logs";
 
 const reports = [
   { id: "faturamento" as ReportView, icon: DollarSign, title: "Faturamento", desc: "Receitas por período, comparativo mensal" },
   { id: "vendas-terminal" as ReportView, icon: Monitor, title: "Vendas por Terminal", desc: "Detalhamento por caixa, ticket médio, métodos de pagamento" },
   { id: "restaurante" as ReportView, icon: UtensilsCrossed, title: "Vendas do Restaurante", desc: "Mesa, itens, cliente, data/hora e garçom" },
+  { id: "print-logs" as ReportView, icon: Printer, title: "Logs de Impressão", desc: "Vias solicitadas vs. impressas, sucesso/falha por mesa" },
   { id: "estoque" as ReportView, icon: Package, title: "Estoque", desc: "Movimentação, inventário, giro de produtos" },
   { id: "financeiro" as ReportView, icon: BarChart3, title: "Financeiro", desc: "Fluxo de caixa, contas a pagar/receber" },
   { id: "despesas" as ReportView, icon: DollarSign, title: "Despesas por Categoria", desc: "Gráfico de pizza, evolução mensal, detalhamento" },
@@ -709,6 +711,7 @@ export default function Relatorios() {
         {view === "comissoes" && <ComissoesReport />}
         {view === "conversao" && <ConversaoReport />}
         {view === "restaurante" && <RestauranteReport />}
+        {view === "print-logs" && <PrintLogsReport />}
       </div>
     </div>
   );
