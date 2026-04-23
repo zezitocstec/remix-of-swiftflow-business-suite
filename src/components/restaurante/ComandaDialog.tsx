@@ -1132,14 +1132,20 @@ export default function ComandaDialog({
               <Button variant="outline" onClick={() => setView("comanda")} className="gap-1">
                 <ChevronLeft className="h-4 w-4" /> Voltar à comanda
               </Button>
-              <Button
-                onClick={finalize}
-                disabled={closing || totalPaid + 0.001 < total}
-                className="gap-1"
-              >
-                {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                Finalizar e liberar mesa
-              </Button>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Printer className="h-3.5 w-3.5" />
+                  Imprimirá <b className="text-foreground tabular-nums">{receiptCopies}</b> {receiptCopies === 1 ? "via" : "vias"}
+                </span>
+                <Button
+                  onClick={finalize}
+                  disabled={closing || totalPaid + 0.001 < total}
+                  className="gap-1"
+                >
+                  {closing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                  Finalizar e liberar mesa
+                </Button>
+              </div>
             </>
           )}
         </DialogFooter>
