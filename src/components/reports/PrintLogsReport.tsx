@@ -83,10 +83,11 @@ export default function PrintLogsReport() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         <KpiCard label="Fechamentos" value={String(summary.total)} />
         <KpiCard label="Vias solicitadas" value={String(summary.totalRequested)} />
         <KpiCard label="Vias impressas" value={String(summary.totalPrinted)} />
+        <KpiCard label="Reimpressões" value={String(summary.reprintCount)} />
         <KpiCard label="Sucesso" value={`${summary.okCount}`} tone="ok" />
         <KpiCard label="Falhas" value={`${summary.failCount}`} tone={summary.failCount > 0 ? "fail" : "muted"} />
       </div>
