@@ -532,6 +532,13 @@ export default function Restaurante() {
           setComandaTable((prev) => prev && prev.id === tableId ? { ...prev, status } : prev);
         }}
       />
+
+      <ReprintDialog
+        open={reprintOpen}
+        onOpenChange={setReprintOpen}
+        operatorId={selectedOperator?.id}
+        operatorName={selectedOperator?.nome}
+      />
     </div>
   );
 }
