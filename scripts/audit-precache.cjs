@@ -30,16 +30,42 @@ if (!fs.existsSync(SW_PATH)) fail(`sw.js não encontrado em ${SW_PATH}.`);
 
 const sw = fs.readFileSync(SW_PATH, "utf8");
 
-// O Workbox escreve algo como: precacheAndRoute([{ "revision": "...", "url": "..."}, ...])
-const match = sw.match(/precacheAndRoute\(\s*(\[[\s\S]*?\])\s*[,)]/);
-if (!match) fail("não foi possível localizar precacheAndRoute([...]) em sw.js.");
-
-let entries;
+// O sw.js gerado é JS minificado: precacheAndRoute([{url:"...",revision:"..."}, ...])
+// Capturamos a chamada via uma sandbox `vm` mínima que só implementa o que o SW invoca.
+const vm = require("vm");
+let entries = [];
+const sandbox = {
+  self: {
+    skipWaiting() {},
+    define(_deps, factory) {
+      const fakeWb = {
+        clientsClaim() {},
+        precacheAndRoute(list) { entries = list || []; },
+        cleanupOutdatedCaches() {},
+        createHandlerBoundToURL() { return () => {}; },
+        registerRoute() {},
+        NavigationRoute: function () {},
+        setCacheNameDetails() {},
+      };
+      try { factory(fakeWb); } catch { /* ignora handlers de runtime */ }
+    },
+  },
+  importScripts() {},
+  location: { href: "https://example.com/sw.js" },
+  URL,
+  Promise,
+  Error,
+};
+sandbox.self.define = sandbox.self.define;
+sandbox.define = sandbox.self.define;
 try {
-  // Substitui chaves não-quoted por JSON válido (Workbox já gera JSON-like).
-  entries = JSON.parse(match[1]);
+  vm.createContext(sandbox);
+  vm.runInContext(sw, sandbox, { timeout: 2000 });
 } catch (e) {
-  fail(`falha ao parsear manifesto: ${e.message}`);
+  fail(`não foi possível executar sw.js para extrair manifesto: ${e.message}`);
+}
+if (!Array.isArray(entries) || entries.length === 0) {
+  fail("manifesto de precache vazio — Workbox pode não ter incluído nenhum asset.");
 }
 
 const rows = entries
