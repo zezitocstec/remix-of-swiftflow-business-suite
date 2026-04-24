@@ -79,6 +79,7 @@ export default function Restaurante() {
   const [groupMode, setGroupMode] = useState(false);
   const [groupSelection, setGroupSelection] = useState<Set<string>>(new Set());
   const [comandaTable, setComandaTable] = useState<ComandaTable | null>(null);
+  const [reprintOpen, setReprintOpen] = useState(false);
 
   // ─── Auth state ───
   const [authed, setAuthed] = useState(false);
