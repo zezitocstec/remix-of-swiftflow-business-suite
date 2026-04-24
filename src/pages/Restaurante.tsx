@@ -16,7 +16,7 @@ import { useProducts, type Operator } from "@/contexts/ProductContext";
 import { toast } from "@/hooks/use-toast";
 import {
   Plus, Pencil, Trash2, Users, Loader2, Move, ArrowRightLeft, Link2, Link2Off, MapPin,
-  UtensilsCrossed, Lock, Fingerprint,
+  UtensilsCrossed, Lock, Fingerprint, Printer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -25,6 +25,7 @@ import {
 import OperatorAutocomplete from "@/components/pdv/OperatorAutocomplete";
 import { isPlatformAuthAvailable, authenticateBiometric } from "@/lib/webauthn";
 import ComandaDialog, { type ComandaTable } from "@/components/restaurante/ComandaDialog";
+import ReprintDialog from "@/components/restaurante/ReprintDialog";
 
 const sb = supabase as any;
 
