@@ -95,12 +95,32 @@ if (BY_RULE) {
   const cfg = fs.readFileSync(VITE_CONFIG, "utf8");
 
   function extractArray(name) {
-    // Captura: name: [ ... ] (com possíveis quebras de linha e comentários inline)
+    // Captura: name: [ ... ] (com possíveis quebras de linha e comentários inline).
     const re = new RegExp(`${name}\\s*:\\s*\\[([\\s\\S]*?)\\]`, "m");
     const m = cfg.match(re);
     if (!m) return [];
-    return m[1]
-      .split(/[,\n]/)
+    const body = m[1];
+    // Tokeniza respeitando aspas e chaves {…} (para não quebrar `**/*.{a,b,c}`).
+    const out = [];
+    let buf = "", quote = null, brace = 0;
+    for (const ch of body) {
+      if (quote) {
+        if (ch === quote) quote = null;
+        buf += ch;
+      } else if (ch === '"' || ch === "'" || ch === "`") {
+        quote = ch; buf += ch;
+      } else if (ch === "{") { brace++; buf += ch; }
+      else if (ch === "}") { brace--; buf += ch; }
+      else if (ch === "," && brace === 0) {
+        out.push(buf); buf = "";
+      } else if (ch === "\n" && brace === 0) {
+        out.push(buf); buf = "";
+      } else {
+        buf += ch;
+      }
+    }
+    out.push(buf);
+    return out
       .map((s) => s.replace(/\/\/.*$/, "").trim())
       .filter(Boolean)
       .map((s) => s.replace(/^["'`]|["'`]$/g, ""))
