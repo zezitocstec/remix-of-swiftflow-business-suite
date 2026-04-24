@@ -17,6 +17,8 @@ export interface PrintLogEntry {
   total_amount: number;
   error_message?: string | null;
   printed_at?: string;
+  /** When true, this log entry came from a manual reprint (not the initial close). */
+  is_reprint?: boolean;
 }
 
 const LS_KEY = "restaurant_print_logs_offline_v1";
