@@ -52,7 +52,14 @@ export function readLocalPrintLogs(): PrintLogEntry[] {
 export async function logPrintAttempt(entry: PrintLogEntry): Promise<void> {
   const payload = { ...entry, printed_at: entry.printed_at ?? new Date().toISOString() };
   try {
-    const { error } = await sb.from("restaurant_print_logs").insert(payload);
+    let { error } = await sb.from("restaurant_print_logs").insert(payload);
+    // If the optional `is_reprint` column doesn't exist yet, retry without it so logs still persist.
+    if (error && /is_reprint/i.test(error.message || "")) {
+      console.warn("[print-log] is_reprint column missing — retrying insert without it.");
+      const { is_reprint: _ignore, ...payloadNoFlag } = payload;
+      const retry = await sb.from("restaurant_print_logs").insert(payloadNoFlag);
+      error = retry.error;
+    }
     if (error) {
       console.warn("[print-log] DB insert failed, falling back to localStorage:", error.message);
       pushLocal(payload);
