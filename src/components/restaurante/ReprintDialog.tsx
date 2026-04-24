@@ -157,7 +157,8 @@ export default function ReprintDialog({ open, onOpenChange, operatorId, operator
       }));
 
       // The closing flow stores fee/couvert as separate sale_payments rows whose method
-      // starts with "Taxa de serviço" or "Couvert". Split them back out for the slip.
+      // starts with "Taxa de serviço" or "Couvert". Identify them to compute breakdown,
+      // but include only the real payments in the "PAGAMENTO" section of the slip.
       const feeRow = allPayments.find((p) => /^Taxa de serviço/i.test(p.method));
       const couvertRow = allPayments.find((p) => /^Couvert/i.test(p.method));
       const realPayments = allPayments.filter((p) => p !== feeRow && p !== couvertRow);
@@ -168,7 +169,7 @@ export default function ReprintDialog({ open, onOpenChange, operatorId, operator
         ? Math.round((serviceFeeAmount / productsSubtotal) * 1000) / 10
         : 0;
       const couvertTotal = couvertRow?.amount ?? 0;
-      // Try to recover "N× R$X" from method label.
+      // Try to recover "N× R$X" from method label (e.g. "Couvert (2× R$ 10,00)").
       let peopleForCouvert = 1;
       let couvertPerPerson = couvertTotal;
       const m = couvertRow?.method.match(/(\d+)×/);
@@ -177,8 +178,15 @@ export default function ReprintDialog({ open, onOpenChange, operatorId, operator
         couvertPerPerson = couvertTotal / peopleForCouvert;
       }
       const total = productsSubtotal + serviceFeeAmount + couvertTotal;
-      const totalPaid = realPayments.reduce((s, p) => s + p.amount, 0);
-      const change = Math.max(0, totalPaid - (total - serviceFeeAmount - couvertTotal) - 0); // payments already net of extras
+      // realPayments was scaled to productsSubtotal at closing; reprint shows that
+      // breakdown plus fee/couvert as separate labeled lines for consistency.
+      const slipPayments = [
+        ...realPayments,
+        ...(feeRow ? [{ method: feeRow.method, amount: feeRow.amount }] : []),
+        ...(couvertRow ? [{ method: couvertRow.method, amount: couvertRow.amount }] : []),
+      ];
+      const slipPaid = slipPayments.reduce((s, p) => s + p.amount, 0);
+      const change = Math.max(0, slipPaid - total);
 
       const receiptOpts = {
         tableNumero: o.table_numero,
@@ -197,7 +205,7 @@ export default function ReprintDialog({ open, onOpenChange, operatorId, operator
         peopleForCouvert,
         couvertTotal,
         total,
-        payments: realPayments.length > 0 ? realPayments : [{ method: "—", amount: total }],
+        payments: slipPayments.length > 0 ? slipPayments : [{ method: "—", amount: total }],
         change,
         operatorName,
         copies,
