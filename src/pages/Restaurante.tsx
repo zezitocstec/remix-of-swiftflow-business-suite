@@ -405,6 +405,14 @@ export default function Restaurante() {
             >
               <Link2 className="h-4 w-4" /> {groupMode ? "Cancelar" : "Juntar mesas"}
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setReprintOpen(true)}
+              title="Reimprimir cupom de uma mesa fechada"
+            >
+              <Printer className="h-4 w-4" /> Reimprimir cupom
+            </Button>
             <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }} disabled={!activeAreaId}>
               <Plus className="h-4 w-4" /> Nova mesa
             </Button>
