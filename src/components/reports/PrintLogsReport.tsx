@@ -53,8 +53,9 @@ export default function PrintLogsReport() {
     const failCount = total - okCount;
     const totalRequested = filtered.reduce((s, l) => s + (l.copies_requested || 0), 0);
     const totalPrinted = filtered.reduce((s, l) => s + (l.copies_printed || 0), 0);
+    const reprintCount = filtered.filter((l) => l.is_reprint).length;
     const successRate = total > 0 ? (okCount / total) * 100 : 0;
-    return { total, okCount, failCount, totalRequested, totalPrinted, successRate };
+    return { total, okCount, failCount, totalRequested, totalPrinted, reprintCount, successRate };
   }, [filtered]);
 
   if (loading) {
