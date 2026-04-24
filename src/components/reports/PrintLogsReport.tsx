@@ -161,6 +161,11 @@ export default function PrintLogsReport() {
                       <td className="py-2 px-3 text-foreground">
                         Mesa {l.table_numero}
                         {l.table_nome && <span className="text-muted-foreground"> — {l.table_nome}</span>}
+                        {l.is_reprint && (
+                          <Badge variant="outline" className="ml-2 text-[10px] border-amber-500/40 text-amber-600 dark:text-amber-400">
+                            Reimpressão
+                          </Badge>
+                        )}
                       </td>
                       <td className="py-2 px-3 text-foreground">{l.operator_name ?? "—"}</td>
                       <td className="py-2 px-3 text-right tabular-nums text-foreground">{l.copies_requested}</td>
