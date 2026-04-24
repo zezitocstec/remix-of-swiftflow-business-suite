@@ -16,7 +16,7 @@ import { useProducts, type Operator } from "@/contexts/ProductContext";
 import { toast } from "@/hooks/use-toast";
 import {
   Plus, Pencil, Trash2, Users, Loader2, Move, ArrowRightLeft, Link2, Link2Off, MapPin,
-  UtensilsCrossed, Lock, Fingerprint,
+  UtensilsCrossed, Lock, Fingerprint, Printer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -25,6 +25,7 @@ import {
 import OperatorAutocomplete from "@/components/pdv/OperatorAutocomplete";
 import { isPlatformAuthAvailable, authenticateBiometric } from "@/lib/webauthn";
 import ComandaDialog, { type ComandaTable } from "@/components/restaurante/ComandaDialog";
+import ReprintDialog from "@/components/restaurante/ReprintDialog";
 
 const sb = supabase as any;
 
@@ -78,6 +79,7 @@ export default function Restaurante() {
   const [groupMode, setGroupMode] = useState(false);
   const [groupSelection, setGroupSelection] = useState<Set<string>>(new Set());
   const [comandaTable, setComandaTable] = useState<ComandaTable | null>(null);
+  const [reprintOpen, setReprintOpen] = useState(false);
 
   // ─── Auth state ───
   const [authed, setAuthed] = useState(false);
@@ -403,6 +405,14 @@ export default function Restaurante() {
             >
               <Link2 className="h-4 w-4" /> {groupMode ? "Cancelar" : "Juntar mesas"}
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setReprintOpen(true)}
+              title="Reimprimir cupom de uma mesa fechada"
+            >
+              <Printer className="h-4 w-4" /> Reimprimir cupom
+            </Button>
             <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }} disabled={!activeAreaId}>
               <Plus className="h-4 w-4" /> Nova mesa
             </Button>
@@ -521,6 +531,13 @@ export default function Restaurante() {
           setTables((prev) => prev.map((t) => t.id === tableId ? { ...t, status } : t));
           setComandaTable((prev) => prev && prev.id === tableId ? { ...prev, status } : prev);
         }}
+      />
+
+      <ReprintDialog
+        open={reprintOpen}
+        onOpenChange={setReprintOpen}
+        operatorId={selectedOperator?.id}
+        operatorName={selectedOperator?.nome}
       />
     </div>
   );

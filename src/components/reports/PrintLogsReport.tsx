@@ -53,8 +53,9 @@ export default function PrintLogsReport() {
     const failCount = total - okCount;
     const totalRequested = filtered.reduce((s, l) => s + (l.copies_requested || 0), 0);
     const totalPrinted = filtered.reduce((s, l) => s + (l.copies_printed || 0), 0);
+    const reprintCount = filtered.filter((l) => l.is_reprint).length;
     const successRate = total > 0 ? (okCount / total) * 100 : 0;
-    return { total, okCount, failCount, totalRequested, totalPrinted, successRate };
+    return { total, okCount, failCount, totalRequested, totalPrinted, reprintCount, successRate };
   }, [filtered]);
 
   if (loading) {
@@ -82,10 +83,11 @@ export default function PrintLogsReport() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         <KpiCard label="Fechamentos" value={String(summary.total)} />
         <KpiCard label="Vias solicitadas" value={String(summary.totalRequested)} />
         <KpiCard label="Vias impressas" value={String(summary.totalPrinted)} />
+        <KpiCard label="Reimpressões" value={String(summary.reprintCount)} />
         <KpiCard label="Sucesso" value={`${summary.okCount}`} tone="ok" />
         <KpiCard label="Falhas" value={`${summary.failCount}`} tone={summary.failCount > 0 ? "fail" : "muted"} />
       </div>
@@ -161,6 +163,11 @@ export default function PrintLogsReport() {
                       <td className="py-2 px-3 text-foreground">
                         Mesa {l.table_numero}
                         {l.table_nome && <span className="text-muted-foreground"> — {l.table_nome}</span>}
+                        {l.is_reprint && (
+                          <Badge variant="outline" className="ml-2 text-[10px] border-amber-500/40 text-amber-600 dark:text-amber-400">
+                            Reimpressão
+                          </Badge>
+                        )}
                       </td>
                       <td className="py-2 px-3 text-foreground">{l.operator_name ?? "—"}</td>
                       <td className="py-2 px-3 text-right tabular-nums text-foreground">{l.copies_requested}</td>
