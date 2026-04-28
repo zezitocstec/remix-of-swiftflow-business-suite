@@ -201,9 +201,22 @@ export default function Restaurante() {
     setTableInfo(next);
   };
 
-  const tablesInArea = useMemo(
+  useEffect(() => { if (companyId) load(); }, [companyId]);
+
+  // Refresh open-order info every 30s to keep partial totals + waiter fresh
+  useEffect(() => {
+    if (!companyId) return;
+    const id = setInterval(() => loadTableInfo(), 30000);
+    return () => clearInterval(id);
+  }, [companyId]);
+
+  const filteredTables = useMemo(
     () => tables.filter((t) => (t.area_id || null) === (activeAreaId || null)),
     [tables, activeAreaId]
+  );
+  const tablesInArea = useMemo(
+    () => statusFilter === "all" ? filteredTables : filteredTables.filter((t) => t.status === statusFilter),
+    [filteredTables, statusFilter]
   );
 
   const counts = useMemo(() => {
