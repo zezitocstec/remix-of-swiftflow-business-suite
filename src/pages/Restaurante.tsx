@@ -467,13 +467,36 @@ export default function Restaurante() {
             cta={<Button onClick={() => { setEditing(null); setDialogOpen(true); }}><Plus className="h-4 w-4" /> Cadastrar mesa</Button>}
           />
         ) : (
-          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-            <div className="relative w-full min-h-[500px] rounded-md border border-dashed border-border bg-muted/20 overflow-hidden">
+          editLayout ? (
+            <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+              <div className="relative w-full min-h-[500px] rounded-md border border-dashed border-border bg-muted/20 overflow-hidden">
+                {tablesInArea.map((t) => (
+                  <DraggableTable
+                    key={t.id}
+                    table={t}
+                    draggable
+                    layoutMode="absolute"
+                    groupColor={t.group_id ? groupColorMap.get(t.group_id) : undefined}
+                    selected={groupSelection.has(t.id)}
+                    onClick={() => {}}
+                    onEdit={() => { setEditing(t); setDialogOpen(true); }}
+                    onDelete={() => handleDelete(t)}
+                    onStatusChange={(s) => handleStatusChange(t, s)}
+                    onTransfer={() => setTransferFrom(t)}
+                    onUngroup={t.group_id ? () => ungroup(t.group_id!) : undefined}
+                    isTransferSource={transferFrom?.id === t.id}
+                  />
+                ))}
+              </div>
+            </DndContext>
+          ) : (
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 rounded-md border border-dashed border-border bg-muted/20 p-3">
               {tablesInArea.map((t) => (
                 <DraggableTable
                   key={t.id}
                   table={t}
-                  draggable={editLayout}
+                  draggable={false}
+                  layoutMode="grid"
                   groupColor={t.group_id ? groupColorMap.get(t.group_id) : undefined}
                   selected={groupSelection.has(t.id)}
                   onClick={() => {
@@ -490,7 +513,7 @@ export default function Restaurante() {
                 />
               ))}
             </div>
-          </DndContext>
+          )
         )}
       </div>
 
