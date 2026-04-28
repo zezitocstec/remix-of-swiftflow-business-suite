@@ -483,15 +483,33 @@ export default function Restaurante() {
           </div>
         )}
 
-        {/* Resumo */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+        {/* Resumo + filtro por status (chips clicáveis) */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
+          <button
+            onClick={() => setStatusFilter("all")}
+            className={cn(
+              "rounded-md border p-3 text-left transition-colors",
+              statusFilter === "all" ? "border-primary ring-2 ring-primary/30 bg-primary/5" : "border-border hover:bg-muted/40"
+            )}
+          >
+            <p className="text-xs text-muted-foreground">Todas</p>
+            <p className="text-2xl font-semibold tabular-nums text-foreground">{filteredTables.length}</p>
+          </button>
           {STATUS_ORDER.map((s) => {
             const cfg = STATUS_CONFIG[s];
+            const active = statusFilter === s;
             return (
-              <div key={s} className="rounded-md border border-border p-3">
+              <button
+                key={s}
+                onClick={() => setStatusFilter(active ? "all" : s)}
+                className={cn(
+                  "rounded-md border p-3 text-left transition-colors",
+                  active ? `${cfg.border} ring-2 ${cfg.ring} ${cfg.bg}` : "border-border hover:bg-muted/40"
+                )}
+              >
                 <p className="text-xs text-muted-foreground">{cfg.label}</p>
                 <p className={cn("text-2xl font-semibold tabular-nums", cfg.text)}>{counts[s]}</p>
-              </div>
+              </button>
             );
           })}
         </div>
