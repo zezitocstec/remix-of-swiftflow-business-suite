@@ -221,9 +221,9 @@ export default function Restaurante() {
 
   const counts = useMemo(() => {
     const c: Record<TableStatus, number> = { livre: 0, ocupada: 0, reservada: 0, aguardando_pagamento: 0 };
-    tablesInArea.forEach((t) => { c[t.status]++; });
+    filteredTables.forEach((t) => { c[t.status]++; });
     return c;
-  }, [tablesInArea]);
+  }, [filteredTables]);
 
   // Group color map
   const groupColorMap = useMemo(() => {
