@@ -16,8 +16,9 @@ import { useProducts, type Operator } from "@/contexts/ProductContext";
 import { toast } from "@/hooks/use-toast";
 import {
   Plus, Pencil, Trash2, Users, Loader2, Move, ArrowRightLeft, Link2, Link2Off, MapPin,
-  UtensilsCrossed, Lock, Fingerprint, Printer,
+  UtensilsCrossed, Lock, Fingerprint, Printer, Clock, DollarSign, User as UserIcon,
 } from "lucide-react";
+import { formatBRL } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import {
   DndContext, useDraggable, type DragEndEvent, PointerSensor, useSensor, useSensors,
