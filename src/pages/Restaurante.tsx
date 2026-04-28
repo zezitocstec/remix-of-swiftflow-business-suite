@@ -575,6 +575,8 @@ export default function Restaurante() {
                   onTransfer={() => setTransferFrom(t)}
                   onUngroup={t.group_id ? () => ungroup(t.group_id!) : undefined}
                   isTransferSource={transferFrom?.id === t.id}
+                  info={tableInfo[t.id]}
+                  operators={operators}
                 />
               ))}
             </div>
