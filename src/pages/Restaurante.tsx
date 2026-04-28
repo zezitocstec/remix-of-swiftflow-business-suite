@@ -577,10 +577,11 @@ function EmptyState({ text, cta }: { text: string; cta?: React.ReactNode }) {
 
 // ---------- Draggable Table Card ----------
 function DraggableTable({
-  table, draggable, groupColor, selected, onClick, onEdit, onDelete, onStatusChange, onTransfer, onUngroup, isTransferSource,
+  table, draggable, layoutMode = "absolute", groupColor, selected, onClick, onEdit, onDelete, onStatusChange, onTransfer, onUngroup, isTransferSource,
 }: {
   table: RestaurantTable;
   draggable: boolean;
+  layoutMode?: "absolute" | "grid";
   groupColor?: string;
   selected: boolean;
   onClick: () => void;
@@ -596,7 +597,7 @@ function DraggableTable({
     id: table.id, disabled: !draggable,
   });
 
-  const style: React.CSSProperties = {
+  const style: React.CSSProperties = layoutMode === "absolute" ? {
     position: "absolute",
     left: table.pos_x,
     top: table.pos_y,
@@ -604,6 +605,8 @@ function DraggableTable({
     width: 160,
     zIndex: isDragging ? 50 : 1,
     touchAction: draggable ? "none" : undefined,
+  } : {
+    width: "100%",
   };
 
   return (
