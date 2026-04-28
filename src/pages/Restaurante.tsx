@@ -731,6 +731,28 @@ function DraggableTable({
         {table.group_id && <Badge variant="outline" className="text-[10px] h-5">Grupo</Badge>}
       </div>
 
+      {info && (table.status === "ocupada" || table.status === "aguardando_pagamento") && (
+        <div className="rounded bg-background/60 border border-border/60 p-1.5 space-y-0.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <DollarSign className="h-3 w-3" />Parcial
+            </span>
+            <span className="font-semibold tabular-nums text-foreground">{formatBRL(info.total)}</span>
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />{formatDuration(info.openedAt)}
+            </span>
+            {info.operatorId && operators && (
+              <span className="flex items-center gap-1 truncate max-w-[80px]">
+                <UserIcon className="h-3 w-3" />
+                {operators.find((o) => o.id === info.operatorId)?.nome?.split(" ")[0] || "—"}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {!draggable && (
         <div className="flex flex-col gap-1.5">
           <Select value={table.status} onValueChange={(v) => onStatusChange(v as TableStatus)}>
