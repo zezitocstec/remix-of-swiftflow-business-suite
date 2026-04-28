@@ -620,6 +620,7 @@ export default function Restaurante() {
         onTableStatusChange={(tableId, status) => {
           setTables((prev) => prev.map((t) => t.id === tableId ? { ...t, status } : t));
           setComandaTable((prev) => prev && prev.id === tableId ? { ...prev, status } : prev);
+          loadTableInfo();
         }}
       />
 
