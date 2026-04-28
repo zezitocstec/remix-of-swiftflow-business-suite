@@ -175,9 +175,31 @@ export default function Restaurante() {
     setTables((tablesRes.data || []) as RestaurantTable[]);
     if (!activeAreaId && loadedAreas.length > 0) setActiveAreaId(loadedAreas[0].id);
     setLoading(false);
+    loadTableInfo();
   };
 
-  useEffect(() => { if (companyId) load(); }, [companyId]);
+  const loadTableInfo = async () => {
+    const { data: orders } = await sb
+      .from("restaurant_orders")
+      .select("id, table_id, created_at, operator_id")
+      .in("status", ["aberta", "aguardando_pagamento"]);
+    const list = (orders || []) as Array<{ id: string; table_id: string; created_at: string; operator_id: string | null }>;
+    if (list.length === 0) { setTableInfo({}); return; }
+    const orderIds = list.map((o) => o.id);
+    const { data: itemsData } = await sb
+      .from("restaurant_order_items")
+      .select("order_id, price, quantity")
+      .in("order_id", orderIds);
+    const totals = new Map<string, number>();
+    (itemsData || []).forEach((it: any) => {
+      totals.set(it.order_id, (totals.get(it.order_id) || 0) + Number(it.price || 0) * Number(it.quantity || 0));
+    });
+    const next: Record<string, { total: number; openedAt: string; operatorId: string | null }> = {};
+    list.forEach((o) => {
+      next[o.table_id] = { total: totals.get(o.id) || 0, openedAt: o.created_at, operatorId: o.operator_id };
+    });
+    setTableInfo(next);
+  };
 
   const tablesInArea = useMemo(
     () => tables.filter((t) => (t.area_id || null) === (activeAreaId || null)),
