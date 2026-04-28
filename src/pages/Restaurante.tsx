@@ -16,8 +16,9 @@ import { useProducts, type Operator } from "@/contexts/ProductContext";
 import { toast } from "@/hooks/use-toast";
 import {
   Plus, Pencil, Trash2, Users, Loader2, Move, ArrowRightLeft, Link2, Link2Off, MapPin,
-  UtensilsCrossed, Lock, Fingerprint, Printer,
+  UtensilsCrossed, Lock, Fingerprint, Printer, Clock, DollarSign, User as UserIcon,
 } from "lucide-react";
+import { formatBRL } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import {
   DndContext, useDraggable, type DragEndEvent, PointerSensor, useSensor, useSensors,
@@ -80,6 +81,15 @@ export default function Restaurante() {
   const [groupSelection, setGroupSelection] = useState<Set<string>>(new Set());
   const [comandaTable, setComandaTable] = useState<ComandaTable | null>(null);
   const [reprintOpen, setReprintOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<TableStatus | "all">("all");
+  const [tableInfo, setTableInfo] = useState<Record<string, { total: number; openedAt: string; operatorId: string | null }>>({});
+  const [, setNowTick] = useState(0);
+
+  // Re-render every 30s so "tempo de ocupação" stays fresh
+  useEffect(() => {
+    const id = setInterval(() => setNowTick((n) => n + 1), 30000);
+    return () => clearInterval(id);
+  }, []);
 
   // ─── Auth state ───
   const [authed, setAuthed] = useState(false);
@@ -165,20 +175,55 @@ export default function Restaurante() {
     setTables((tablesRes.data || []) as RestaurantTable[]);
     if (!activeAreaId && loadedAreas.length > 0) setActiveAreaId(loadedAreas[0].id);
     setLoading(false);
+    loadTableInfo();
+  };
+
+  const loadTableInfo = async () => {
+    const { data: orders } = await sb
+      .from("restaurant_orders")
+      .select("id, table_id, created_at, operator_id")
+      .in("status", ["aberta", "aguardando_pagamento"]);
+    const list = (orders || []) as Array<{ id: string; table_id: string; created_at: string; operator_id: string | null }>;
+    if (list.length === 0) { setTableInfo({}); return; }
+    const orderIds = list.map((o) => o.id);
+    const { data: itemsData } = await sb
+      .from("restaurant_order_items")
+      .select("order_id, price, quantity")
+      .in("order_id", orderIds);
+    const totals = new Map<string, number>();
+    (itemsData || []).forEach((it: any) => {
+      totals.set(it.order_id, (totals.get(it.order_id) || 0) + Number(it.price || 0) * Number(it.quantity || 0));
+    });
+    const next: Record<string, { total: number; openedAt: string; operatorId: string | null }> = {};
+    list.forEach((o) => {
+      next[o.table_id] = { total: totals.get(o.id) || 0, openedAt: o.created_at, operatorId: o.operator_id };
+    });
+    setTableInfo(next);
   };
 
   useEffect(() => { if (companyId) load(); }, [companyId]);
 
-  const tablesInArea = useMemo(
+  // Refresh open-order info every 30s to keep partial totals + waiter fresh
+  useEffect(() => {
+    if (!companyId) return;
+    const id = setInterval(() => loadTableInfo(), 30000);
+    return () => clearInterval(id);
+  }, [companyId]);
+
+  const filteredTables = useMemo(
     () => tables.filter((t) => (t.area_id || null) === (activeAreaId || null)),
     [tables, activeAreaId]
+  );
+  const tablesInArea = useMemo(
+    () => statusFilter === "all" ? filteredTables : filteredTables.filter((t) => t.status === statusFilter),
+    [filteredTables, statusFilter]
   );
 
   const counts = useMemo(() => {
     const c: Record<TableStatus, number> = { livre: 0, ocupada: 0, reservada: 0, aguardando_pagamento: 0 };
-    tablesInArea.forEach((t) => { c[t.status]++; });
+    filteredTables.forEach((t) => { c[t.status]++; });
     return c;
-  }, [tablesInArea]);
+  }, [filteredTables]);
 
   // Group color map
   const groupColorMap = useMemo(() => {
@@ -438,15 +483,33 @@ export default function Restaurante() {
           </div>
         )}
 
-        {/* Resumo */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+        {/* Resumo + filtro por status (chips clicáveis) */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
+          <button
+            onClick={() => setStatusFilter("all")}
+            className={cn(
+              "rounded-md border p-3 text-left transition-colors",
+              statusFilter === "all" ? "border-primary ring-2 ring-primary/30 bg-primary/5" : "border-border hover:bg-muted/40"
+            )}
+          >
+            <p className="text-xs text-muted-foreground">Todas</p>
+            <p className="text-2xl font-semibold tabular-nums text-foreground">{filteredTables.length}</p>
+          </button>
           {STATUS_ORDER.map((s) => {
             const cfg = STATUS_CONFIG[s];
+            const active = statusFilter === s;
             return (
-              <div key={s} className="rounded-md border border-border p-3">
+              <button
+                key={s}
+                onClick={() => setStatusFilter(active ? "all" : s)}
+                className={cn(
+                  "rounded-md border p-3 text-left transition-colors",
+                  active ? `${cfg.border} ring-2 ${cfg.ring} ${cfg.bg}` : "border-border hover:bg-muted/40"
+                )}
+              >
                 <p className="text-xs text-muted-foreground">{cfg.label}</p>
                 <p className={cn("text-2xl font-semibold tabular-nums", cfg.text)}>{counts[s]}</p>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -485,6 +548,8 @@ export default function Restaurante() {
                     onTransfer={() => setTransferFrom(t)}
                     onUngroup={t.group_id ? () => ungroup(t.group_id!) : undefined}
                     isTransferSource={transferFrom?.id === t.id}
+                    info={tableInfo[t.id]}
+                    operators={operators}
                   />
                 ))}
               </div>
@@ -510,6 +575,8 @@ export default function Restaurante() {
                   onTransfer={() => setTransferFrom(t)}
                   onUngroup={t.group_id ? () => ungroup(t.group_id!) : undefined}
                   isTransferSource={transferFrom?.id === t.id}
+                  info={tableInfo[t.id]}
+                  operators={operators}
                 />
               ))}
             </div>
@@ -553,6 +620,7 @@ export default function Restaurante() {
         onTableStatusChange={(tableId, status) => {
           setTables((prev) => prev.map((t) => t.id === tableId ? { ...t, status } : t));
           setComandaTable((prev) => prev && prev.id === tableId ? { ...prev, status } : prev);
+          loadTableInfo();
         }}
       />
 
@@ -575,9 +643,19 @@ function EmptyState({ text, cta }: { text: string; cta?: React.ReactNode }) {
   );
 }
 
+// ---------- Helpers ----------
+function formatDuration(fromIso: string): string {
+  const ms = Date.now() - new Date(fromIso).getTime();
+  const m = Math.max(0, Math.floor(ms / 60000));
+  if (m < 60) return `${m}min`;
+  const h = Math.floor(m / 60);
+  const rm = m % 60;
+  return rm > 0 ? `${h}h${String(rm).padStart(2, "0")}` : `${h}h`;
+}
+
 // ---------- Draggable Table Card ----------
 function DraggableTable({
-  table, draggable, layoutMode = "absolute", groupColor, selected, onClick, onEdit, onDelete, onStatusChange, onTransfer, onUngroup, isTransferSource,
+  table, draggable, layoutMode = "absolute", groupColor, selected, onClick, onEdit, onDelete, onStatusChange, onTransfer, onUngroup, isTransferSource, info, operators,
 }: {
   table: RestaurantTable;
   draggable: boolean;
@@ -591,6 +669,8 @@ function DraggableTable({
   onTransfer: () => void;
   onUngroup?: () => void;
   isTransferSource: boolean;
+  info?: { total: number; openedAt: string; operatorId: string | null };
+  operators?: Operator[];
 }) {
   const cfg = STATUS_CONFIG[table.status];
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -651,6 +731,28 @@ function DraggableTable({
         <span className="flex items-center gap-1"><Users className="h-3 w-3" />{table.capacidade}</span>
         {table.group_id && <Badge variant="outline" className="text-[10px] h-5">Grupo</Badge>}
       </div>
+
+      {info && (table.status === "ocupada" || table.status === "aguardando_pagamento") && (
+        <div className="rounded bg-background/60 border border-border/60 p-1.5 space-y-0.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <DollarSign className="h-3 w-3" />Parcial
+            </span>
+            <span className="font-semibold tabular-nums text-foreground">{formatBRL(info.total)}</span>
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />{formatDuration(info.openedAt)}
+            </span>
+            {info.operatorId && operators && (
+              <span className="flex items-center gap-1 truncate max-w-[80px]">
+                <UserIcon className="h-3 w-3" />
+                {operators.find((o) => o.id === info.operatorId)?.nome?.split(" ")[0] || "—"}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {!draggable && (
         <div className="flex flex-col gap-1.5">
