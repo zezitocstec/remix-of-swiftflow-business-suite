@@ -642,9 +642,19 @@ function EmptyState({ text, cta }: { text: string; cta?: React.ReactNode }) {
   );
 }
 
+// ---------- Helpers ----------
+function formatDuration(fromIso: string): string {
+  const ms = Date.now() - new Date(fromIso).getTime();
+  const m = Math.max(0, Math.floor(ms / 60000));
+  if (m < 60) return `${m}min`;
+  const h = Math.floor(m / 60);
+  const rm = m % 60;
+  return rm > 0 ? `${h}h${String(rm).padStart(2, "0")}` : `${h}h`;
+}
+
 // ---------- Draggable Table Card ----------
 function DraggableTable({
-  table, draggable, layoutMode = "absolute", groupColor, selected, onClick, onEdit, onDelete, onStatusChange, onTransfer, onUngroup, isTransferSource,
+  table, draggable, layoutMode = "absolute", groupColor, selected, onClick, onEdit, onDelete, onStatusChange, onTransfer, onUngroup, isTransferSource, info, operators,
 }: {
   table: RestaurantTable;
   draggable: boolean;
@@ -658,6 +668,8 @@ function DraggableTable({
   onTransfer: () => void;
   onUngroup?: () => void;
   isTransferSource: boolean;
+  info?: { total: number; openedAt: string; operatorId: string | null };
+  operators?: Operator[];
 }) {
   const cfg = STATUS_CONFIG[table.status];
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
