@@ -81,6 +81,15 @@ export default function Restaurante() {
   const [groupSelection, setGroupSelection] = useState<Set<string>>(new Set());
   const [comandaTable, setComandaTable] = useState<ComandaTable | null>(null);
   const [reprintOpen, setReprintOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<TableStatus | "all">("all");
+  const [tableInfo, setTableInfo] = useState<Record<string, { total: number; openedAt: string; operatorId: string | null }>>({});
+  const [, setNowTick] = useState(0);
+
+  // Re-render every 30s so "tempo de ocupação" stays fresh
+  useEffect(() => {
+    const id = setInterval(() => setNowTick((n) => n + 1), 30000);
+    return () => clearInterval(id);
+  }, []);
 
   // ─── Auth state ───
   const [authed, setAuthed] = useState(false);
