@@ -253,7 +253,10 @@ export default function ComandaDialog({
       setCouvertEnabled(DEFAULT_RESTAURANT_SETTINGS.couvert_enabled);
       setCouvertAmount(DEFAULT_RESTAURANT_SETTINGS.couvert_amount);
       setReceiptCopies(DEFAULT_RESTAURANT_SETTINGS.receipt_copies);
-      // Load tenant restaurant settings (taxa de serviço + couvert + vias padrões)
+      setKitchenPrintEnabled(DEFAULT_RESTAURANT_SETTINGS.kitchen_print_enabled);
+      setKitchenCategories(DEFAULT_RESTAURANT_SETTINGS.kitchen_categories);
+      setBarCategories(DEFAULT_RESTAURANT_SETTINGS.bar_categories);
+      // Load tenant restaurant settings
       if (tenantId) {
         loadRestaurantSettings(tenantId).then((s) => {
           setServiceFeeEnabled(s.service_fee_enabled);
@@ -261,6 +264,9 @@ export default function ComandaDialog({
           setCouvertEnabled(s.couvert_enabled);
           setCouvertAmount(s.couvert_amount);
           setReceiptCopies(s.receipt_copies);
+          setKitchenPrintEnabled(s.kitchen_print_enabled);
+          setKitchenCategories(s.kitchen_categories);
+          setBarCategories(s.bar_categories);
         });
       }
       loadOrCreateOrder();
