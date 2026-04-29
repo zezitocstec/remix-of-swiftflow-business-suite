@@ -313,6 +313,46 @@ export default function ComandaDialog({
       .slice(0, 50);
   }, [products, search]);
 
+  // Decide if a product belongs to "Cozinha" / "Bar" station based on its category.
+  const stationFor = (product: Product): "Cozinha" | "Bar" | null => {
+    if (!kitchenPrintEnabled) return null;
+    const cat = (product.category || "").toLowerCase();
+    if (kitchenCategories.some((c) => c.toLowerCase() === cat)) return "Cozinha";
+    if (barCategories.some((c) => c.toLowerCase() === cat)) return "Bar";
+    return null;
+  };
+
+  const sendToKitchen = async (
+    station: "Cozinha" | "Bar",
+    item: OrderItem,
+    addedQty: number,
+  ) => {
+    if (!table || addedQty <= 0) return;
+    const result = printKitchenTicket({
+      station,
+      tableNumero: table.numero,
+      tableNome: table.nome,
+      items: [{ product_name: item.product_name, quantity: addedQty, observacao: item.observacao }],
+      operatorName,
+    });
+    if (!result.ok) {
+      toast({
+        title: `Falha ao imprimir ${station.toLowerCase()}`,
+        description: "Pop-up bloqueado pelo navegador.",
+        variant: "destructive",
+      });
+      return;
+    }
+    await sb
+      .from("restaurant_order_items")
+      .update({ printed_to_kitchen_at: new Date().toISOString() })
+      .eq("id", item.id);
+    setItems((prev) =>
+      prev.map((i) => (i.id === item.id ? { ...i, printed_to_kitchen_at: new Date().toISOString() } : i)),
+    );
+    toast({ title: `Enviado para ${station}`, description: `${addedQty}x ${item.product_name}` });
+  };
+
   const addProduct = async (p: Product) => {
     if (!order || !tenantId) return;
     // If product already in order, increment quantity
@@ -334,7 +374,10 @@ export default function ComandaDialog({
       .select()
       .single();
     if (error) return toast({ title: "Erro ao adicionar", description: error.message, variant: "destructive" });
-    setItems((prev) => [...prev, data as OrderItem]);
+    const newItem = data as OrderItem;
+    setItems((prev) => [...prev, newItem]);
+    const station = stationFor(p);
+    if (station) await sendToKitchen(station, newItem, 1);
   };
 
   const updateQty = async (item: OrderItem, qty: number) => {
