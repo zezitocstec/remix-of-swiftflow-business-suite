@@ -797,7 +797,7 @@ function formatDuration(fromIso: string): string {
 
 // ---------- Draggable Table Card ----------
 function DraggableTable({
-  table, draggable, layoutMode = "absolute", groupColor, selected, onClick, onEdit, onDelete, onStatusChange, onTransfer, onUngroup, isTransferSource, info, operators,
+  table, draggable, layoutMode = "absolute", groupColor, selected, onClick, onEdit, onDelete, onStatusChange, onTransfer, onUngroup, isTransferSource, info, operators, onReprint, onHistory,
 }: {
   table: RestaurantTable;
   draggable: boolean;
@@ -813,6 +813,8 @@ function DraggableTable({
   isTransferSource: boolean;
   info?: { total: number; openedAt: string; operatorId: string | null };
   operators?: Operator[];
+  onReprint?: () => void;
+  onHistory?: () => void;
 }) {
   const cfg = STATUS_CONFIG[table.status];
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
