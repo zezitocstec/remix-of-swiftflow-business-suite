@@ -558,6 +558,38 @@ export default function Restaurante() {
           </div>
         )}
 
+        {/* Toolbar: busca, ordenação, view, refresh */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative flex-1 min-w-[180px] max-w-sm">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar mesa por número ou nome…"
+              className="h-9 pl-8"
+            />
+          </div>
+          <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
+            <SelectTrigger className="h-9 w-[180px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="numero">Por número</SelectItem>
+              <SelectItem value="tempo">Tempo de ocupação</SelectItem>
+              <SelectItem value="valor">Maior valor</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex rounded-md border border-border overflow-hidden">
+            <button onClick={() => setViewMode("grid")}
+              className={cn("px-2 h-9", viewMode === "grid" ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
+              title="Grade"><LayoutGrid className="h-4 w-4" /></button>
+            <button onClick={() => setViewMode("list")}
+              className={cn("px-2 h-9 border-l border-border", viewMode === "list" ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
+              title="Lista compacta"><List className="h-4 w-4" /></button>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing} className="h-9">
+            <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+          </Button>
+        </div>
+
         {/* Resumo + filtro por status (chips clicáveis) */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
           <button
