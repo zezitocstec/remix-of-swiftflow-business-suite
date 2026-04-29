@@ -483,7 +483,12 @@ export default function Restaurante() {
         </Button>
       </div>
 
-      <div className="flex-1 overflow-auto p-3 sm:p-6 space-y-4">
+      <div className="flex-1 overflow-auto p-3 sm:p-6 space-y-4" data-scroll-root>
+        {refreshing && (
+          <div className="flex items-center justify-center text-xs text-muted-foreground gap-2">
+            <Loader2 className="h-3 w-3 animate-spin" /> Atualizando…
+          </div>
+        )}
         {/* Ambientes */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
