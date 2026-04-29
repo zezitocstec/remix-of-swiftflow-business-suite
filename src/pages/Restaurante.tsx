@@ -856,15 +856,50 @@ function DraggableTable({
           <p className="text-2xl font-bold tabular-nums text-foreground leading-none">{table.numero}</p>
         </div>
         {!draggable && (
-          <div className="flex gap-0.5">
+          <div className="flex gap-0.5 items-center">
             <button onClick={(e) => { e.stopPropagation(); onEdit(); }}
               className="p-1 rounded hover:bg-background/60 text-muted-foreground hover:text-foreground" aria-label="Editar">
               <Pencil className="h-3.5 w-3.5" />
             </button>
-            <button onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="p-1 rounded hover:bg-background/60 text-muted-foreground hover:text-destructive" aria-label="Excluir">
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button onClick={(e) => e.stopPropagation()}
+                  className="p-1 rounded hover:bg-background/60 text-muted-foreground hover:text-foreground" aria-label="Mais ações">
+                  <MoreVertical className="h-3.5 w-3.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                {table.status !== "livre" && (
+                  <DropdownMenuItem onClick={onTransfer}>
+                    <ArrowRightLeft className="h-3.5 w-3.5" /> Transferir
+                  </DropdownMenuItem>
+                )}
+                {table.status !== "livre" && (
+                  <DropdownMenuItem onClick={() => onStatusChange("livre")}>
+                    <Link2Off className="h-3.5 w-3.5" /> Liberar mesa
+                  </DropdownMenuItem>
+                )}
+                {onReprint && (
+                  <DropdownMenuItem onClick={onReprint}>
+                    <Printer className="h-3.5 w-3.5" /> Reimprimir cupom
+                  </DropdownMenuItem>
+                )}
+                {onHistory && (
+                  <DropdownMenuItem onClick={onHistory}>
+                    <History className="h-3.5 w-3.5" /> Histórico da mesa
+                  </DropdownMenuItem>
+                )}
+                {onUngroup && (
+                  <DropdownMenuItem onClick={onUngroup}>
+                    <Link2Off className="h-3.5 w-3.5" /> Desagrupar
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onDelete} className="text-destructive">
+                  <Trash2 className="h-3.5 w-3.5" /> Excluir mesa
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
       </div>
