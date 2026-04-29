@@ -301,6 +301,19 @@ export default function ComandaDialog({
     return () => window.removeEventListener("restaurant-settings-changed", handler);
   }, [open, tenantId]);
 
+  // Persist people_count (split) on order + current_people on table whenever it changes.
+  useEffect(() => {
+    if (!order || !table) return;
+    const n = Math.max(1, splitCount);
+    const t = setTimeout(async () => {
+      await Promise.all([
+        sb.from("restaurant_orders").update({ people_count: n }).eq("id", order.id),
+        sb.from("restaurant_tables").update({ current_people: n }).eq("id", table.id),
+      ]);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [splitCount, order, table]);
+
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return products.slice(0, 30);
