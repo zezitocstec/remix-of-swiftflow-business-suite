@@ -290,6 +290,9 @@ export default function ComandaDialog({
       setCouvertEnabled(!!s.couvert_enabled);
       setCouvertAmount(Number(s.couvert_amount) || 0);
       setReceiptCopies(copies);
+      setKitchenPrintEnabled(!!s.kitchen_print_enabled);
+      setKitchenCategories(Array.isArray(s.kitchen_categories) ? s.kitchen_categories : []);
+      setBarCategories(Array.isArray(s.bar_categories) ? s.bar_categories : []);
       console.info(`[ComandaDialog] Configurações do restaurante atualizadas em tempo real — vias=${copies}`);
       toast({ title: "Configurações atualizadas", description: `Vias do cupom: ${copies}` });
     };
