@@ -262,7 +262,7 @@ export default function Restaurante() {
     };
   }, [handleRefresh]);
 
-
+  const filteredTables = useMemo(
     () => tables.filter((t) => (t.area_id || null) === (activeAreaId || null)),
     [tables, activeAreaId]
   );
