@@ -909,7 +909,10 @@ function DraggableTable({
       {table.nome && <p className="text-xs text-foreground truncate">{table.nome}</p>}
 
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><Users className="h-3 w-3" />{table.capacidade}</span>
+        <span className="flex items-center gap-1">
+          <Users className="h-3 w-3" />
+          <span className="tabular-nums">{table.current_people || 0}/{table.capacidade}</span>
+        </span>
         {table.group_id && <Badge variant="outline" className="text-[10px] h-5">Grupo</Badge>}
       </div>
 
