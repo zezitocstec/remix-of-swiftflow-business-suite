@@ -92,6 +92,11 @@ export default function Restaurante() {
   const [statusFilter, setStatusFilter] = useState<TableStatus | "all">("all");
   const [tableInfo, setTableInfo] = useState<Record<string, { total: number; openedAt: string; operatorId: string | null }>>({});
   const [, setNowTick] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortMode, setSortMode] = useState<SortMode>("numero");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [refreshing, setRefreshing] = useState(false);
+  const [historyTableId, setHistoryTableId] = useState<string | null>(null);
 
   // Re-render every 30s so "tempo de ocupação" stays fresh
   useEffect(() => {
