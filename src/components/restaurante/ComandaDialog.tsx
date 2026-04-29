@@ -105,6 +105,9 @@ export default function ComandaDialog({
   const [couvertEnabled, setCouvertEnabled] = useState(false);
   const [couvertAmount, setCouvertAmount] = useState(0);
   const [receiptCopies, setReceiptCopies] = useState<1 | 2 | 3>(1);
+  const [kitchenPrintEnabled, setKitchenPrintEnabled] = useState(false);
+  const [kitchenCategories, setKitchenCategories] = useState<string[]>([]);
+  const [barCategories, setBarCategories] = useState<string[]>([]);
 
   const productsSubtotal = useMemo(
     () => items.reduce((s, i) => s + i.price * i.quantity, 0),
