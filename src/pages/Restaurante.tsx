@@ -661,6 +661,39 @@ export default function Restaurante() {
                 ))}
               </div>
             </DndContext>
+          ) : viewMode === "list" ? (
+            <div className="rounded-md border border-border divide-y divide-border bg-card">
+              {tablesInArea.map((t) => {
+                const cfg = STATUS_CONFIG[t.status];
+                const inf = tableInfo[t.id];
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      if (groupMode) return toggleGroupSelect(t.id);
+                      if (transferFrom) return handleTransfer(t);
+                      setComandaTable({ id: t.id, numero: t.numero, nome: t.nome, status: t.status });
+                    }}
+                    className="w-full flex items-center gap-3 p-3 hover:bg-muted/40 text-left"
+                  >
+                    <div className={cn("h-9 w-9 rounded-md flex items-center justify-center font-bold tabular-nums", cfg.bg, cfg.text)}>
+                      {t.numero}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{t.nome || `Mesa ${t.numero}`}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        <span className={cfg.text}>{cfg.label}</span>
+                        {inf && (t.status === "ocupada" || t.status === "aguardando_pagamento") && (
+                          <> • {formatDuration(inf.openedAt)} • <span className="text-foreground font-medium">{formatBRL(inf.total)}</span></>
+                        )}
+                      </p>
+                    </div>
+                    <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground tabular-nums">{t.current_people || 0}/{t.capacidade}</span>
+                  </button>
+                );
+              })}
+            </div>
           ) : (
             <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 rounded-md border border-dashed border-border bg-muted/20 p-3">
               {tablesInArea.map((t) => (
@@ -684,6 +717,8 @@ export default function Restaurante() {
                   isTransferSource={transferFrom?.id === t.id}
                   info={tableInfo[t.id]}
                   operators={operators}
+                  onReprint={() => setReprintOpen(true)}
+                  onHistory={() => setHistoryTableId(t.id)}
                 />
               ))}
             </div>
