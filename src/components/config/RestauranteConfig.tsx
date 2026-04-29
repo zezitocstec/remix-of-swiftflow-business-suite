@@ -1,13 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
+import { useProducts } from "@/contexts/ProductContext";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Percent, Coins, Save, Printer } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Percent, Coins, Save, Printer, ChefHat, Wine, X } from "lucide-react";
 import { formatBRL } from "@/lib/mock-data";
 
 const sb = supabase as any;
@@ -18,6 +20,9 @@ export interface RestaurantSettings {
   couvert_enabled: boolean;
   couvert_amount: number;
   receipt_copies: 1 | 2 | 3;
+  kitchen_print_enabled: boolean;
+  kitchen_categories: string[];
+  bar_categories: string[];
 }
 
 export const DEFAULT_RESTAURANT_SETTINGS: RestaurantSettings = {
@@ -26,12 +31,15 @@ export const DEFAULT_RESTAURANT_SETTINGS: RestaurantSettings = {
   couvert_enabled: false,
   couvert_amount: 0,
   receipt_copies: 1,
+  kitchen_print_enabled: false,
+  kitchen_categories: [],
+  bar_categories: [],
 };
 
 export async function loadRestaurantSettings(tenantId: string): Promise<RestaurantSettings> {
   const { data } = await sb
     .from("restaurant_settings")
-    .select("service_fee_enabled, service_fee_pct, couvert_enabled, couvert_amount, receipt_copies")
+    .select("service_fee_enabled, service_fee_pct, couvert_enabled, couvert_amount, receipt_copies, kitchen_print_enabled, kitchen_categories, bar_categories")
     .eq("tenant_id", tenantId)
     .maybeSingle();
   if (!data) return DEFAULT_RESTAURANT_SETTINGS;
@@ -43,6 +51,9 @@ export async function loadRestaurantSettings(tenantId: string): Promise<Restaura
     couvert_enabled: !!data.couvert_enabled,
     couvert_amount: Number(data.couvert_amount) || 0,
     receipt_copies: copies,
+    kitchen_print_enabled: !!data.kitchen_print_enabled,
+    kitchen_categories: Array.isArray(data.kitchen_categories) ? data.kitchen_categories : [],
+    bar_categories: Array.isArray(data.bar_categories) ? data.bar_categories : [],
   };
 }
 
