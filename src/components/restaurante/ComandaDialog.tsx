@@ -382,12 +382,21 @@ export default function ComandaDialog({
 
   const updateQty = async (item: OrderItem, qty: number) => {
     if (qty < 1) return removeItem(item);
+    const delta = qty - item.quantity;
     const { error } = await sb
       .from("restaurant_order_items")
       .update({ quantity: qty })
       .eq("id", item.id);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
     setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, quantity: qty } : i)));
+    // If quantity grew, also send the additional units to kitchen/bar
+    if (delta > 0) {
+      const product = products.find((p) => p.id === item.product_id);
+      if (product) {
+        const station = stationFor(product);
+        if (station) await sendToKitchen(station, { ...item, quantity: qty }, delta);
+      }
+    }
   };
 
   const removeItem = async (item: OrderItem) => {
