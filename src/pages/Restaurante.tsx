@@ -223,7 +223,46 @@ export default function Restaurante() {
     return () => clearInterval(id);
   }, [companyId]);
 
-  const filteredTables = useMemo(
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId]);
+
+  // Pull-to-refresh on touch devices
+  useEffect(() => {
+    let startY = 0;
+    let pulling = false;
+    const onStart = (e: TouchEvent) => {
+      const sc = (e.target as HTMLElement)?.closest?.("[data-scroll-root]");
+      if (!sc || (sc as HTMLElement).scrollTop > 0) return;
+      startY = e.touches[0].clientY;
+      pulling = true;
+    };
+    const onMove = (e: TouchEvent) => {
+      if (!pulling) return;
+      const dy = e.touches[0].clientY - startY;
+      if (dy > 80) {
+        pulling = false;
+        handleRefresh();
+      }
+    };
+    const onEnd = () => { pulling = false; };
+    window.addEventListener("touchstart", onStart, { passive: true });
+    window.addEventListener("touchmove", onMove, { passive: true });
+    window.addEventListener("touchend", onEnd);
+    return () => {
+      window.removeEventListener("touchstart", onStart);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onEnd);
+    };
+  }, [handleRefresh]);
+
+
     () => tables.filter((t) => (t.area_id || null) === (activeAreaId || null)),
     [tables, activeAreaId]
   );
