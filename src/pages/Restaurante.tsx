@@ -53,7 +53,11 @@ interface RestaurantTable {
   pos_x: number;
   pos_y: number;
   group_id: string | null;
+  current_people: number;
 }
+
+type SortMode = "numero" | "tempo" | "valor";
+type ViewMode = "grid" | "list";
 
 const STATUS_CONFIG: Record<TableStatus, { label: string; bg: string; text: string; ring: string; border: string }> = {
   livre:                { label: "Livre",                bg: "bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400", ring: "ring-emerald-500/30", border: "border-emerald-500/40" },
