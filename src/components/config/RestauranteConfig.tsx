@@ -296,3 +296,47 @@ export default function RestauranteConfig() {
     </div>
   );
 }
+
+function CategoryPicker({
+  icon, label, all, selected, onToggle,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  all: string[];
+  selected: string[];
+  onToggle: (c: string) => void;
+}) {
+  return (
+    <div className="space-y-2 pl-8">
+      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+        {icon}
+        <span>{label}</span>
+        <Badge variant="outline" className="ml-1 text-[10px]">{selected.length}</Badge>
+      </div>
+      {all.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5">
+          {all.map((c) => {
+            const on = selected.includes(c);
+            return (
+              <button
+                key={c}
+                type="button"
+                onClick={() => onToggle(c)}
+                className={
+                  "text-xs rounded-full border px-2.5 py-1 transition-colors " +
+                  (on
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border text-muted-foreground hover:bg-muted")
+                }
+              >
+                {c}{on && <X className="inline-block h-3 w-3 ml-1" />}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">— sem categorias —</p>
+      )}
+    </div>
+  );
+}
