@@ -52,6 +52,7 @@ interface OrderItem {
   price: number;
   quantity: number;
   observacao: string | null;
+  printed_to_kitchen_at?: string | null;
 }
 
 interface Order {
