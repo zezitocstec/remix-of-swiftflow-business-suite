@@ -59,9 +59,25 @@ export async function loadRestaurantSettings(tenantId: string): Promise<Restaura
 
 export default function RestauranteConfig() {
   const { tenantId } = useTenant();
+  const { products } = useProducts();
   const [settings, setSettings] = useState<RestaurantSettings>(DEFAULT_RESTAURANT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // All distinct categories existing in product registry
+  const allCategories = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach((p) => { if (p.category) set.add(p.category); });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [products]);
+
+  const toggleCategory = (list: "kitchen_categories" | "bar_categories", cat: string) => {
+    setSettings((s) => {
+      const cur = s[list] || [];
+      const next = cur.includes(cat) ? cur.filter((c) => c !== cat) : [...cur, cat];
+      return { ...s, [list]: next };
+    });
+  };
 
   useEffect(() => {
     let cancelled = false;
