@@ -211,6 +211,51 @@ export default function RestauranteConfig() {
         </div>
       </div>
 
+      {/* ─── KDS / Impressão para cozinha e bar ─── */}
+      <div className="rounded-md border border-border p-4 space-y-4">
+        <div className="flex items-start gap-3">
+          <ChefHat className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+          <div className="flex-1 space-y-1">
+            <Label className="text-sm font-medium text-foreground">
+              Impressão automática para cozinha / bar
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Ao adicionar um item à comanda, o sistema dispara um cupom de produção
+              para a estação correspondente com base na <b>categoria do produto</b>.
+              Itens já enviados não são reimpressos.
+            </p>
+          </div>
+          <Switch
+            checked={settings.kitchen_print_enabled}
+            onCheckedChange={(v) => setSettings((s) => ({ ...s, kitchen_print_enabled: v }))}
+          />
+        </div>
+
+        {settings.kitchen_print_enabled && (
+          <>
+            <CategoryPicker
+              icon={<ChefHat className="h-4 w-4" />}
+              label="Categorias da Cozinha"
+              all={allCategories}
+              selected={settings.kitchen_categories}
+              onToggle={(c) => toggleCategory("kitchen_categories", c)}
+            />
+            <CategoryPicker
+              icon={<Wine className="h-4 w-4" />}
+              label="Categorias do Bar"
+              all={allCategories}
+              selected={settings.bar_categories}
+              onToggle={(c) => toggleCategory("bar_categories", c)}
+            />
+            {allCategories.length === 0 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                Nenhuma categoria de produto cadastrada. Cadastre produtos com categorias (ex.: "Cozinha", "Bebidas") para usar este recurso.
+              </p>
+            )}
+          </>
+        )}
+      </div>
+
       {/* ─── Vias de impressão ─── */}
       <div className="rounded-md border border-border p-4 space-y-4">
         <div className="flex items-start gap-3">
