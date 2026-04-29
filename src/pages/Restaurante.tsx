@@ -17,6 +17,7 @@ import { toast } from "@/hooks/use-toast";
 import {
   Plus, Pencil, Trash2, Users, Loader2, Move, ArrowRightLeft, Link2, Link2Off, MapPin,
   UtensilsCrossed, Lock, Fingerprint, Printer, Clock, DollarSign, User as UserIcon,
+  Search, ArrowDownAZ, ArrowDown01, LayoutGrid, List, RefreshCw, History, MoreVertical,
 } from "lucide-react";
 import { formatBRL } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,9 @@ import OperatorAutocomplete from "@/components/pdv/OperatorAutocomplete";
 import { isPlatformAuthAvailable, authenticateBiometric } from "@/lib/webauthn";
 import ComandaDialog, { type ComandaTable } from "@/components/restaurante/ComandaDialog";
 import ReprintDialog from "@/components/restaurante/ReprintDialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const sb = supabase as any;
 
