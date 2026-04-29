@@ -221,6 +221,8 @@ export default function ComandaDialog({
       onTableStatusChange(table.id, "ocupada");
     }
     setOrder(ord);
+    const pc = Number((ord as any).people_count) || 0;
+    if (pc > 1) setSplitCount(pc);
 
     // Load items
     const { data: itemsData, error: e3 } = await sb
