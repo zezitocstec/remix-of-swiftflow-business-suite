@@ -17,6 +17,7 @@ import { toast } from "@/hooks/use-toast";
 import {
   Plus, Pencil, Trash2, Users, Loader2, Move, ArrowRightLeft, Link2, Link2Off, MapPin,
   UtensilsCrossed, Lock, Fingerprint, Printer, Clock, DollarSign, User as UserIcon,
+  Search, ArrowDownAZ, ArrowDown01, LayoutGrid, List, RefreshCw, History, MoreVertical,
 } from "lucide-react";
 import { formatBRL } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,9 @@ import OperatorAutocomplete from "@/components/pdv/OperatorAutocomplete";
 import { isPlatformAuthAvailable, authenticateBiometric } from "@/lib/webauthn";
 import ComandaDialog, { type ComandaTable } from "@/components/restaurante/ComandaDialog";
 import ReprintDialog from "@/components/restaurante/ReprintDialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const sb = supabase as any;
 
@@ -49,7 +53,11 @@ interface RestaurantTable {
   pos_x: number;
   pos_y: number;
   group_id: string | null;
+  current_people: number;
 }
+
+type SortMode = "numero" | "tempo" | "valor";
+type ViewMode = "grid" | "list";
 
 const STATUS_CONFIG: Record<TableStatus, { label: string; bg: string; text: string; ring: string; border: string }> = {
   livre:                { label: "Livre",                bg: "bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400", ring: "ring-emerald-500/30", border: "border-emerald-500/40" },
@@ -84,6 +92,11 @@ export default function Restaurante() {
   const [statusFilter, setStatusFilter] = useState<TableStatus | "all">("all");
   const [tableInfo, setTableInfo] = useState<Record<string, { total: number; openedAt: string; operatorId: string | null }>>({});
   const [, setNowTick] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortMode, setSortMode] = useState<SortMode>("numero");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [refreshing, setRefreshing] = useState(false);
+  const [historyTableId, setHistoryTableId] = useState<string | null>(null);
 
   // Re-render every 30s so "tempo de ocupação" stays fresh
   useEffect(() => {
@@ -210,14 +223,71 @@ export default function Restaurante() {
     return () => clearInterval(id);
   }, [companyId]);
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId]);
+
+  // Pull-to-refresh on touch devices
+  useEffect(() => {
+    let startY = 0;
+    let pulling = false;
+    const onStart = (e: TouchEvent) => {
+      const sc = (e.target as HTMLElement)?.closest?.("[data-scroll-root]");
+      if (!sc || (sc as HTMLElement).scrollTop > 0) return;
+      startY = e.touches[0].clientY;
+      pulling = true;
+    };
+    const onMove = (e: TouchEvent) => {
+      if (!pulling) return;
+      const dy = e.touches[0].clientY - startY;
+      if (dy > 80) {
+        pulling = false;
+        handleRefresh();
+      }
+    };
+    const onEnd = () => { pulling = false; };
+    window.addEventListener("touchstart", onStart, { passive: true });
+    window.addEventListener("touchmove", onMove, { passive: true });
+    window.addEventListener("touchend", onEnd);
+    return () => {
+      window.removeEventListener("touchstart", onStart);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onEnd);
+    };
+  }, [handleRefresh]);
+
   const filteredTables = useMemo(
     () => tables.filter((t) => (t.area_id || null) === (activeAreaId || null)),
     [tables, activeAreaId]
   );
-  const tablesInArea = useMemo(
-    () => statusFilter === "all" ? filteredTables : filteredTables.filter((t) => t.status === statusFilter),
-    [filteredTables, statusFilter]
-  );
+  const tablesInArea = useMemo(() => {
+    let arr = statusFilter === "all" ? filteredTables : filteredTables.filter((t) => t.status === statusFilter);
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      arr = arr.filter((t) =>
+        String(t.numero).includes(q) || (t.nome || "").toLowerCase().includes(q)
+      );
+    }
+    const sorted = [...arr];
+    sorted.sort((a, b) => {
+      if (sortMode === "tempo") {
+        const ta = tableInfo[a.id]?.openedAt ? new Date(tableInfo[a.id].openedAt).getTime() : Infinity;
+        const tb = tableInfo[b.id]?.openedAt ? new Date(tableInfo[b.id].openedAt).getTime() : Infinity;
+        return ta - tb; // mais antigos primeiro
+      }
+      if (sortMode === "valor") {
+        return (tableInfo[b.id]?.total ?? -1) - (tableInfo[a.id]?.total ?? -1);
+      }
+      return a.numero - b.numero;
+    });
+    return sorted;
+  }, [filteredTables, statusFilter, searchQuery, sortMode, tableInfo]);
 
   const counts = useMemo(() => {
     const c: Record<TableStatus, number> = { livre: 0, ocupada: 0, reservada: 0, aguardando_pagamento: 0 };
@@ -239,9 +309,11 @@ export default function Restaurante() {
   }, [tablesInArea]);
 
   const handleStatusChange = async (table: RestaurantTable, newStatus: TableStatus) => {
-    const { error } = await sb.from("restaurant_tables").update({ status: newStatus }).eq("id", table.id);
+    const patch: any = { status: newStatus };
+    if (newStatus === "livre") patch.current_people = 0;
+    const { error } = await sb.from("restaurant_tables").update(patch).eq("id", table.id);
     if (error) return toast({ title: "Erro ao atualizar status", description: error.message, variant: "destructive" });
-    setTables((prev) => prev.map((t) => t.id === table.id ? { ...t, status: newStatus } : t));
+    setTables((prev) => prev.map((t) => t.id === table.id ? { ...t, status: newStatus, current_people: newStatus === "livre" ? 0 : t.current_people } : t));
   };
 
   const handleDelete = async (table: RestaurantTable) => {
@@ -413,7 +485,12 @@ export default function Restaurante() {
         </Button>
       </div>
 
-      <div className="flex-1 overflow-auto p-3 sm:p-6 space-y-4">
+      <div className="flex-1 overflow-auto p-3 sm:p-6 space-y-4" data-scroll-root>
+        {refreshing && (
+          <div className="flex items-center justify-center text-xs text-muted-foreground gap-2">
+            <Loader2 className="h-3 w-3 animate-spin" /> Atualizando…
+          </div>
+        )}
         {/* Ambientes */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
@@ -482,6 +559,38 @@ export default function Restaurante() {
             Arraste as mesas para reposicionar. As coordenadas são salvas automaticamente.
           </div>
         )}
+
+        {/* Toolbar: busca, ordenação, view, refresh */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative flex-1 min-w-[180px] max-w-sm">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar mesa por número ou nome…"
+              className="h-9 pl-8"
+            />
+          </div>
+          <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
+            <SelectTrigger className="h-9 w-[180px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="numero">Por número</SelectItem>
+              <SelectItem value="tempo">Tempo de ocupação</SelectItem>
+              <SelectItem value="valor">Maior valor</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex rounded-md border border-border overflow-hidden">
+            <button onClick={() => setViewMode("grid")}
+              className={cn("px-2 h-9", viewMode === "grid" ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
+              title="Grade"><LayoutGrid className="h-4 w-4" /></button>
+            <button onClick={() => setViewMode("list")}
+              className={cn("px-2 h-9 border-l border-border", viewMode === "list" ? "bg-primary text-primary-foreground" : "hover:bg-muted")}
+              title="Lista compacta"><List className="h-4 w-4" /></button>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing} className="h-9">
+            <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+          </Button>
+        </div>
 
         {/* Resumo + filtro por status (chips clicáveis) */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
@@ -554,6 +663,39 @@ export default function Restaurante() {
                 ))}
               </div>
             </DndContext>
+          ) : viewMode === "list" ? (
+            <div className="rounded-md border border-border divide-y divide-border bg-card">
+              {tablesInArea.map((t) => {
+                const cfg = STATUS_CONFIG[t.status];
+                const inf = tableInfo[t.id];
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      if (groupMode) return toggleGroupSelect(t.id);
+                      if (transferFrom) return handleTransfer(t);
+                      setComandaTable({ id: t.id, numero: t.numero, nome: t.nome, status: t.status });
+                    }}
+                    className="w-full flex items-center gap-3 p-3 hover:bg-muted/40 text-left"
+                  >
+                    <div className={cn("h-9 w-9 rounded-md flex items-center justify-center font-bold tabular-nums", cfg.bg, cfg.text)}>
+                      {t.numero}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{t.nome || `Mesa ${t.numero}`}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        <span className={cfg.text}>{cfg.label}</span>
+                        {inf && (t.status === "ocupada" || t.status === "aguardando_pagamento") && (
+                          <> • {formatDuration(inf.openedAt)} • <span className="text-foreground font-medium">{formatBRL(inf.total)}</span></>
+                        )}
+                      </p>
+                    </div>
+                    <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground tabular-nums">{t.current_people || 0}/{t.capacidade}</span>
+                  </button>
+                );
+              })}
+            </div>
           ) : (
             <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 rounded-md border border-dashed border-border bg-muted/20 p-3">
               {tablesInArea.map((t) => (
@@ -577,6 +719,8 @@ export default function Restaurante() {
                   isTransferSource={transferFrom?.id === t.id}
                   info={tableInfo[t.id]}
                   operators={operators}
+                  onReprint={() => setReprintOpen(true)}
+                  onHistory={() => setHistoryTableId(t.id)}
                 />
               ))}
             </div>
@@ -655,7 +799,7 @@ function formatDuration(fromIso: string): string {
 
 // ---------- Draggable Table Card ----------
 function DraggableTable({
-  table, draggable, layoutMode = "absolute", groupColor, selected, onClick, onEdit, onDelete, onStatusChange, onTransfer, onUngroup, isTransferSource, info, operators,
+  table, draggable, layoutMode = "absolute", groupColor, selected, onClick, onEdit, onDelete, onStatusChange, onTransfer, onUngroup, isTransferSource, info, operators, onReprint, onHistory,
 }: {
   table: RestaurantTable;
   draggable: boolean;
@@ -671,6 +815,8 @@ function DraggableTable({
   isTransferSource: boolean;
   info?: { total: number; openedAt: string; operatorId: string | null };
   operators?: Operator[];
+  onReprint?: () => void;
+  onHistory?: () => void;
 }) {
   const cfg = STATUS_CONFIG[table.status];
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -712,15 +858,50 @@ function DraggableTable({
           <p className="text-2xl font-bold tabular-nums text-foreground leading-none">{table.numero}</p>
         </div>
         {!draggable && (
-          <div className="flex gap-0.5">
+          <div className="flex gap-0.5 items-center">
             <button onClick={(e) => { e.stopPropagation(); onEdit(); }}
               className="p-1 rounded hover:bg-background/60 text-muted-foreground hover:text-foreground" aria-label="Editar">
               <Pencil className="h-3.5 w-3.5" />
             </button>
-            <button onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="p-1 rounded hover:bg-background/60 text-muted-foreground hover:text-destructive" aria-label="Excluir">
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button onClick={(e) => e.stopPropagation()}
+                  className="p-1 rounded hover:bg-background/60 text-muted-foreground hover:text-foreground" aria-label="Mais ações">
+                  <MoreVertical className="h-3.5 w-3.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                {table.status !== "livre" && (
+                  <DropdownMenuItem onClick={onTransfer}>
+                    <ArrowRightLeft className="h-3.5 w-3.5" /> Transferir
+                  </DropdownMenuItem>
+                )}
+                {table.status !== "livre" && (
+                  <DropdownMenuItem onClick={() => onStatusChange("livre")}>
+                    <Link2Off className="h-3.5 w-3.5" /> Liberar mesa
+                  </DropdownMenuItem>
+                )}
+                {onReprint && (
+                  <DropdownMenuItem onClick={onReprint}>
+                    <Printer className="h-3.5 w-3.5" /> Reimprimir cupom
+                  </DropdownMenuItem>
+                )}
+                {onHistory && (
+                  <DropdownMenuItem onClick={onHistory}>
+                    <History className="h-3.5 w-3.5" /> Histórico da mesa
+                  </DropdownMenuItem>
+                )}
+                {onUngroup && (
+                  <DropdownMenuItem onClick={onUngroup}>
+                    <Link2Off className="h-3.5 w-3.5" /> Desagrupar
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onDelete} className="text-destructive">
+                  <Trash2 className="h-3.5 w-3.5" /> Excluir mesa
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
       </div>
@@ -728,7 +909,10 @@ function DraggableTable({
       {table.nome && <p className="text-xs text-foreground truncate">{table.nome}</p>}
 
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><Users className="h-3 w-3" />{table.capacidade}</span>
+        <span className="flex items-center gap-1">
+          <Users className="h-3 w-3" />
+          <span className="tabular-nums">{table.current_people || 0}/{table.capacidade}</span>
+        </span>
         {table.group_id && <Badge variant="outline" className="text-[10px] h-5">Grupo</Badge>}
       </div>
 

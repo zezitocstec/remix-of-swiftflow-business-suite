@@ -32,6 +32,7 @@ import { formatBRL } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { printPreConta } from "./PreContaPrint";
 import { printFinalReceipt } from "./FinalReceiptPrint";
+import { printKitchenTicket } from "./KitchenTicketPrint";
 import { loadRestaurantSettings, DEFAULT_RESTAURANT_SETTINGS } from "@/components/config/RestauranteConfig";
 import { logPrintAttempt } from "@/lib/print-log";
 
@@ -51,6 +52,7 @@ interface OrderItem {
   price: number;
   quantity: number;
   observacao: string | null;
+  printed_to_kitchen_at?: string | null;
 }
 
 interface Order {
@@ -104,6 +106,9 @@ export default function ComandaDialog({
   const [couvertEnabled, setCouvertEnabled] = useState(false);
   const [couvertAmount, setCouvertAmount] = useState(0);
   const [receiptCopies, setReceiptCopies] = useState<1 | 2 | 3>(1);
+  const [kitchenPrintEnabled, setKitchenPrintEnabled] = useState(false);
+  const [kitchenCategories, setKitchenCategories] = useState<string[]>([]);
+  const [barCategories, setBarCategories] = useState<string[]>([]);
 
   const productsSubtotal = useMemo(
     () => items.reduce((s, i) => s + i.price * i.quantity, 0),
@@ -216,6 +221,8 @@ export default function ComandaDialog({
       onTableStatusChange(table.id, "ocupada");
     }
     setOrder(ord);
+    const pc = Number((ord as any).people_count) || 0;
+    if (pc > 1) setSplitCount(pc);
 
     // Load items
     const { data: itemsData, error: e3 } = await sb
@@ -249,7 +256,10 @@ export default function ComandaDialog({
       setCouvertEnabled(DEFAULT_RESTAURANT_SETTINGS.couvert_enabled);
       setCouvertAmount(DEFAULT_RESTAURANT_SETTINGS.couvert_amount);
       setReceiptCopies(DEFAULT_RESTAURANT_SETTINGS.receipt_copies);
-      // Load tenant restaurant settings (taxa de serviço + couvert + vias padrões)
+      setKitchenPrintEnabled(DEFAULT_RESTAURANT_SETTINGS.kitchen_print_enabled);
+      setKitchenCategories(DEFAULT_RESTAURANT_SETTINGS.kitchen_categories);
+      setBarCategories(DEFAULT_RESTAURANT_SETTINGS.bar_categories);
+      // Load tenant restaurant settings
       if (tenantId) {
         loadRestaurantSettings(tenantId).then((s) => {
           setServiceFeeEnabled(s.service_fee_enabled);
@@ -257,6 +267,9 @@ export default function ComandaDialog({
           setCouvertEnabled(s.couvert_enabled);
           setCouvertAmount(s.couvert_amount);
           setReceiptCopies(s.receipt_copies);
+          setKitchenPrintEnabled(s.kitchen_print_enabled);
+          setKitchenCategories(s.kitchen_categories);
+          setBarCategories(s.bar_categories);
         });
       }
       loadOrCreateOrder();
@@ -280,12 +293,28 @@ export default function ComandaDialog({
       setCouvertEnabled(!!s.couvert_enabled);
       setCouvertAmount(Number(s.couvert_amount) || 0);
       setReceiptCopies(copies);
+      setKitchenPrintEnabled(!!s.kitchen_print_enabled);
+      setKitchenCategories(Array.isArray(s.kitchen_categories) ? s.kitchen_categories : []);
+      setBarCategories(Array.isArray(s.bar_categories) ? s.bar_categories : []);
       console.info(`[ComandaDialog] Configurações do restaurante atualizadas em tempo real — vias=${copies}`);
       toast({ title: "Configurações atualizadas", description: `Vias do cupom: ${copies}` });
     };
     window.addEventListener("restaurant-settings-changed", handler);
     return () => window.removeEventListener("restaurant-settings-changed", handler);
   }, [open, tenantId]);
+
+  // Persist people_count (split) on order + current_people on table whenever it changes.
+  useEffect(() => {
+    if (!order || !table) return;
+    const n = Math.max(1, splitCount);
+    const t = setTimeout(async () => {
+      await Promise.all([
+        sb.from("restaurant_orders").update({ people_count: n }).eq("id", order.id),
+        sb.from("restaurant_tables").update({ current_people: n }).eq("id", table.id),
+      ]);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [splitCount, order, table]);
 
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -299,6 +328,46 @@ export default function ComandaDialog({
       )
       .slice(0, 50);
   }, [products, search]);
+
+  // Decide if a product belongs to "Cozinha" / "Bar" station based on its category.
+  const stationFor = (product: Product): "Cozinha" | "Bar" | null => {
+    if (!kitchenPrintEnabled) return null;
+    const cat = (product.category || "").toLowerCase();
+    if (kitchenCategories.some((c) => c.toLowerCase() === cat)) return "Cozinha";
+    if (barCategories.some((c) => c.toLowerCase() === cat)) return "Bar";
+    return null;
+  };
+
+  const sendToKitchen = async (
+    station: "Cozinha" | "Bar",
+    item: OrderItem,
+    addedQty: number,
+  ) => {
+    if (!table || addedQty <= 0) return;
+    const result = printKitchenTicket({
+      station,
+      tableNumero: table.numero,
+      tableNome: table.nome,
+      items: [{ product_name: item.product_name, quantity: addedQty, observacao: item.observacao }],
+      operatorName,
+    });
+    if (!result.ok) {
+      toast({
+        title: `Falha ao imprimir ${station.toLowerCase()}`,
+        description: "Pop-up bloqueado pelo navegador.",
+        variant: "destructive",
+      });
+      return;
+    }
+    await sb
+      .from("restaurant_order_items")
+      .update({ printed_to_kitchen_at: new Date().toISOString() })
+      .eq("id", item.id);
+    setItems((prev) =>
+      prev.map((i) => (i.id === item.id ? { ...i, printed_to_kitchen_at: new Date().toISOString() } : i)),
+    );
+    toast({ title: `Enviado para ${station}`, description: `${addedQty}x ${item.product_name}` });
+  };
 
   const addProduct = async (p: Product) => {
     if (!order || !tenantId) return;
@@ -321,17 +390,29 @@ export default function ComandaDialog({
       .select()
       .single();
     if (error) return toast({ title: "Erro ao adicionar", description: error.message, variant: "destructive" });
-    setItems((prev) => [...prev, data as OrderItem]);
+    const newItem = data as OrderItem;
+    setItems((prev) => [...prev, newItem]);
+    const station = stationFor(p);
+    if (station) await sendToKitchen(station, newItem, 1);
   };
 
   const updateQty = async (item: OrderItem, qty: number) => {
     if (qty < 1) return removeItem(item);
+    const delta = qty - item.quantity;
     const { error } = await sb
       .from("restaurant_order_items")
       .update({ quantity: qty })
       .eq("id", item.id);
     if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
     setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, quantity: qty } : i)));
+    // If quantity grew, also send the additional units to kitchen/bar
+    if (delta > 0) {
+      const product = products.find((p) => p.id === item.product_id);
+      if (product) {
+        const station = stationFor(product);
+        if (station) await sendToKitchen(station, { ...item, quantity: qty }, delta);
+      }
+    }
   };
 
   const removeItem = async (item: OrderItem) => {
@@ -488,7 +569,7 @@ export default function ComandaDialog({
       // Free the table (and break group if any)
       const { error: e2 } = await sb
         .from("restaurant_tables")
-        .update({ status: "livre", observacao: null })
+        .update({ status: "livre", observacao: null, current_people: 0 })
         .eq("id", table.id);
       if (e2) throw e2;
 
