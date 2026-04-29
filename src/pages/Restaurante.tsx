@@ -309,9 +309,11 @@ export default function Restaurante() {
   }, [tablesInArea]);
 
   const handleStatusChange = async (table: RestaurantTable, newStatus: TableStatus) => {
-    const { error } = await sb.from("restaurant_tables").update({ status: newStatus }).eq("id", table.id);
+    const patch: any = { status: newStatus };
+    if (newStatus === "livre") patch.current_people = 0;
+    const { error } = await sb.from("restaurant_tables").update(patch).eq("id", table.id);
     if (error) return toast({ title: "Erro ao atualizar status", description: error.message, variant: "destructive" });
-    setTables((prev) => prev.map((t) => t.id === table.id ? { ...t, status: newStatus } : t));
+    setTables((prev) => prev.map((t) => t.id === table.id ? { ...t, status: newStatus, current_people: newStatus === "livre" ? 0 : t.current_people } : t));
   };
 
   const handleDelete = async (table: RestaurantTable) => {
