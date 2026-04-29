@@ -567,7 +567,7 @@ export default function ComandaDialog({
       // Free the table (and break group if any)
       const { error: e2 } = await sb
         .from("restaurant_tables")
-        .update({ status: "livre", observacao: null })
+        .update({ status: "livre", observacao: null, current_people: 0 })
         .eq("id", table.id);
       if (e2) throw e2;
 
