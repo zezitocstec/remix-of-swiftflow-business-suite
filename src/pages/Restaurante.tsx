@@ -227,10 +227,28 @@ export default function Restaurante() {
     () => tables.filter((t) => (t.area_id || null) === (activeAreaId || null)),
     [tables, activeAreaId]
   );
-  const tablesInArea = useMemo(
-    () => statusFilter === "all" ? filteredTables : filteredTables.filter((t) => t.status === statusFilter),
-    [filteredTables, statusFilter]
-  );
+  const tablesInArea = useMemo(() => {
+    let arr = statusFilter === "all" ? filteredTables : filteredTables.filter((t) => t.status === statusFilter);
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      arr = arr.filter((t) =>
+        String(t.numero).includes(q) || (t.nome || "").toLowerCase().includes(q)
+      );
+    }
+    const sorted = [...arr];
+    sorted.sort((a, b) => {
+      if (sortMode === "tempo") {
+        const ta = tableInfo[a.id]?.openedAt ? new Date(tableInfo[a.id].openedAt).getTime() : Infinity;
+        const tb = tableInfo[b.id]?.openedAt ? new Date(tableInfo[b.id].openedAt).getTime() : Infinity;
+        return ta - tb; // mais antigos primeiro
+      }
+      if (sortMode === "valor") {
+        return (tableInfo[b.id]?.total ?? -1) - (tableInfo[a.id]?.total ?? -1);
+      }
+      return a.numero - b.numero;
+    });
+    return sorted;
+  }, [filteredTables, statusFilter, searchQuery, sortMode, tableInfo]);
 
   const counts = useMemo(() => {
     const c: Record<TableStatus, number> = { livre: 0, ocupada: 0, reservada: 0, aguardando_pagamento: 0 };
