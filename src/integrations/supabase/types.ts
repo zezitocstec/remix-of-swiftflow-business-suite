@@ -14,13 +14,84 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      company_members: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      restaurant_settings: {
+        Row: {
+          bar_categories: Json | null
+          couvert_amount: number | null
+          couvert_enabled: boolean | null
+          created_at: string
+          id: string
+          kitchen_categories: Json | null
+          kitchen_print_enabled: boolean | null
+          receipt_copies: number | null
+          service_fee_enabled: boolean | null
+          service_fee_pct: number | null
+          tenant_id: string
+          updated_at: string
+          waiter_commission_pct: number | null
+        }
+        Insert: {
+          bar_categories?: Json | null
+          couvert_amount?: number | null
+          couvert_enabled?: boolean | null
+          created_at?: string
+          id?: string
+          kitchen_categories?: Json | null
+          kitchen_print_enabled?: boolean | null
+          receipt_copies?: number | null
+          service_fee_enabled?: boolean | null
+          service_fee_pct?: number | null
+          tenant_id: string
+          updated_at?: string
+          waiter_commission_pct?: number | null
+        }
+        Update: {
+          bar_categories?: Json | null
+          couvert_amount?: number | null
+          couvert_enabled?: boolean | null
+          created_at?: string
+          id?: string
+          kitchen_categories?: Json | null
+          kitchen_print_enabled?: boolean | null
+          receipt_copies?: number | null
+          service_fee_enabled?: boolean | null
+          service_fee_pct?: number | null
+          tenant_id?: string
+          updated_at?: string
+          waiter_commission_pct?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_my_company_id: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never
