@@ -41,7 +41,7 @@ export const DEFAULT_RESTAURANT_SETTINGS: RestaurantSettings = {
 export async function loadRestaurantSettings(tenantId: string): Promise<RestaurantSettings> {
   const { data } = await sb
     .from("restaurant_settings")
-    .select("service_fee_enabled, service_fee_pct, couvert_enabled, couvert_amount, receipt_copies, kitchen_print_enabled, kitchen_categories, bar_categories")
+    .select("service_fee_enabled, service_fee_pct, couvert_enabled, couvert_amount, receipt_copies, kitchen_print_enabled, kitchen_categories, bar_categories, waiter_commission_pct")
     .eq("tenant_id", tenantId)
     .maybeSingle();
   if (!data) return DEFAULT_RESTAURANT_SETTINGS;
@@ -56,6 +56,7 @@ export async function loadRestaurantSettings(tenantId: string): Promise<Restaura
     kitchen_print_enabled: !!data.kitchen_print_enabled,
     kitchen_categories: Array.isArray(data.kitchen_categories) ? data.kitchen_categories : [],
     bar_categories: Array.isArray(data.bar_categories) ? data.bar_categories : [],
+    waiter_commission_pct: Number(data.waiter_commission_pct) || 0,
   };
 }
 
