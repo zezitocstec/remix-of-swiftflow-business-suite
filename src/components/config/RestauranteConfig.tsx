@@ -23,6 +23,7 @@ export interface RestaurantSettings {
   kitchen_print_enabled: boolean;
   kitchen_categories: string[];
   bar_categories: string[];
+  waiter_commission_pct: number;
 }
 
 export const DEFAULT_RESTAURANT_SETTINGS: RestaurantSettings = {
@@ -34,6 +35,7 @@ export const DEFAULT_RESTAURANT_SETTINGS: RestaurantSettings = {
   kitchen_print_enabled: false,
   kitchen_categories: [],
   bar_categories: [],
+  waiter_commission_pct: 0,
 };
 
 export async function loadRestaurantSettings(tenantId: string): Promise<RestaurantSettings> {
