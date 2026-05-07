@@ -169,6 +169,40 @@ export default function RestauranteConfig() {
           <span className="text-sm text-muted-foreground">%</span>
         </div>
       </div>
+      {/* ─── Comissão do garçom ─── */}
+      <div className="rounded-md border border-border p-4 space-y-4">
+        <div className="flex items-start gap-3">
+          <Percent className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+          <div className="flex-1 space-y-1">
+            <Label htmlFor="rs-waiter-commission" className="text-sm font-medium text-foreground">
+              Comissão do garçom
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Percentual de comissão sobre o valor de cada comanda atendida pelo garçom.
+              Visível no relatório de comissões.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 pl-8">
+          <Label htmlFor="rs-waiter-commission" className="text-sm text-foreground w-28">Percentual</Label>
+          <Input
+            id="rs-waiter-commission"
+            type="number"
+            min={0}
+            max={100}
+            step="0.1"
+            value={settings.waiter_commission_pct}
+            onChange={(e) => {
+              const n = parseFloat(e.target.value);
+              if (!isNaN(n) && n >= 0 && n <= 100) {
+                setSettings((s) => ({ ...s, waiter_commission_pct: n }));
+              }
+            }}
+            className="w-24 tabular-nums"
+          />
+          <span className="text-sm text-muted-foreground">%</span>
+        </div>
+      </div>
 
       {/* ─── Couvert ─── */}
       <div className="rounded-md border border-border p-4 space-y-4">
