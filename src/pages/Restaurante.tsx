@@ -334,22 +334,30 @@ export default function Restaurante() {
     if (target.status !== "livre") {
       return toast({ title: "Mesa de destino precisa estar livre", variant: "destructive" });
     }
-    // mover status, nome (cliente), observação para alvo; origem volta a livre
+    // mover status, nome (cliente), observação e pessoas para alvo; origem volta a livre
+    const peopleMoved = transferFrom.current_people || 0;
     const updates = await Promise.all([
       sb.from("restaurant_tables").update({
         status: transferFrom.status,
         observacao: transferFrom.observacao,
+        current_people: peopleMoved,
       }).eq("id", target.id),
       sb.from("restaurant_tables").update({
         status: "livre",
         observacao: null,
+        current_people: 0,
       }).eq("id", transferFrom.id),
     ]);
+    // Also move the open order to point to the new table
+    await sb.from("restaurant_orders")
+      .update({ table_id: target.id })
+      .eq("table_id", transferFrom.id)
+      .in("status", ["aberta", "aguardando_pagamento"]);
     const err = updates.find((r) => r.error)?.error;
     if (err) return toast({ title: "Erro ao transferir", description: err.message, variant: "destructive" });
     setTables((prev) => prev.map((t) => {
-      if (t.id === target.id) return { ...t, status: transferFrom.status, observacao: transferFrom.observacao };
-      if (t.id === transferFrom.id) return { ...t, status: "livre" as TableStatus, observacao: null };
+      if (t.id === target.id) return { ...t, status: transferFrom.status, observacao: transferFrom.observacao, current_people: peopleMoved };
+      if (t.id === transferFrom.id) return { ...t, status: "livre" as TableStatus, observacao: null, current_people: 0 };
       return t;
     }));
     toast({ title: "Mesa transferida", description: `Mesa ${transferFrom.numero} → Mesa ${target.numero}` });
