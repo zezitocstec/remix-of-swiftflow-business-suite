@@ -785,6 +785,24 @@ export default function Restaurante() {
         operatorId={selectedOperator?.id}
         operatorName={selectedOperator?.nome}
       />
+
+      <TableHistoryDialog
+        open={!!historyTableId}
+        onOpenChange={(v) => { if (!v) setHistoryTableId(null); }}
+        tableId={historyTableId}
+        tableNumero={tables.find((t) => t.id === historyTableId)?.numero}
+        tableNome={tables.find((t) => t.id === historyTableId)?.nome}
+      />
+
+      <TableReprintDialog
+        open={!!reprintTableId}
+        onOpenChange={(v) => { if (!v) setReprintTableId(null); }}
+        tableId={reprintTableId}
+        tableNumero={tables.find((t) => t.id === reprintTableId)?.numero}
+        tableNome={tables.find((t) => t.id === reprintTableId)?.nome}
+        operatorId={selectedOperator?.id}
+        operatorName={selectedOperator?.nome}
+      />
     </div>
   );
 }
