@@ -99,6 +99,7 @@ export default function Restaurante() {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [refreshing, setRefreshing] = useState(false);
   const [historyTableId, setHistoryTableId] = useState<string | null>(null);
+  const [reprintTableId, setReprintTableId] = useState<string | null>(null);
 
   // Re-render every 30s so "tempo de ocupação" stays fresh
   useEffect(() => {
