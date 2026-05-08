@@ -28,6 +28,8 @@ import OperatorAutocomplete from "@/components/pdv/OperatorAutocomplete";
 import { isPlatformAuthAvailable, authenticateBiometric } from "@/lib/webauthn";
 import ComandaDialog, { type ComandaTable } from "@/components/restaurante/ComandaDialog";
 import ReprintDialog from "@/components/restaurante/ReprintDialog";
+import TableHistoryDialog from "@/components/restaurante/TableHistoryDialog";
+import TableReprintDialog from "@/components/restaurante/TableReprintDialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -97,6 +99,7 @@ export default function Restaurante() {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [refreshing, setRefreshing] = useState(false);
   const [historyTableId, setHistoryTableId] = useState<string | null>(null);
+  const [reprintTableId, setReprintTableId] = useState<string | null>(null);
 
   // Re-render every 30s so "tempo de ocupação" stays fresh
   useEffect(() => {
@@ -331,22 +334,30 @@ export default function Restaurante() {
     if (target.status !== "livre") {
       return toast({ title: "Mesa de destino precisa estar livre", variant: "destructive" });
     }
-    // mover status, nome (cliente), observação para alvo; origem volta a livre
+    // mover status, nome (cliente), observação e pessoas para alvo; origem volta a livre
+    const peopleMoved = transferFrom.current_people || 0;
     const updates = await Promise.all([
       sb.from("restaurant_tables").update({
         status: transferFrom.status,
         observacao: transferFrom.observacao,
+        current_people: peopleMoved,
       }).eq("id", target.id),
       sb.from("restaurant_tables").update({
         status: "livre",
         observacao: null,
+        current_people: 0,
       }).eq("id", transferFrom.id),
     ]);
+    // Also move the open order to point to the new table
+    await sb.from("restaurant_orders")
+      .update({ table_id: target.id })
+      .eq("table_id", transferFrom.id)
+      .in("status", ["aberta", "aguardando_pagamento"]);
     const err = updates.find((r) => r.error)?.error;
     if (err) return toast({ title: "Erro ao transferir", description: err.message, variant: "destructive" });
     setTables((prev) => prev.map((t) => {
-      if (t.id === target.id) return { ...t, status: transferFrom.status, observacao: transferFrom.observacao };
-      if (t.id === transferFrom.id) return { ...t, status: "livre" as TableStatus, observacao: null };
+      if (t.id === target.id) return { ...t, status: transferFrom.status, observacao: transferFrom.observacao, current_people: peopleMoved };
+      if (t.id === transferFrom.id) return { ...t, status: "livre" as TableStatus, observacao: null, current_people: 0 };
       return t;
     }));
     toast({ title: "Mesa transferida", description: `Mesa ${transferFrom.numero} → Mesa ${target.numero}` });
@@ -719,7 +730,7 @@ export default function Restaurante() {
                   isTransferSource={transferFrom?.id === t.id}
                   info={tableInfo[t.id]}
                   operators={operators}
-                  onReprint={() => setReprintOpen(true)}
+                  onReprint={() => setReprintTableId(t.id)}
                   onHistory={() => setHistoryTableId(t.id)}
                 />
               ))}
@@ -771,6 +782,24 @@ export default function Restaurante() {
       <ReprintDialog
         open={reprintOpen}
         onOpenChange={setReprintOpen}
+        operatorId={selectedOperator?.id}
+        operatorName={selectedOperator?.nome}
+      />
+
+      <TableHistoryDialog
+        open={!!historyTableId}
+        onOpenChange={(v) => { if (!v) setHistoryTableId(null); }}
+        tableId={historyTableId}
+        tableNumero={tables.find((t) => t.id === historyTableId)?.numero}
+        tableNome={tables.find((t) => t.id === historyTableId)?.nome}
+      />
+
+      <TableReprintDialog
+        open={!!reprintTableId}
+        onOpenChange={(v) => { if (!v) setReprintTableId(null); }}
+        tableId={reprintTableId}
+        tableNumero={tables.find((t) => t.id === reprintTableId)?.numero}
+        tableNome={tables.find((t) => t.id === reprintTableId)?.nome}
         operatorId={selectedOperator?.id}
         operatorName={selectedOperator?.nome}
       />
