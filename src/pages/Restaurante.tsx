@@ -730,7 +730,7 @@ export default function Restaurante() {
                   isTransferSource={transferFrom?.id === t.id}
                   info={tableInfo[t.id]}
                   operators={operators}
-                  onReprint={() => setReprintOpen(true)}
+                  onReprint={() => setReprintTableId(t.id)}
                   onHistory={() => setHistoryTableId(t.id)}
                 />
               ))}
