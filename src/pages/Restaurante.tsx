@@ -28,6 +28,8 @@ import OperatorAutocomplete from "@/components/pdv/OperatorAutocomplete";
 import { isPlatformAuthAvailable, authenticateBiometric } from "@/lib/webauthn";
 import ComandaDialog, { type ComandaTable } from "@/components/restaurante/ComandaDialog";
 import ReprintDialog from "@/components/restaurante/ReprintDialog";
+import TableHistoryDialog from "@/components/restaurante/TableHistoryDialog";
+import TableReprintDialog from "@/components/restaurante/TableReprintDialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
