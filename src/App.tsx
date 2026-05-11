@@ -10,6 +10,7 @@ import { AppLayout } from "@/components/AppLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminRoute from "@/components/AdminRoute";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Index from "./pages/Index";
 import PDV from "./pages/PDV";
 import Produtos from "./pages/Produtos";
@@ -44,6 +45,7 @@ const App = () => (
             <BrowserRouter>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/portal/:token" element={<PortalOrcamento />} />
                 <Route path="/pdv" element={<ProtectedRoute><PDV /></ProtectedRoute>} />
                 <Route path="/orcamento" element={<ProtectedRoute><OrcamentoPDV /></ProtectedRoute>} />
