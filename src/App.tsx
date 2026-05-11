@@ -45,6 +45,7 @@ const App = () => (
             <BrowserRouter>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/portal/:token" element={<PortalOrcamento />} />
                 <Route path="/pdv" element={<ProtectedRoute><PDV /></ProtectedRoute>} />
                 <Route path="/orcamento" element={<ProtectedRoute><OrcamentoPDV /></ProtectedRoute>} />
