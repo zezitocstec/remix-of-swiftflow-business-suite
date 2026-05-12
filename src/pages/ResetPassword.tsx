@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { KeyRound } from "lucide-react";
+import { KeyRound, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function ResetPassword() {
@@ -14,16 +14,30 @@ export default function ResetPassword() {
   const [submitting, setSubmitting] = useState(false);
   const [ready, setReady] = useState(false);
 
+  const [resendOpen, setResendOpen] = useState(false);
+  const [resendEmail, setResendEmail] = useState("");
+  const [resending, setResending] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
   useEffect(() => {
-    // Supabase parses the recovery hash automatically and emits PASSWORD_RECOVERY
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") setReady(true);
     });
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) setReady(true);
     });
+    try {
+      const stored = localStorage.getItem("recover_email");
+      if (stored) setResendEmail(stored);
+    } catch {}
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,8 +57,33 @@ export default function ResetPassword() {
       return;
     }
     toast({ title: "Senha atualizada", description: "Faça login com a nova senha." });
+    try { localStorage.removeItem("recover_email"); } catch {}
     await supabase.auth.signOut();
     navigate("/auth", { replace: true });
+  };
+
+  const handleResend = async () => {
+    const target = resendEmail.trim();
+    if (!target) {
+      toast({ title: "Informe um e-mail", variant: "destructive" });
+      return;
+    }
+    setResending(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(target, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setResending(false);
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      return;
+    }
+    try { localStorage.setItem("recover_email", target); } catch {}
+    toast({
+      title: "E-mail reenviado",
+      description: "Verifique sua caixa de entrada e a pasta de spam.",
+    });
+    setResendOpen(false);
+    setCooldown(60);
   };
 
   return (
@@ -92,6 +131,48 @@ export default function ResetPassword() {
             )}
           </Button>
         </form>
+
+        <div className="rounded-md border border-border p-4 space-y-3 bg-muted/20">
+          <p className="text-xs text-muted-foreground text-center">
+            Não recebeu o e-mail? Verifique a pasta de spam ou reenvie o link.
+          </p>
+          {!resendOpen ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => setResendOpen(true)}
+              disabled={cooldown > 0}
+            >
+              <Mail className="h-4 w-4" />
+              {cooldown > 0 ? `Aguarde ${cooldown}s` : "Reenviar e-mail de recuperação"}
+            </Button>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="resend-email" className="text-xs">E-mail</Label>
+              <Input
+                id="resend-email"
+                type="email"
+                value={resendEmail}
+                onChange={(e) => setResendEmail(e.target.value)}
+                placeholder="seu@email.com"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setResendOpen(false)} className="flex-1">
+                  Cancelar
+                </Button>
+                <Button size="sm" onClick={handleResend} disabled={resending} className="flex-1 gap-2">
+                  {resending ? (
+                    <div className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full" />
+                  ) : (
+                    <><Mail className="h-4 w-4" /> Reenviar</>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
