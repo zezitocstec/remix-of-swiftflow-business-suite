@@ -136,6 +136,26 @@ export default function Auth() {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
       return;
     }
+    try { localStorage.setItem("recover_email", target); } catch {}
+    toast({
+      title: "E-mail enviado",
+      description: "Verifique sua caixa de entrada para redefinir a senha.",
+    });
+    setRecoverOpen(false);
+  };
+    if (!target) {
+      toast({ title: "Informe um e-mail", variant: "destructive" });
+      return;
+    }
+    setRecovering(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(target, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setRecovering(false);
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      return;
+    }
     toast({
       title: "E-mail enviado",
       description: "Verifique sua caixa de entrada para redefinir a senha.",
