@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { LogIn, Store, Mail } from "lucide-react";
+import { LogIn, Store, Mail, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -27,6 +27,12 @@ export default function Auth() {
   const [recoverEmail, setRecoverEmail] = useState("");
   const [recovering, setRecovering] = useState(false);
 
+  const [mfaOpen, setMfaOpen] = useState(false);
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaChallengeId, setMfaChallengeId] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaSubmitting, setMfaSubmitting] = useState(false);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -35,7 +41,28 @@ export default function Auth() {
     );
   }
 
-  if (user) return <Navigate to="/" replace />;
+  if (user && !mfaOpen) return <Navigate to="/" replace />;
+
+  const checkMfa = async (): Promise<boolean> => {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal && aal.currentLevel === "aal1" && aal.nextLevel === "aal2") {
+      const { data: list } = await supabase.auth.mfa.listFactors();
+      const totp = list?.totp?.find((f: any) => f.status === "verified");
+      if (!totp) return false;
+      const { data: ch, error: ce } = await supabase.auth.mfa.challenge({ factorId: totp.id });
+      if (ce || !ch) {
+        toast({ title: "Erro 2FA", description: ce?.message ?? "Falha", variant: "destructive" });
+        await supabase.auth.signOut();
+        return true;
+      }
+      setMfaFactorId(totp.id);
+      setMfaChallengeId(ch.id);
+      setMfaCode("");
+      setMfaOpen(true);
+      return true;
+    }
+    return false;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,11 +72,13 @@ export default function Auth() {
     }
     setSubmitting(true);
     const { error } = await signIn(email, password);
-    setSubmitting(false);
-
     if (error) {
+      setSubmitting(false);
       toast({ title: "Erro", description: error.message, variant: "destructive" });
+      return;
     }
+    await checkMfa();
+    setSubmitting(false);
   };
 
   const handleGoogle = async () => {
@@ -62,6 +91,34 @@ export default function Auth() {
       setGoogleLoading(false);
       toast({ title: "Erro Google", description: error.message, variant: "destructive" });
     }
+  };
+
+  const handleVerifyMfa = async () => {
+    if (!mfaFactorId || !mfaChallengeId) return;
+    if (mfaCode.length !== 6) {
+      toast({ title: "Código inválido", description: "Digite os 6 dígitos.", variant: "destructive" });
+      return;
+    }
+    setMfaSubmitting(true);
+    const { error } = await supabase.auth.mfa.verify({
+      factorId: mfaFactorId,
+      challengeId: mfaChallengeId,
+      code: mfaCode,
+    });
+    setMfaSubmitting(false);
+    if (error) {
+      toast({ title: "Código incorreto", description: error.message, variant: "destructive" });
+      return;
+    }
+    setMfaOpen(false);
+  };
+
+  const cancelMfa = async () => {
+    setMfaOpen(false);
+    setMfaFactorId(null);
+    setMfaChallengeId(null);
+    setMfaCode("");
+    await supabase.auth.signOut();
   };
 
   const handleRecover = async () => {
@@ -79,6 +136,7 @@ export default function Auth() {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
       return;
     }
+    try { localStorage.setItem("recover_email", target); } catch {}
     toast({
       title: "E-mail enviado",
       description: "Verifique sua caixa de entrada para redefinir a senha.",
@@ -203,6 +261,46 @@ export default function Auth() {
                 <div className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full" />
               ) : (
                 <><Mail className="h-4 w-4 mr-2" /> Enviar link</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={mfaOpen} onOpenChange={(o) => { if (!o) cancelMfa(); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              Verificação em duas etapas
+            </DialogTitle>
+            <DialogDescription>
+              Abra seu app autenticador (Google Authenticator, Authy, etc.) e digite o código de 6 dígitos.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="mfa-code">Código</Label>
+            <Input
+              id="mfa-code"
+              inputMode="numeric"
+              maxLength={6}
+              placeholder="000000"
+              value={mfaCode}
+              onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+              className="text-center tracking-[0.5em] text-lg font-mono"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && mfaCode.length === 6) handleVerifyMfa();
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelMfa}>Cancelar</Button>
+            <Button onClick={handleVerifyMfa} disabled={mfaSubmitting || mfaCode.length !== 6}>
+              {mfaSubmitting ? (
+                <div className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full" />
+              ) : (
+                "Verificar"
               )}
             </Button>
           </DialogFooter>
