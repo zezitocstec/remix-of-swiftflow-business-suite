@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ShieldCheck, ShieldOff, KeyRound } from "lucide-react";
+import { ShieldCheck, ShieldOff, KeyRound, Copy, RefreshCw, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,50 @@ export default function TwoFactorConfig() {
   const [enrollData, setEnrollData] = useState<{ id: string; qr: string; secret: string; uri: string } | null>(null);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
+  const [backupRemaining, setBackupRemaining] = useState<number | null>(null);
+  const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
+  const [generatingBackup, setGeneratingBackup] = useState(false);
+
+  const refreshBackup = async () => {
+    const { data, error } = await supabase.functions.invoke("mfa-backup-codes", { body: { action: "status" } });
+    if (!error && data) setBackupRemaining(data.remaining ?? 0);
+  };
+
+  const generateBackup = async () => {
+    if (backupRemaining && backupRemaining > 0) {
+      if (!confirm("Isso invalidará os códigos antigos. Continuar?")) return;
+    }
+    setGeneratingBackup(true);
+    const { data, error } = await supabase.functions.invoke("mfa-backup-codes", { body: { action: "generate" } });
+    setGeneratingBackup(false);
+    if (error || !data?.codes) {
+      toast.error(error?.message ?? "Falha ao gerar códigos");
+      return;
+    }
+    setBackupCodes(data.codes);
+    setBackupRemaining(data.codes.length);
+    toast.success("Códigos gerados! Guarde em local seguro.");
+  };
+
+  const copyAll = () => {
+    if (!backupCodes) return;
+    navigator.clipboard.writeText(backupCodes.join("\n"));
+    toast.success("Códigos copiados");
+  };
+
+  const downloadCodes = () => {
+    if (!backupCodes) return;
+    const blob = new Blob(
+      [`Códigos de recuperação 2FA\nGerados em: ${new Date().toLocaleString()}\n\n${backupCodes.join("\n")}\n\nUse cada código apenas uma vez.`],
+      { type: "text/plain" },
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `backup-codes-${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const refresh = async () => {
     setLoading(true);
@@ -32,6 +76,11 @@ export default function TwoFactorConfig() {
   useEffect(() => {
     refresh();
   }, []);
+
+  useEffect(() => {
+    if (factor && factor.status === "verified") refreshBackup();
+    else setBackupRemaining(null);
+  }, [factor]);
 
   const startEnroll = async () => {
     setBusy(true);
@@ -170,6 +219,63 @@ export default function TwoFactorConfig() {
               <KeyRound className="h-4 w-4" /> Confirmar e Ativar
             </Button>
           </div>
+        </div>
+      )}
+
+      {factor && factor.status === "verified" && (
+        <div className="mt-4 rounded-md border border-border p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <KeyRound className="h-4 w-4 text-primary" />
+                Códigos de recuperação
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                Use estes códigos se perder acesso ao app autenticador.
+                {backupRemaining !== null && ` Restantes: ${backupRemaining}/10`}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant={backupRemaining && backupRemaining > 0 ? "outline" : "default"}
+              onClick={generateBackup}
+              disabled={generatingBackup}
+              className="gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              {backupRemaining && backupRemaining > 0 ? "Gerar novos" : "Gerar códigos"}
+            </Button>
+          </div>
+
+          {backupCodes && (
+            <div className="space-y-2">
+              <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-foreground">
+                ⚠️ Salve estes códigos em local seguro. Eles <strong>não serão mostrados novamente</strong>. Cada código só pode ser usado uma vez.
+              </div>
+              <div className="grid grid-cols-2 gap-2 font-mono text-sm bg-muted/30 rounded-md p-3">
+                {backupCodes.map((c) => (
+                  <div key={c} className="select-all">{c}</div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={copyAll} className="gap-2">
+                  <Copy className="h-4 w-4" /> Copiar
+                </Button>
+                <Button size="sm" variant="outline" onClick={downloadCodes} className="gap-2">
+                  <Download className="h-4 w-4" /> Baixar .txt
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setBackupCodes(null)} className="ml-auto">
+                  Já guardei
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {backupRemaining !== null && backupRemaining <= 2 && !backupCodes && (
+            <p className="text-xs text-destructive">
+              Você tem poucos códigos restantes. Gere novos para garantir acesso.
+            </p>
+          )}
         </div>
       )}
     </div>

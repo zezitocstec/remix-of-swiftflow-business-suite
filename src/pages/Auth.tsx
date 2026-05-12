@@ -32,6 +32,8 @@ export default function Auth() {
   const [mfaChallengeId, setMfaChallengeId] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState("");
   const [mfaSubmitting, setMfaSubmitting] = useState(false);
+  const [useBackup, setUseBackup] = useState(false);
+  const [backupCode, setBackupCode] = useState("");
 
   if (loading) {
     return (
@@ -118,7 +120,37 @@ export default function Auth() {
     setMfaFactorId(null);
     setMfaChallengeId(null);
     setMfaCode("");
+    setUseBackup(false);
+    setBackupCode("");
     await supabase.auth.signOut();
+  };
+
+  const handleBackup = async () => {
+    const code = backupCode.trim();
+    if (!code) {
+      toast({ title: "Informe um código", variant: "destructive" });
+      return;
+    }
+    setMfaSubmitting(true);
+    const { data, error } = await supabase.functions.invoke("mfa-backup-codes", {
+      body: { action: "consume", code },
+    });
+    setMfaSubmitting(false);
+    if (error || !data?.ok) {
+      toast({
+        title: "Código inválido",
+        description: error?.message ?? data?.error ?? "Não foi possível validar o código.",
+        variant: "destructive",
+      });
+      return;
+    }
+    toast({
+      title: "Acesso liberado",
+      description: "2FA foi removido. Reconfigure-o nas Configurações.",
+    });
+    setMfaOpen(false);
+    setUseBackup(false);
+    setBackupCode("");
   };
 
   const handleRecover = async () => {
@@ -275,34 +307,77 @@ export default function Auth() {
               Verificação em duas etapas
             </DialogTitle>
             <DialogDescription>
-              Abra seu app autenticador (Google Authenticator, Authy, etc.) e digite o código de 6 dígitos.
+              {useBackup
+                ? "Digite um dos códigos de recuperação que você salvou. Após o uso, o 2FA será desativado e você deverá reconfigurá-lo."
+                : "Abra seu app autenticador (Google Authenticator, Authy, etc.) e digite o código de 6 dígitos."}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="mfa-code">Código</Label>
-            <Input
-              id="mfa-code"
-              inputMode="numeric"
-              maxLength={6}
-              placeholder="000000"
-              value={mfaCode}
-              onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
-              className="text-center tracking-[0.5em] text-lg font-mono"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && mfaCode.length === 6) handleVerifyMfa();
-              }}
-            />
-          </div>
+          {!useBackup ? (
+            <div className="space-y-2">
+              <Label htmlFor="mfa-code">Código</Label>
+              <Input
+                id="mfa-code"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="000000"
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                className="text-center tracking-[0.5em] text-lg font-mono"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && mfaCode.length === 6) handleVerifyMfa();
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setUseBackup(true)}
+                className="text-xs text-primary hover:underline"
+              >
+                Não tenho acesso ao app — usar código de recuperação
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="backup-code">Código de recuperação</Label>
+              <Input
+                id="backup-code"
+                placeholder="XXXXX-XXXXX"
+                value={backupCode}
+                onChange={(e) => setBackupCode(e.target.value.toUpperCase())}
+                className="text-center tracking-widest font-mono"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleBackup();
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setUseBackup(false)}
+                className="text-xs text-primary hover:underline"
+              >
+                Voltar para código do app
+              </button>
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={cancelMfa}>Cancelar</Button>
-            <Button onClick={handleVerifyMfa} disabled={mfaSubmitting || mfaCode.length !== 6}>
-              {mfaSubmitting ? (
-                <div className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full" />
-              ) : (
-                "Verificar"
-              )}
-            </Button>
+            {!useBackup ? (
+              <Button onClick={handleVerifyMfa} disabled={mfaSubmitting || mfaCode.length !== 6}>
+                {mfaSubmitting ? (
+                  <div className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full" />
+                ) : (
+                  "Verificar"
+                )}
+              </Button>
+            ) : (
+              <Button onClick={handleBackup} disabled={mfaSubmitting || !backupCode.trim()}>
+                {mfaSubmitting ? (
+                  <div className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full" />
+                ) : (
+                  "Usar código"
+                )}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
