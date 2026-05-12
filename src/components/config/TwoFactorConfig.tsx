@@ -77,6 +77,11 @@ export default function TwoFactorConfig() {
     refresh();
   }, []);
 
+  useEffect(() => {
+    if (factor && factor.status === "verified") refreshBackup();
+    else setBackupRemaining(null);
+  }, [factor]);
+
   const startEnroll = async () => {
     setBusy(true);
     // remove any unverified factor first to avoid conflicts
