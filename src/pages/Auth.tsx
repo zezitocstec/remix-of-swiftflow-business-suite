@@ -120,7 +120,37 @@ export default function Auth() {
     setMfaFactorId(null);
     setMfaChallengeId(null);
     setMfaCode("");
+    setUseBackup(false);
+    setBackupCode("");
     await supabase.auth.signOut();
+  };
+
+  const handleBackup = async () => {
+    const code = backupCode.trim();
+    if (!code) {
+      toast({ title: "Informe um código", variant: "destructive" });
+      return;
+    }
+    setMfaSubmitting(true);
+    const { data, error } = await supabase.functions.invoke("mfa-backup-codes", {
+      body: { action: "consume", code },
+    });
+    setMfaSubmitting(false);
+    if (error || !data?.ok) {
+      toast({
+        title: "Código inválido",
+        description: error?.message ?? data?.error ?? "Não foi possível validar o código.",
+        variant: "destructive",
+      });
+      return;
+    }
+    toast({
+      title: "Acesso liberado",
+      description: "2FA foi removido. Reconfigure-o nas Configurações.",
+    });
+    setMfaOpen(false);
+    setUseBackup(false);
+    setBackupCode("");
   };
 
   const handleRecover = async () => {
