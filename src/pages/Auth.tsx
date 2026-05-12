@@ -143,25 +143,6 @@ export default function Auth() {
     });
     setRecoverOpen(false);
   };
-    if (!target) {
-      toast({ title: "Informe um e-mail", variant: "destructive" });
-      return;
-    }
-    setRecovering(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(target, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    setRecovering(false);
-    if (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-      return;
-    }
-    toast({
-      title: "E-mail enviado",
-      description: "Verifique sua caixa de entrada para redefinir a senha.",
-    });
-    setRecoverOpen(false);
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
