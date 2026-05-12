@@ -4,6 +4,7 @@ import { Lock, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import TwoFactorConfig from "./TwoFactorConfig";
 
 export default function SegurancaConfig() {
   const { adminPin, setAdminPin } = useProducts();
