@@ -19,6 +19,50 @@ export default function TwoFactorConfig() {
   const [enrollData, setEnrollData] = useState<{ id: string; qr: string; secret: string; uri: string } | null>(null);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
+  const [backupRemaining, setBackupRemaining] = useState<number | null>(null);
+  const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
+  const [generatingBackup, setGeneratingBackup] = useState(false);
+
+  const refreshBackup = async () => {
+    const { data, error } = await supabase.functions.invoke("mfa-backup-codes", { body: { action: "status" } });
+    if (!error && data) setBackupRemaining(data.remaining ?? 0);
+  };
+
+  const generateBackup = async () => {
+    if (backupRemaining && backupRemaining > 0) {
+      if (!confirm("Isso invalidará os códigos antigos. Continuar?")) return;
+    }
+    setGeneratingBackup(true);
+    const { data, error } = await supabase.functions.invoke("mfa-backup-codes", { body: { action: "generate" } });
+    setGeneratingBackup(false);
+    if (error || !data?.codes) {
+      toast.error(error?.message ?? "Falha ao gerar códigos");
+      return;
+    }
+    setBackupCodes(data.codes);
+    setBackupRemaining(data.codes.length);
+    toast.success("Códigos gerados! Guarde em local seguro.");
+  };
+
+  const copyAll = () => {
+    if (!backupCodes) return;
+    navigator.clipboard.writeText(backupCodes.join("\n"));
+    toast.success("Códigos copiados");
+  };
+
+  const downloadCodes = () => {
+    if (!backupCodes) return;
+    const blob = new Blob(
+      [`Códigos de recuperação 2FA\nGerados em: ${new Date().toLocaleString()}\n\n${backupCodes.join("\n")}\n\nUse cada código apenas uma vez.`],
+      { type: "text/plain" },
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `backup-codes-${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const refresh = async () => {
     setLoading(true);
