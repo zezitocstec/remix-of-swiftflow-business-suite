@@ -85,14 +85,16 @@ export default function Auth() {
 
   const handleGoogle = async () => {
     setGoogleLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/` },
+    const { lovable } = await import("@/integrations/lovable/index");
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
     });
-    if (error) {
+    if (result.error) {
       setGoogleLoading(false);
-      toast({ title: "Erro Google", description: error.message, variant: "destructive" });
+      toast({ title: "Erro Google", description: String(result.error?.message ?? result.error), variant: "destructive" });
+      return;
     }
+    if (result.redirected) return;
   };
 
   const handleVerifyMfa = async () => {
