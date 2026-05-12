@@ -32,6 +32,8 @@ export default function Auth() {
   const [mfaChallengeId, setMfaChallengeId] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState("");
   const [mfaSubmitting, setMfaSubmitting] = useState(false);
+  const [useBackup, setUseBackup] = useState(false);
+  const [backupCode, setBackupCode] = useState("");
 
   if (loading) {
     return (
