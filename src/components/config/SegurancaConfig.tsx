@@ -40,6 +40,7 @@ export default function SegurancaConfig() {
 
   return (
     <div className="space-y-6">
+      <TwoFactorConfig />
       <div className="rounded-md border border-border p-4 space-y-4">
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
           <Lock className="h-4 w-4 text-primary" />
