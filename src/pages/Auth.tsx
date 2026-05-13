@@ -34,6 +34,7 @@ export default function Auth() {
   const [mfaSubmitting, setMfaSubmitting] = useState(false);
   const [useBackup, setUseBackup] = useState(false);
   const [backupCode, setBackupCode] = useState("");
+  const [mfaPassed, setMfaPassed] = useState(false);
 
   if (loading) {
     return (
@@ -43,7 +44,7 @@ export default function Auth() {
     );
   }
 
-  if (user && !mfaOpen) return <Navigate to="/" replace />;
+  if (user && mfaPassed) return <Navigate to="/" replace />;
 
   const checkMfa = async (): Promise<boolean> => {
     const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
