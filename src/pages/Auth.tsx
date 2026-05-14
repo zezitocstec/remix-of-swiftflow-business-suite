@@ -117,6 +117,7 @@ export default function Auth() {
       return;
     }
     setMfaOpen(false);
+    setMfaPassed(true);
   };
 
   const cancelMfa = async () => {
