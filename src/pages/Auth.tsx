@@ -156,6 +156,7 @@ export default function Auth() {
     setMfaOpen(false);
     setUseBackup(false);
     setBackupCode("");
+    setMfaPassed(true);
   };
 
   const handleRecover = async () => {
