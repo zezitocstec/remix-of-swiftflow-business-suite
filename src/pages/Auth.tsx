@@ -80,7 +80,8 @@ export default function Auth() {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
       return;
     }
-    await checkMfa();
+    const needs = await checkMfa();
+    if (!needs) setMfaPassed(true);
     setSubmitting(false);
   };
 
@@ -116,6 +117,7 @@ export default function Auth() {
       return;
     }
     setMfaOpen(false);
+    setMfaPassed(true);
   };
 
   const cancelMfa = async () => {
@@ -154,6 +156,7 @@ export default function Auth() {
     setMfaOpen(false);
     setUseBackup(false);
     setBackupCode("");
+    setMfaPassed(true);
   };
 
   const handleRecover = async () => {
