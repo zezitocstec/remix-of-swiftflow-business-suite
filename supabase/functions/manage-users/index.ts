@@ -163,6 +163,33 @@ Deno.serve(async (req) => {
       });
     }
 
+    // RESET PASSWORD
+    if (action === "reset_password") {
+      const { user_id, password } = params;
+      if (!user_id || !password) {
+        return new Response(JSON.stringify({ error: "Usuário e senha são obrigatórios" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (String(password).length < 6) {
+        return new Response(JSON.stringify({ error: "Senha deve ter no mínimo 6 caracteres" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { error } = await adminClient.auth.admin.updateUserById(user_id, {
+        password,
+        email_confirm: true,
+      });
+      if (error) throw error;
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // DELETE USER
     if (action === "delete") {
       const { user_id } = params;
