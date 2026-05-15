@@ -256,6 +256,33 @@ export default function UsuariosConfig() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={!!resetUser} onOpenChange={(open) => { if (!open) { setResetUser(null); setResetPassword(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Redefinir senha</DialogTitle>
+            <DialogDescription>
+              Defina uma nova senha para {resetUser?.email}. Ela passa a valer imediatamente no login.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Nova senha (mín. 6 caracteres)</Label>
+            <Input
+              type="password"
+              value={resetPassword}
+              onChange={(e) => setResetPassword(e.target.value)}
+              placeholder="••••••"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setResetUser(null); setResetPassword(""); }}>Cancelar</Button>
+            <Button onClick={handleResetPassword} disabled={saving || resetPassword.length < 6}>
+              {saving ? "Salvando..." : "Salvar nova senha"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Delete confirmation */}
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <DialogContent className="sm:max-w-sm">
