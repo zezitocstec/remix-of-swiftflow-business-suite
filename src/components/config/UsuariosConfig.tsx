@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Trash2, Shield, ShieldCheck, Loader2 } from "lucide-react";
+import { KeyRound, Plus, Trash2, Shield, ShieldCheck, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface ManagedUser {
@@ -37,8 +37,10 @@ export default function UsuariosConfig() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [resetUser, setResetUser] = useState<ManagedUser | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", role: "user" as "admin" | "user" });
+  const [resetPassword, setResetPassword] = useState("");
 
   const loadUsers = async () => {
     setLoading(true);
@@ -97,6 +99,25 @@ export default function UsuariosConfig() {
       toast({ title: "Erro ao remover usuário", description: e.message, variant: "destructive" });
     } finally {
       setDeleteId(null);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetUser) return;
+    if (resetPassword.length < 6) {
+      toast({ title: "Senha deve ter no mínimo 6 caracteres", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      await callManageUsers("reset_password", { user_id: resetUser.id, password: resetPassword });
+      toast({ title: "Senha atualizada", description: "O usuário já pode entrar com a nova senha." });
+      setResetUser(null);
+      setResetPassword("");
+    } catch (e: any) {
+      toast({ title: "Erro ao redefinir senha", description: e.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -159,6 +180,14 @@ export default function UsuariosConfig() {
                       <SelectItem value="user">Operador</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setResetUser(u)}
+                    title="Redefinir senha"
+                  >
+                    <KeyRound className="h-4 w-4 text-muted-foreground" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
