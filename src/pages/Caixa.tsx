@@ -46,13 +46,20 @@ export default function Caixa() {
     setActionDialog(null); setActionAmount(""); setActionReason("");
   };
 
-  const cashSales = cashRegister?.sales.filter((s) => s.method === "Dinheiro").reduce((s, v) => s + v.amount, 0) || 0;
-  const totalSales = cashRegister?.sales.reduce((s, v) => s + v.amount, 0) || 0;
+  // Vendas fiado não entram no fechamento do caixa (vão para Contas a Receber / relatórios)
+  const isFiado = (m: string) => m?.startsWith("Pedido (Fiado)") || m?.toLowerCase().includes("fiado");
+  const realSales = cashRegister?.sales.filter((s) => !isFiado(s.method)) || [];
+  const fiadoSales = cashRegister?.sales.filter((s) => isFiado(s.method)) || [];
+  const cashSales = realSales.filter((s) => s.method === "Dinheiro").reduce((s, v) => s + v.amount, 0);
+  const totalSales = realSales.reduce((s, v) => s + v.amount, 0);
+  const totalFiado = fiadoSales.reduce((s, v) => s + v.amount, 0);
   const totalWithdrawals = cashRegister?.withdrawals.reduce((s, v) => s + v.amount, 0) || 0;
   const totalDeposits = cashRegister?.deposits.reduce((s, v) => s + v.amount, 0) || 0;
   const expectedCash = (cashRegister?.openingBalance || 0) + cashSales - totalWithdrawals + totalDeposits;
+  // Total geral do fechamento: vendas reais (todos os métodos não-fiado) + fundo + reforços - sangrias
+  const closingTotal = (cashRegister?.openingBalance || 0) + totalSales + totalDeposits - totalWithdrawals;
 
-  const salesByMethod = cashRegister?.sales.reduce((acc, s) => { acc[s.method] = (acc[s.method] || 0) + s.amount; return acc; }, {} as Record<string, number>) || {};
+  const salesByMethod = realSales.reduce((acc, s) => { acc[s.method] = (acc[s.method] || 0) + s.amount; return acc; }, {} as Record<string, number>);
 
   return (
     <div className="flex flex-col h-screen">
