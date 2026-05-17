@@ -93,6 +93,21 @@ export default function Caixa() {
               </div>
             </div>
 
+            <div className="rounded-md border border-primary/30 bg-primary/5 p-4">
+              <p className="text-xs text-muted-foreground font-medium mb-2">Fechamento previsto (Fundo + Vendas + Reforços − Sangrias)</p>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm tabular-nums">
+                <span className="text-foreground">{formatBRL(cashRegister.openingBalance)}</span>
+                <span className="text-muted-foreground">+</span>
+                <span className="text-success">{formatBRL(totalSales)}</span>
+                <span className="text-muted-foreground">+</span>
+                <span className="text-success">{formatBRL(totalDeposits)}</span>
+                <span className="text-muted-foreground">−</span>
+                <span className="text-destructive">{formatBRL(totalWithdrawals)}</span>
+                <span className="text-muted-foreground">=</span>
+                <span className="text-lg font-semibold text-primary">{formatBRL(closingTotal)}</span>
+              </div>
+            </div>
+
             <div className="rounded-md border border-border bg-card p-4">
               <h3 className="text-sm font-semibold text-foreground mb-3">Vendas por Método</h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
