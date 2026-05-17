@@ -150,20 +150,52 @@ export default function Caixa() {
           </>
         )}
 
-        {closedReport && (
-          <div className="rounded-md border border-border bg-card p-6 space-y-3">
-            <h3 className="text-sm font-semibold text-foreground">Relatório de Fechamento</h3>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <span className="text-muted-foreground">Operador:</span><span className="text-foreground">{closedReport.operatorName}</span>
-              <span className="text-muted-foreground">Terminal:</span><span className="text-foreground">{closedReport.terminalName}</span>
-              <span className="text-muted-foreground">Abertura:</span><span className="text-foreground">{closedReport.openedAt.toLocaleString("pt-BR")}</span>
-              <span className="text-muted-foreground">Fechamento:</span><span className="text-foreground">{closedReport.closedAt?.toLocaleString("pt-BR")}</span>
-              <span className="text-muted-foreground">Saldo Inicial:</span><span className="tabular-nums text-foreground">{formatBRL(closedReport.openingBalance)}</span>
-              <span className="text-muted-foreground">Total Vendas:</span><span className="tabular-nums text-foreground">{formatBRL(closedReport.sales.reduce((s: number, v: any) => s + v.amount, 0))}</span>
+        {closedReport && (() => {
+          const repFiado = (closedReport.sales as any[]).filter((s) => isFiado(s.method));
+          const repReal = (closedReport.sales as any[]).filter((s) => !isFiado(s.method));
+          const repByMethod = repReal.reduce((acc: Record<string, number>, s: any) => { acc[s.method] = (acc[s.method] || 0) + s.amount; return acc; }, {});
+          const repTotalReal = repReal.reduce((s: number, v: any) => s + v.amount, 0);
+          const repTotalFiado = repFiado.reduce((s: number, v: any) => s + v.amount, 0);
+          const repWith = (closedReport.withdrawals as any[]).reduce((s, v) => s + v.amount, 0);
+          const repDep = (closedReport.deposits as any[]).reduce((s, v) => s + v.amount, 0);
+          const repClosing = closedReport.openingBalance + repTotalReal + repDep - repWith;
+          return (
+            <div className="rounded-md border border-border bg-card p-6 space-y-4">
+              <h3 className="text-sm font-semibold text-foreground">Relatório de Fechamento</h3>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <span className="text-muted-foreground">Operador:</span><span className="text-foreground">{closedReport.operatorName}</span>
+                <span className="text-muted-foreground">Terminal:</span><span className="text-foreground">{closedReport.terminalName}</span>
+                <span className="text-muted-foreground">Abertura:</span><span className="text-foreground">{closedReport.openedAt.toLocaleString("pt-BR")}</span>
+                <span className="text-muted-foreground">Fechamento:</span><span className="text-foreground">{closedReport.closedAt?.toLocaleString("pt-BR")}</span>
+              </div>
+
+              <div className="border-t border-border pt-3 space-y-1.5 text-sm">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Vendas por método</p>
+                {Object.entries(repByMethod).length === 0 && <p className="text-xs text-muted-foreground">Nenhuma venda.</p>}
+                {Object.entries(repByMethod).map(([m, v]) => (
+                  <div key={m} className="flex justify-between"><span className="text-foreground">{m}</span><span className="tabular-nums text-foreground">{formatBRL(v as number)}</span></div>
+                ))}
+                <div className="flex justify-between border-t border-border pt-1.5 mt-1.5 font-medium"><span>Subtotal vendas</span><span className="tabular-nums">{formatBRL(repTotalReal)}</span></div>
+              </div>
+
+              <div className="border-t border-border pt-3 space-y-1.5 text-sm">
+                <div className="flex justify-between"><span className="text-muted-foreground">(+) Fundo de Caixa</span><span className="tabular-nums text-foreground">{formatBRL(closedReport.openingBalance)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">(+) Vendas do dia</span><span className="tabular-nums text-foreground">{formatBRL(repTotalReal)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">(+) Reforços</span><span className="tabular-nums text-success">{formatBRL(repDep)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">(−) Sangrias</span><span className="tabular-nums text-destructive">-{formatBRL(repWith)}</span></div>
+                <div className="flex justify-between border-t border-border pt-2 mt-2 text-base font-semibold"><span>Fechamento do Caixa</span><span className="tabular-nums text-primary">{formatBRL(repClosing)}</span></div>
+              </div>
+
+              {repTotalFiado > 0 && (
+                <div className="border-t border-border pt-3 text-xs text-muted-foreground">
+                  <p>Vendas no fiado: <span className="tabular-nums">{formatBRL(repTotalFiado)}</span> — não entram no fechamento, ficam registradas em Contas a Receber e nos relatórios.</p>
+                </div>
+              )}
+
+              <Button variant="outline" size="sm" onClick={() => setClosedReport(null)}>Fechar Relatório</Button>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setClosedReport(null)}>Fechar Relatório</Button>
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
