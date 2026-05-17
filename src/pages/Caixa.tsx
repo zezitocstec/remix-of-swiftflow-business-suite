@@ -79,8 +79,9 @@ export default function Caixa() {
                 <p className="text-lg font-semibold tabular-nums text-foreground">{formatBRL(cashRegister.openingBalance)}</p>
               </div>
               <div className="rounded-md border border-border bg-card p-4">
-                <p className="text-xs text-muted-foreground font-medium">Total Vendas</p>
+                <p className="text-xs text-muted-foreground font-medium">Total Vendas (sem fiado)</p>
                 <p className="text-lg font-semibold tabular-nums text-success">{formatBRL(totalSales)}</p>
+                {totalFiado > 0 && <p className="text-[10px] text-muted-foreground mt-0.5">Fiado: {formatBRL(totalFiado)} (não entra no caixa)</p>}
               </div>
               <div className="rounded-md border border-border bg-card p-4">
                 <p className="text-xs text-muted-foreground font-medium">Sangrias / Reforços</p>
