@@ -96,6 +96,7 @@ export default function Configuracoes() {
           {active === "restaurante" && <RestauranteConfig />}
           {active === "usuarios_sistema" && <UsuariosConfig />}
           {active === "operadores" && <OperadoresConfig />}
+          {active === "terminais" && <TerminaisConfig />}
           {active === "seguranca" && <SegurancaConfig />}
           {active === "logs" && <LogsConfig />}
           {active === "backup" && <BackupConfig />}
