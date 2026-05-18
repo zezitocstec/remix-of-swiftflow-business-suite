@@ -13,13 +13,6 @@ import VendedoresConfig from "@/components/config/VendedoresConfig";
 import UsuariosConfig from "@/components/config/UsuariosConfig";
 import BalancasConfig from "@/components/config/BalancasConfig";
 import RestauranteConfig from "@/components/config/RestauranteConfig";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
 const tabs = [
   { id: "empresa", icon: Building2, label: "Empresa" },
   { id: "impressora", icon: Printer, label: "Impressora" },
@@ -46,29 +39,21 @@ export default function Configuracoes() {
     <div className="flex flex-col h-screen">
       <TopBar title="Configurações" subtitle="Ajustes do sistema" />
       <div className="flex-1 overflow-auto">
-        {/* Mobile: dropdown selector */}
+        {/* Mobile: native selector avoids portal/overlay glitches on small screens */}
         <div className="md:hidden border-b border-border bg-card px-3 py-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 w-full px-3 py-2.5 rounded-md border border-border bg-background text-sm font-medium text-foreground">
-                <activeTab.icon className="h-4 w-4 text-primary" strokeWidth={1.5} />
-                <span className="flex-1 text-left">{activeTab.label}</span>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-[calc(100vw-1.5rem)]">
+          <label className="relative flex items-center gap-2 w-full px-3 py-2.5 rounded-md border border-border bg-background text-sm font-medium text-foreground">
+            <activeTab.icon className="h-4 w-4 text-primary shrink-0" strokeWidth={1.5} />
+            <select
+              value={active}
+              onChange={(event) => setActive(event.target.value as TabId)}
+              className="w-full appearance-none bg-transparent pr-8 text-foreground outline-none"
+            >
               {tabs.map((tab) => (
-                <DropdownMenuItem
-                  key={tab.id}
-                  onClick={() => setActive(tab.id)}
-                  className={`flex items-center gap-2 ${active === tab.id ? "bg-primary/10 text-primary font-medium" : ""}`}
-                >
-                  <tab.icon className="h-4 w-4" strokeWidth={1.5} />
-                  {tab.label}
-                </DropdownMenuItem>
+                <option key={tab.id} value={tab.id}>{tab.label}</option>
               ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 h-4 w-4 text-muted-foreground" />
+          </label>
         </div>
 
         {/* Desktop: horizontal tabs */}
@@ -89,7 +74,7 @@ export default function Configuracoes() {
           ))}
         </div>
 
-        <div className="p-3 sm:p-6 max-w-4xl">
+        <div className="p-3 sm:p-6 max-w-4xl min-h-[240px]">
           {active === "empresa" && <EmpresaForm />}
           {active === "impressora" && <ImpressoraConfig />}
           {active === "venda" && <VendaConfig />}
