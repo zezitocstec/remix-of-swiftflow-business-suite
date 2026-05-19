@@ -21,11 +21,13 @@ export default function OperadoresConfig() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [biometricSupported, setBiometricSupported] = useState(false);
+  const [platformAuthAvailable, setPlatformAuthAvailable] = useState(false);
   const [biometricCredentials, setBiometricCredentials] = useState<Record<string, number>>({});
   const [registeringBiometric, setRegisteringBiometric] = useState<string | null>(null);
   const [enrollDialogOp, setEnrollDialogOp] = useState<{ id: string; nome: string } | null>(null);
   useEffect(() => {
-    isPlatformAuthAvailable().then(setBiometricSupported);
+    setBiometricSupported(isWebAuthnSupported());
+    isPlatformAuthAvailable().then(setPlatformAuthAvailable);
     loadBiometricCounts();
   }, []);
 
@@ -74,6 +76,14 @@ export default function OperadoresConfig() {
   };
 
   const handleRegisterBiometric = (operatorId: string) => {
+    if (!platformAuthAvailable) {
+      toast({
+        title: "Dispositivo sem biometria",
+        description: "Este dispositivo não tem leitor de digital/Face ID disponível. Tente em um celular, notebook com leitor biométrico ou ative o Windows Hello.",
+        variant: "destructive",
+      });
+      return;
+    }
     const op = operators.find(o => o.id === operatorId);
     if (op) setEnrollDialogOp({ id: op.id, nome: op.nome });
   };
