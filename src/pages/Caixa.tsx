@@ -49,12 +49,14 @@ export default function Caixa() {
     }
     setOpenDialog(false);
     setOpeningBalance("");
+    loadOpenRegs();
   };
 
-  const handleClose = () => {
-    const report = closeCashRegister();
+  const handleClose = async () => {
+    const report = await closeCashRegister();
     if (report) { setClosedReport(report); toast({ title: "Caixa fechado" }); }
     setCloseDialog(false);
+    loadOpenRegs();
   };
 
   const handleAction = () => {
