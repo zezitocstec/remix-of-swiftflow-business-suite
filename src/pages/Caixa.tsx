@@ -284,8 +284,14 @@ export default function Caixa() {
               {operators.filter(o => o.ativo).map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
             </select>
             <select value={selectedTermId} onChange={(e) => setSelectedTermId(e.target.value)} className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
-              {terminals.filter(t => t.ativo).map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+              {terminals.filter(t => t.ativo).map(t => {
+                const busy = openRegs.find(r => r.terminal_id === t.id);
+                return <option key={t.id} value={t.id} disabled={!!busy}>{t.nome}{busy ? ` — em uso por ${busy.operator_name}` : ""}</option>;
+              })}
             </select>
+            {openRegs.some(r => r.terminal_id === selectedTermId) && (
+              <p className="text-xs text-destructive">Este terminal já está aberto por outro operador. Selecione outro ou feche o caixa atual primeiro.</p>
+            )}
             <Input type="number" inputMode="decimal" placeholder="Saldo inicial (R$)" value={openingBalance} onChange={(e) => setOpeningBalance(e.target.value)} className="h-12 text-lg text-center" autoFocus />
           </div>
           <DialogFooter><Button variant="outline" onClick={() => setOpenDialog(false)}>Cancelar</Button><Button onClick={handleOpen}>Abrir Caixa</Button></DialogFooter>
