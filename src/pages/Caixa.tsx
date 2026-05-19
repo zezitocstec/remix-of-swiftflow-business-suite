@@ -84,6 +84,48 @@ export default function Caixa() {
     <div className="flex flex-col h-screen">
       <TopBar title="Caixa" subtitle={cashRegister ? `${cashRegister.terminalName} — aberto` : "Caixa fechado"} />
       <div className="flex-1 overflow-auto p-3 sm:p-6 space-y-6">
+        <div className="rounded-md border border-border bg-card overflow-hidden">
+          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Caixas abertos</h3>
+            <span className="text-xs text-muted-foreground">{openRegs.length} aberto(s)</span>
+          </div>
+          {openRegs.length === 0 ? (
+            <p className="px-4 py-6 text-sm text-muted-foreground text-center">Nenhum caixa aberto no momento.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-secondary text-muted-foreground">
+                    <th className="text-left py-2.5 px-4 font-medium">Terminal</th>
+                    <th className="text-left py-2.5 px-4 font-medium">Operador</th>
+                    <th className="text-right py-2.5 px-4 font-medium">Fundo</th>
+                    <th className="text-right py-2.5 px-4 font-medium">Aberto em</th>
+                    <th className="text-right py-2.5 px-4 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {openRegs.map((r) => {
+                    const mine = cashRegister?.id === r.id;
+                    return (
+                      <tr key={r.id} className="border-b border-border last:border-0">
+                        <td className="py-2 px-4 text-foreground font-medium">{r.terminal_name}</td>
+                        <td className="py-2 px-4 text-foreground">{r.operator_name}</td>
+                        <td className="py-2 px-4 text-right tabular-nums text-foreground">{formatBRL(Number(r.opening_balance))}</td>
+                        <td className="py-2 px-4 text-right text-muted-foreground text-xs">{new Date(r.opened_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</td>
+                        <td className="py-2 px-4 text-right">
+                          <span className={`text-xs font-medium rounded-full px-2 py-0.5 ${mine ? "bg-primary/10 text-primary" : "bg-success/10 text-success"}`}>
+                            {mine ? "Você" : "Aberto"}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
         {!cashRegister ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <Lock className="h-12 w-12 text-muted-foreground" />
