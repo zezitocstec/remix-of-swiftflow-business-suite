@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { TopBar } from "@/components/TopBar";
 import { useProducts } from "@/contexts/ProductContext";
 import { formatBRL } from "@/lib/mock-data";
@@ -6,10 +6,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { DollarSign, ArrowDownLeft, ArrowUpRight, Lock, Unlock, Banknote } from "lucide-react";
+import { DollarSign, ArrowDownLeft, ArrowUpRight, Lock, Unlock, Banknote, Users } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useTenant } from "@/contexts/TenantContext";
+
+type OpenReg = { id: string; terminal_id: string | null; terminal_name: string; operator_name: string; opened_at: string; opening_balance: number };
 
 export default function Caixa() {
   const { cashRegister, openCashRegister, closeCashRegister, addWithdrawal, addDeposit, sales, operators, terminals } = useProducts();
+  const { tenantId } = useTenant();
+  const [openRegs, setOpenRegs] = useState<OpenReg[]>([]);
+
+  const loadOpenRegs = useCallback(async () => {
+    if (!tenantId) return;
+    const { data } = await supabase
+      .from("cash_registers")
+      .select("id, terminal_id, terminal_name, operator_name, opened_at, opening_balance")
+      .eq("tenant_id", tenantId)
+      .is("closed_at", null)
+      .order("opened_at", { ascending: true });
+    setOpenRegs((data || []) as OpenReg[]);
+  }, [tenantId]);
+
+  useEffect(() => { loadOpenRegs(); }, [loadOpenRegs, cashRegister?.id]);
   const [openDialog, setOpenDialog] = useState(false);
   const [closeDialog, setCloseDialog] = useState(false);
   const [actionDialog, setActionDialog] = useState<"sangria" | "reforco" | null>(null);
