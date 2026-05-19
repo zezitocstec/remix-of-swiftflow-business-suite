@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { TopBar } from "@/components/TopBar";
 import { useProducts } from "@/contexts/ProductContext";
 import { formatBRL } from "@/lib/mock-data";
@@ -6,10 +6,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { DollarSign, ArrowDownLeft, ArrowUpRight, Lock, Unlock, Banknote } from "lucide-react";
+import { DollarSign, ArrowDownLeft, ArrowUpRight, Lock, Unlock, Banknote, Users } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useTenant } from "@/contexts/TenantContext";
+
+type OpenReg = { id: string; terminal_id: string | null; terminal_name: string; operator_name: string; opened_at: string; opening_balance: number };
 
 export default function Caixa() {
   const { cashRegister, openCashRegister, closeCashRegister, addWithdrawal, addDeposit, sales, operators, terminals } = useProducts();
+  const { tenantId } = useTenant();
+  const [openRegs, setOpenRegs] = useState<OpenReg[]>([]);
+
+  const loadOpenRegs = useCallback(async () => {
+    if (!tenantId) return;
+    const { data } = await supabase
+      .from("cash_registers")
+      .select("id, terminal_id, terminal_name, operator_name, opened_at, opening_balance")
+      .eq("tenant_id", tenantId)
+      .is("closed_at", null)
+      .order("opened_at", { ascending: true });
+    setOpenRegs((data || []) as OpenReg[]);
+  }, [tenantId]);
+
+  useEffect(() => { loadOpenRegs(); }, [loadOpenRegs, cashRegister?.id]);
   const [openDialog, setOpenDialog] = useState(false);
   const [closeDialog, setCloseDialog] = useState(false);
   const [actionDialog, setActionDialog] = useState<"sangria" | "reforco" | null>(null);
@@ -30,12 +49,14 @@ export default function Caixa() {
     }
     setOpenDialog(false);
     setOpeningBalance("");
+    loadOpenRegs();
   };
 
-  const handleClose = () => {
-    const report = closeCashRegister();
+  const handleClose = async () => {
+    const report = await closeCashRegister();
     if (report) { setClosedReport(report); toast({ title: "Caixa fechado" }); }
     setCloseDialog(false);
+    loadOpenRegs();
   };
 
   const handleAction = () => {
@@ -65,6 +86,48 @@ export default function Caixa() {
     <div className="flex flex-col h-screen">
       <TopBar title="Caixa" subtitle={cashRegister ? `${cashRegister.terminalName} — aberto` : "Caixa fechado"} />
       <div className="flex-1 overflow-auto p-3 sm:p-6 space-y-6">
+        <div className="rounded-md border border-border bg-card overflow-hidden">
+          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Caixas abertos</h3>
+            <span className="text-xs text-muted-foreground">{openRegs.length} aberto(s)</span>
+          </div>
+          {openRegs.length === 0 ? (
+            <p className="px-4 py-6 text-sm text-muted-foreground text-center">Nenhum caixa aberto no momento.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-secondary text-muted-foreground">
+                    <th className="text-left py-2.5 px-4 font-medium">Terminal</th>
+                    <th className="text-left py-2.5 px-4 font-medium">Operador</th>
+                    <th className="text-right py-2.5 px-4 font-medium">Fundo</th>
+                    <th className="text-right py-2.5 px-4 font-medium">Aberto em</th>
+                    <th className="text-right py-2.5 px-4 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {openRegs.map((r) => {
+                    const mine = cashRegister?.id === r.id;
+                    return (
+                      <tr key={r.id} className="border-b border-border last:border-0">
+                        <td className="py-2 px-4 text-foreground font-medium">{r.terminal_name}</td>
+                        <td className="py-2 px-4 text-foreground">{r.operator_name}</td>
+                        <td className="py-2 px-4 text-right tabular-nums text-foreground">{formatBRL(Number(r.opening_balance))}</td>
+                        <td className="py-2 px-4 text-right text-muted-foreground text-xs">{new Date(r.opened_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</td>
+                        <td className="py-2 px-4 text-right">
+                          <span className={`text-xs font-medium rounded-full px-2 py-0.5 ${mine ? "bg-primary/10 text-primary" : "bg-success/10 text-success"}`}>
+                            {mine ? "Você" : "Aberto"}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
         {!cashRegister ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <Lock className="h-12 w-12 text-muted-foreground" />
@@ -221,8 +284,14 @@ export default function Caixa() {
               {operators.filter(o => o.ativo).map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
             </select>
             <select value={selectedTermId} onChange={(e) => setSelectedTermId(e.target.value)} className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
-              {terminals.filter(t => t.ativo).map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+              {terminals.filter(t => t.ativo).map(t => {
+                const busy = openRegs.find(r => r.terminal_id === t.id);
+                return <option key={t.id} value={t.id} disabled={!!busy}>{t.nome}{busy ? ` — em uso por ${busy.operator_name}` : ""}</option>;
+              })}
             </select>
+            {openRegs.some(r => r.terminal_id === selectedTermId) && (
+              <p className="text-xs text-destructive">Este terminal já está aberto por outro operador. Selecione outro ou feche o caixa atual primeiro.</p>
+            )}
             <Input type="number" inputMode="decimal" placeholder="Saldo inicial (R$)" value={openingBalance} onChange={(e) => setOpeningBalance(e.target.value)} className="h-12 text-lg text-center" autoFocus />
           </div>
           <DialogFooter><Button variant="outline" onClick={() => setOpenDialog(false)}>Cancelar</Button><Button onClick={handleOpen}>Abrir Caixa</Button></DialogFooter>
