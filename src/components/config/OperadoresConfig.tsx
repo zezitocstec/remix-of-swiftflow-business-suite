@@ -76,6 +76,14 @@ export default function OperadoresConfig() {
   };
 
   const handleRegisterBiometric = (operatorId: string) => {
+    if (!platformAuthAvailable) {
+      toast({
+        title: "Dispositivo sem biometria",
+        description: "Este dispositivo não tem leitor de digital/Face ID disponível. Tente em um celular, notebook com leitor biométrico ou ative o Windows Hello.",
+        variant: "destructive",
+      });
+      return;
+    }
     const op = operators.find(o => o.id === operatorId);
     if (op) setEnrollDialogOp({ id: op.id, nome: op.nome });
   };
